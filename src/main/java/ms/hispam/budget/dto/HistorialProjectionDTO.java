@@ -17,4 +17,5 @@ public class HistorialProjectionDTO {
     private Integer vRange;
     private String vPeriod;
     private Date createdAt;
+    private Boolean isTop;
 }

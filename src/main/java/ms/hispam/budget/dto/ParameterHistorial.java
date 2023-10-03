@@ -16,5 +16,10 @@ public class ParameterHistorial {
     private Integer range;
     private String nominaFrom;
     private String nominaTo;
+    private List<DisabledPoDTO> disabledPo;
     private List<ParametersDTO> parameters;
+    private Boolean isTop;
+    private Integer idBu;
+    private BaseExternResponse baseExtern;
+    private BaseExternResponse bc;
 }

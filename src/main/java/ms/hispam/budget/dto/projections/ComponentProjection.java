@@ -7,5 +7,6 @@ public interface ComponentProjection {
     public String getName();
     public Boolean getIscomponent();
     public Boolean getShow();
+    public Integer getTvalor();
 
 }

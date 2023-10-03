@@ -13,4 +13,5 @@ public interface HeadcountHistoricalProjection {
     public String getComponent();
     public Double getAmount();
 
+
 }

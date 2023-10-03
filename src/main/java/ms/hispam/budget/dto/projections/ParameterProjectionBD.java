@@ -13,6 +13,7 @@ public interface ParameterProjectionBD {
     public String getHperiod();
     public Integer getHrange();
     public String getVbu();
+    public Integer getIdbu();
 
     public String getName();
     public String getDescription();

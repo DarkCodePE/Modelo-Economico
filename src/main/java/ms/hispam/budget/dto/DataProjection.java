@@ -14,5 +14,4 @@ public class DataProjection {
 
     List<ProjectionDTO> totalData;
     List<ProjectionDTO> groupData;
-    List<ComponentCashProjection> components;
 }

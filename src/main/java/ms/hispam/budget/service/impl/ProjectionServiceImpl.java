@@ -1,13 +1,8 @@
 package ms.hispam.budget.service.impl;
 
 import ms.hispam.budget.dto.*;
-import ms.hispam.budget.dto.projections.ComponentCashProjection;
-import ms.hispam.budget.dto.projections.ComponentNominaProjection;
-import ms.hispam.budget.dto.projections.ComponentProjection;
-import ms.hispam.budget.dto.projections.ParameterProjectionBD;
-import ms.hispam.budget.entity.mysql.Bu;
-import ms.hispam.budget.entity.mysql.HistorialProjection;
-import ms.hispam.budget.entity.mysql.LegalEntity;
+import ms.hispam.budget.dto.projections.*;
+import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
@@ -34,48 +29,74 @@ public class ProjectionServiceImpl implements ProjectionService {
     private DemoRepository sharedRepo;
     @Autowired
     private ParameterRepository parameterRepository;
-
     @Autowired
     private HistorialProjectionRepository historialProjectionRepository;
     @Autowired
     private ParameterProjectionRepository parameterProjectionRepository;
-
+    @Autowired
+    private DisabledPoHistorialRepository disabledPoHistorialRepository;
     @Autowired
     private BuRepository buRepository;
-
     @Autowired
     private LegalEntityRepository legalEntityRepository;
+    @Autowired
+    private CodeNominaRepository codeNominaRepository;
+    @Autowired
+    private BaseExternRepository baseExternRepository;
+    @Autowired
+    private FrecuentlyRepository frecuentlyRepository;
+    @Autowired
+    private PoHistorialExternRepository poHistorialExternRepository;
+    @Autowired
+    private JsonDatosRepository jsonDatosRepository;
+    @Autowired
+    private ParameterDefaultRepository parameterDefaultRepository;
+    @Autowired
+    private BusinessCaseRepository businessCaseRepository;
+
+    private static final String[] headers = {"po","idssff"};
+    private static final String HEADERPO="POXXXXXX";
+
 
 
     @Override
     public Response<Page<ProjectionDTO>> getProjection(ParametersByProjection projection) {
         try {
-            int skipCount = (projection.getPage()) * projection.getSize();
-            DataProjection  headcount=  getHeadcountByAccount(projection.getBu(),
-                    projection.getPeriod(),projection.getPaymentComponent(),projection.getRange(),skipCount,
-                    projection.getSize(),projection.getNominaFrom(),projection.getNominaTo());
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+
+
+            if(headcount.isEmpty()){
+                Response<Page<ProjectionDTO>> data = new Response<>();
+                data.setStatus(404);
+                data.setSuccess(false);
+                data.setMessage("No existe datos para este periodo");
+                return  data;
+            }
 
             switch (projection.getBu()){
                 case "T. ECUADOR":
-                    isEcuador(headcount.getGroupData(),projection);
+                    isEcuador(headcount,projection);
                     break;
                 case "T. URUGUAY":
-                    isUruguay(headcount.getGroupData(),projection);
+                    isUruguay(headcount,projection);
+                    break;
+                default:
                     break;
             }
 
-            List<ComponentAmount> groupedData = headcount.getComponents().stream()
+            List<ComponentAmount> groupedData = headcount.stream()
+                    .flatMap(j -> j.getComponents().stream())
                     .collect(Collectors.groupingBy(
-                            ComponentCashProjection::getID_de_componente_de_pago,
-                            Collectors.summingDouble(ComponentCashProjection::getImporte)
+                            PaymentComponentDTO::getPaymentComponent,
+                            Collectors.summingDouble(PaymentComponentDTO::getAmount)
                     )).entrySet()
                     .stream()
                     .map(entry -> new ComponentAmount(entry.getKey(), entry.getValue()))
-                    .collect(Collectors.toList());;
+                    .collect(Collectors.toList());
 
-            int totalPages= (int) Math.ceil((double) headcount.getTotalData().size() / projection.getSize());
 
-            Page<ProjectionDTO> page = new Page<>(projection.getPage(),totalPages, headcount.getTotalData().size(), headcount.getGroupData(),groupedData);
+            Page<ProjectionDTO> page = new Page<>(0,0, headcount.size(),
+                    headcount,groupedData);
 
             Response<Page<ProjectionDTO>> data = new Response<>();
             data.setStatus(200);
@@ -87,7 +108,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             Response<Page<ProjectionDTO>> data = new Response<>();
             data.setStatus(500);
             data.setSuccess(false);
-            data.setMessage(Arrays.stream(ex.getStackTrace()).map(c->c.toString()).collect(Collectors.joining(",")));
+            data.setMessage(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString).collect(Collectors.joining(",")));
             return  data;
         }
 
@@ -98,7 +119,8 @@ public class ProjectionServiceImpl implements ProjectionService {
         //Genera las proyecciones del rango
         for (ProjectionDTO projectionDTO : headcount) {
             //parametros que no tienen periodo que se ejecutan siempre
-
+            if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){addBaseExtern(projectionDTO,projection.getBaseExtern(),
+                    projection.getPeriod(),projection.getRange());}
             methodsUruguay.addParameter(projectionDTO, projection);
         }
     }
@@ -120,50 +142,130 @@ public class ProjectionServiceImpl implements ProjectionService {
             methodsEcuador.iess(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
             methodsEcuador.decimoTercero(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
             methodsEcuador.fondoReserva(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+            methodsEcuador.vacations(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+            if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                addBaseExtern(projectionDTO,projection.getBaseExtern(),
+                    projection.getPeriod(),projection.getRange());}
         }
+    }
+    private void  addBaseExtern(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
+        Map<String, Object>  po = baseExtern.getData().stream().filter(u->u.get("po")
+                .equals(headcount.getPo())).findFirst().orElse(null);
+       List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream().
+               filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t))).map(
+               p->
+                       PaymentComponentDTO.builder()
+                       .paymentComponent(p)
+                       .amount(po!=null && po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0)
+                       .projections(Shared.generateMonthProjection(period,range,po!=null&&
+                               po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0))
+                       .build()
+       ).collect(Collectors.toList());
+        headcount.getComponents().addAll(bases);
+
     }
 
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElse(null);
-        return Config.builder().components(sharedRepo.getComponentByBu(bu))
-                .parameters(parameterRepository.getParameterBu(bu))
-                .icon(vbu!=null?vbu.getIcon():"")
-                .money(vbu!=null?vbu.getMoney():"")
-                .build();
+        if(vbu!=null){
+            return Config.builder().
+                    components(sharedRepo.getComponentByBu(bu))
+                    .parameters(parameterRepository.getParameterBu(bu))
+                    .icon(vbu.getIcon())
+                    .money(vbu.getMoney())
+                    .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
+                    .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
+                    .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
+                            .builder().code(c.getCode()).name(c.getName())
+                            .build()).collect(Collectors.toList()))
+                    .build();
+        }
+        return null;
+
     }
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
     public Response<Boolean> saveProjection(ParameterHistorial projection,String email) {
-        try {
+
             HistorialProjection historial = new HistorialProjection();
             historial.setBu(projection.getBu());
             historial.setName(projection.getName());
             historial.setVDate(new Date());
             historial.setVRange(projection.getRange());
+            historial.setIdBu(projection.getIdBu());
             historial.setVPeriod(projection.getPeriod());
+            historial.setIsTop(projection.getIsTop());
             historial.setCreatedAt(new Date());
             historial.setCreatedBy(email);
-            historial.setNominaFrom(projection.getNominaFrom().replaceAll("/",""));
-            historial.setNominaTo(projection.getNominaTo().replaceAll("/",""));
+            historial.setNominaFrom(projection.getNominaFrom().replace("/",""));
+            historial.setNominaTo(projection.getNominaTo().replace("/",""));
             historial = historialProjectionRepository.save(historial);
             HistorialProjection finalHistorial = historial;
             List<ParameterProjection> parameters = projection.getParameters().stream().map(p-> new ParameterProjection(
               null, finalHistorial.getId(),
                     p.getParameter().getId(),
                     p.getValue(),
-                    p.getPeriod()==""?null: p.getPeriod(),
-                    p.getRange()==""?null:p.getRange(),
+                    Objects.equals(p.getPeriod(), "") ?null: p.getPeriod(),
+                    Objects.equals(p.getRange(), "") ?null:p.getRange(),
                     p.getIsRetroactive(),
-                    p.getPeriodRetroactive()==""?null:p.getPeriodRetroactive()
+                    Objects.equals(p.getPeriodRetroactive(), "") ?null:p.getPeriodRetroactive()
             )).collect(Collectors.toList());
             parameterProjectionRepository.saveAll(parameters);
+            List<DisabledPoHistorical> disabledPoHistoricals = projection.getDisabledPo().stream().map(c->
+                    DisabledPoHistorical.builder().
+                            idssff(c.getIdssff()).
+                            idProjectionHistorial(finalHistorial.getId()).
+                            po(c.getPo()).
+                            periodFrom(c.getFrom()).periodTo(c.getTo()).
+                            build()).collect(Collectors.toList());
+            disabledPoHistorialRepository.saveAll(disabledPoHistoricals);
+            //ADD IF EXTERN IS NOT NULL
+            if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+               List<PoHistorialExtern> extern= new ArrayList<>();
+
+                for (Map<String, Object> data: projection.getBaseExtern().getData()) {
+                    for (String header: projection.getBaseExtern().getHeaders().stream()
+                            .filter(f->Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(f))
+                                ).collect(Collectors.toList())) {
+                        if(data.get(header)!=null){
+                            extern.add(PoHistorialExtern.builder()
+                                    .po(data.get("po").toString())
+                                    .baseExtern(header)
+                                    .idHistorial(historial.getId())
+                                    .nvalue(Shared.encriptar(data.get(header).toString()))
+                                    .build());
+                        }
+
+                    }
+                }
+                JsonTemp json = jsonDatosRepository.save(JsonTemp.builder().datosJson(Shared.convertArrayListToJson(extern)).build());
+                sharedRepo.insertHistorialExtern(json.getId(),1);
+            }
+
+        if(projection.getBc()!=null &&!projection.getBc().getData().isEmpty()){
+            List<BusinessCaseHistorial> extern= new ArrayList<>();
+            for (Map<String, Object> data: projection.getBc().getData()) {
+                for (String header: projection.getBc().getHeaders().stream()
+                        .filter(f->!f.equalsIgnoreCase(HEADERPO)).collect(Collectors.toList())) {
+                    if(data.get(header)!=null){
+                        extern.add(BusinessCaseHistorial.builder()
+                                .po(data.get(HEADERPO).toString())
+                                .component(header)
+                                .idHistorial(historial.getId())
+                                .nvalue(Shared.encriptar(data.get(header).toString()))
+                                .build());
+                    }
+
+                }
+            }
+            JsonTemp json = jsonDatosRepository.save(JsonTemp.builder().datosJson(Shared.convertArrayListToJson(extern)).build());
+            sharedRepo.insertHistorialExtern(json.getId(),2);
+        }
 
             return Response.<Boolean>builder().success(true).message("Proyección guardada con éxito").status(200).build();
-        }catch (Exception e){
-            return Response.<Boolean>builder().success(false).status(500).message("Ocurrio un error inesperado").error(e.getStackTrace().toString()).build();
-        }
+
 
     }
 
@@ -178,51 +280,73 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .vRange(p.getVRange())
                         .vPeriod(p.getVPeriod())
                         .createdAt(p.getCreatedAt())
+                        .isTop(p.getIsTop())
                 .build()).collect(Collectors.toList());
     }
 
     @Override
-    public Response<Page<ProjectionDTO>> getHistorialProjection(Integer  id,Integer page, Integer size) {
+    public ProjectionInformation getHistorialProjection(Integer  id) {
         List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
-        List<ComponentProjection> components = sharedRepo.getComponentByBu(parameters.get(0).getVbu());
-        ParametersByProjection projection = ParametersByProjection
-                .builder()
-                .bu(parameters.get(0).getVbu())
-                .period(parameters.get(0).getHperiod())
-                .range(parameters.get(0).getHrange())
-                .nominaFrom(parameters.get(0).getNfrom())
-                .nominaTo(parameters.get(0).getNto())
-                .page(page)
-                .size(size)
-                .paymentComponent(components.stream().filter(ComponentProjection::getIscomponent).map(u->PaymentComponentType.builder()
-                        .component(u.getComponent())
-                        .type(u.getType())
-                        .build()).collect(Collectors.toList()))
-                .parameters(parameters.stream().filter(p->p.getId()!=null).map(k->ParametersDTO.builder()
-                        .period(k.getVperiod())
-                        .type(k.getVtype())
-                        .parameter(ParameterDTO.builder().id(k.getId()).typeValor(k.getTvalor())
-                                .name(k.getName()).description(k.getDescription()) .build())
-                        .value(k.getValue())
-                        .isRetroactive(k.getVisretroactive())
-                        .periodRetroactive(k.getVperiodretroactive())
-                        .range(k.getVrange())
-                        .build()).collect(Collectors.toList()))
-                .build();
 
-        replaceSlash(projection);
-        Response<Page<ProjectionDTO>> response = getProjection(projection);
-        response.getData().setComponents(components);
-        response.getData().setParameters(projection.getParameters());
-        return response;
+        List<DisabledPoDTO> disabledPoDTOS = disabledPoHistorialRepository.findByIdProjectionHistorial(id).stream().map(c->
+                new DisabledPoDTO(c.getPo(),c.getIdssff(),c.getPeriodFrom(),c.getPeriodTo())).collect(Collectors.toList());
+        BaseExternResponse response = BaseExternResponse.builder()
+                                .data(new ArrayList<>()).headers(new ArrayList<>()).build();
+        BaseExternResponse bc = BaseExternResponse.builder()
+                .data(new ArrayList<>()).headers(new ArrayList<>()).build();
+
+        List<PoHistorialExtern> baseExtern= poHistorialExternRepository.findByIdHistorial(id);
+        if(!baseExtern.isEmpty()){
+            response.setHeaders(baseExternRepository.findByBu(parameters.get(0).getIdbu())
+                    .stream().map(BaseExtern::getCode).collect(Collectors.toList()));
+            response.getHeaders().addAll(Arrays.asList(headers));
+            List<Map<String,Object>> data = new ArrayList<>();
+            baseExtern.forEach(t-> data.stream().filter(e->e.get("po").equals(t.getPo())).findFirst().ifPresentOrElse(r->
+                r.put(t.getBaseExtern(),Double.parseDouble(Shared.desencriptar(t.getNvalue())))
+            ,()->{
+                Map<String, Object> map = new HashMap<>();
+                map.put("po",t.getPo());
+                map.put(t.getBaseExtern(),Double.parseDouble(Shared.desencriptar(t.getNvalue())));
+                data.add(map);
+            }));
+            response.setData(data);
+        }
+        List<BusinessCaseHistorial> businessCaseHistorials= businessCaseRepository.findByIdHistorial(id);
+        if(!businessCaseHistorials.isEmpty()){
+            List<ComponentProjection> componentProjections = sharedRepo.getComponentByBu(parameters.get(0).getVbu());
+            List<CodeNomina> nomina =codeNominaRepository.findByIdBu(parameters.get(0).getIdbu());
+
+            bc.setHeaders(componentProjections.stream().filter(ComponentProjection::getIscomponent)
+                    .map(ComponentProjection::getName).collect(Collectors.toList()));
+            bc.getHeaders().addAll(nomina.stream().map(CodeNomina::getName).collect(Collectors.toList()));
+            bc.getHeaders().add(HEADERPO);
+            List<Map<String,Object>> data = new ArrayList<>();
+            businessCaseHistorials.forEach(t-> data.stream().filter(e->e.get(HEADERPO).equals(t.getPo())).findFirst().ifPresentOrElse(r->
+                            r.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())))
+                    ,()->{
+                        Map<String, Object> map = new HashMap<>();
+                        map.put(HEADERPO,t.getPo());
+                        map.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())));
+                        data.add(map);
+                    }));
+            bc.setData(data);
+        }
+
+
+        return ProjectionInformation.builder()
+                .parameters(parameters)
+                .poDisableds(disabledPoDTOS)
+                .baseExtern(response)
+                .bc(bc)
+                .build();
     }
 
     private void replaceSlash(ParametersByProjection projection) {
         projection.setPeriod(projection.getPeriod().replace("/",""));
         projection.getParameters().forEach(k-> {
-            k.setPeriod(k.getPeriod()==null?"":  k.getPeriod().replaceAll("/",""));
-            k.setRange(k.getRange()==null?"": k.getRange().replaceAll("/",""));
-            k.setPeriodRetroactive(k.getPeriodRetroactive()==null?"": k.getPeriodRetroactive().replaceAll("/",""));
+            k.setPeriod(k.getPeriod()==null?"":  k.getPeriod().replace("/",""));
+            k.setRange(k.getRange()==null?"": k.getRange().replace("/",""));
+            k.setPeriodRetroactive(k.getPeriodRetroactive()==null?"": k.getPeriodRetroactive().replace("/",""));
         });
     }
 
@@ -243,20 +367,20 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     public byte[] downloadProjection(  ParametersByProjection projection) {
-        DataProjection headcount=  getHeadcountByAccount(projection.getBu(),
-                projection.getPeriod(),projection.getPaymentComponent(),projection.getRange(),0,999999,
-                projection.getNominaFrom(),projection.getNominaTo());
+        List<ProjectionDTO> headcount=  getHeadcountByAccount(projection);
         List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
         switch (projection.getBu()){
             case "T. ECUADOR":
-                isEcuador(headcount.getTotalData(),projection);
+                isEcuador(headcount,projection);
                 break;
             case "T. URUGUAY":
-                isUruguay(headcount.getTotalData(),projection);
+                isUruguay(headcount,projection);
+                break;
+            default:
                 break;
         }
 
-       return  ExcelService.generateExcelProjection(headcount.getTotalData(),componentProjections,projection);
+       return  ExcelService.generateExcelProjection(headcount,componentProjections,projection);
     }
 
     @Override
@@ -265,6 +389,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         List<ComponentProjection> components = sharedRepo.getComponentByBu(parameters.get(0).getVbu());
         ParametersByProjection projection = ParametersByProjection
                 .builder()
+                .idBu(parameters.get(0).getIdbu())
                 .bu(parameters.get(0).getVbu())
                 .period(parameters.get(0).getHperiod())
                 .range(parameters.get(0).getHrange())
@@ -288,12 +413,147 @@ public class ProjectionServiceImpl implements ProjectionService {
         return downloadProjection(projection);
     }
 
+    @Override
+    public DataBaseMainReponse getDataBase(DataRequest data) {
+        data.setPeriod(data.getPeriod().replace("/",""));
+        data.setNominaTo(data.getNominaTo().replace("/",""));
+        data.setNominaFrom(data.getNominaFrom().replace("/",""));
+
+        List<String> entities = legalEntityRepository.findByBu(data.getBu()).stream()
+                .map(LegalEntity::getLegalEntity).collect(Collectors.toList());
+
+        List<ComponentProjection> components =sharedRepo.getComponentByBu(data.getBu()).stream().filter(ComponentProjection::getIscomponent)
+               .collect(Collectors.toList());
+
+        List<HeadcountHistoricalProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
+                String.join(",", entities),data.getPeriod(),
+                components.stream().map(ComponentProjection::getComponent).collect(Collectors.joining(",")));
+
+        if(headcount.isEmpty()){
+         return   DataBaseMainReponse.builder().data(new ArrayList<>()).components(components).nominas(new ArrayList<>()).comparing(new ArrayList<>()).build();
+        }
+
+        List<CodeNomina> codeNominas = codeNominaRepository.findByIdBu(data.getIdBu());
+
+       List<ComponentNominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,data.getBu(),
+               data.getNominaFrom(),data.getNominaTo(),
+               codeNominas.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")));
+
+
+        List<DataBaseResponse> deudasAgrupadas = headcount.stream()
+                .collect(Collectors.groupingBy(
+                        HeadcountHistoricalProjection::getPosition,
+                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(), deuda.getAmount()), Collectors.toList())
+                )).entrySet().stream()
+                .map(entry -> {
+                    HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
+                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),entry.getValue());
+                })
+                .collect(Collectors.toList());
+
+       deudasAgrupadas.forEach(u-> u.getComponents().addAll(nominal.stream().filter(k->  k.getID_SSFF().equalsIgnoreCase(u.getIdssff()))
+               .map(o->ComponentAmount.builder()
+                       .component(o.getCodigoNomina())
+                       .amount(o.getImporte())
+                       .build()).collect(Collectors.toList())));
+
+        List<DataBaseResponse> comparing = new ArrayList<>();
+
+       if(data.isComparing()){
+           data.setPeriod(data.getPeriodComparing());
+           data.setNominaFrom(data.getNominaFromComparing());
+           data.setNominaTo(data.getNominaToComparing());
+           data.setComparing(false);
+           comparing= getDataBase(data).getData();
+       }
+ return  DataBaseMainReponse.builder().data(deudasAgrupadas).components(components).nominas(codeNominas).comparing(comparing).build();
+    }
+
+    @Override
+    public List<Bu> findByBuAccess(String email) {
+        return buRepository.findByBuAccess(email);
+    }
+
+    @Override
+    public Response<List<AccountProjection>> getAccountsByBu(Integer idBu) {
+
+        try {
+            return Response.<List<AccountProjection>>builder().status(200)
+                    .data(sharedRepo.getAccount(idBu)).success(true).message("ok").build();
+        }catch (Exception ex ){
+            return Response.<List<AccountProjection>>builder().status(500).success(false)
+                    .error(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString)
+                            .collect(Collectors.joining(","))
+            ).build();
+        }
+
+    }
+
+    @Override
+    public List<RosetaDTO> getRoseta(Integer bu) {
+        List<PaymentRoseta> data = sharedRepo.getPaymentRosseta(bu);
+        Map<String, RosetaDTO> mapNodes = new HashMap<>();
+
+        RosetaDTO raiz = null;
+        for (PaymentRoseta object : data) {
+            RosetaDTO node = new RosetaDTO(object.getCode(), object.getname());
+           if(object.getpayment()!=null) {
+               node.getPayment().add(object.getpayment());
+               validationRosetta(mapNodes, object, node);
+           } else {
+               validationRosetta(mapNodes, object, node);
+           }
+
+            if (object.getchild() == null) {
+                raiz = node;
+            } else {
+                RosetaDTO padre = mapNodes.get(object.getchild());
+                if (padre != null && (padre.getChilds().stream().noneMatch(e->e.getCode().equalsIgnoreCase(node.getCode())))){
+                        padre.getChilds().add(node);
+                }
+            }
+        }
+
+        List<RosetaDTO> listaNodos = new ArrayList<>();
+        listaNodos.add(raiz);
+        return listaNodos;
+    }
+
+    private void validationRosetta(Map<String, RosetaDTO> mapaNodos, PaymentRoseta objeto, RosetaDTO nodo) {
+        if( objeto.getpayment()!=null && mapaNodos.get(objeto.getCode())!=null &&
+                !mapaNodos.get(objeto.getCode()).getPayment().contains(objeto.getpayment())){
+            mapaNodos.get(objeto.getCode()).getPayment().add(objeto.getpayment());
+        }else{
+            mapaNodos.put(objeto.getCode(), nodo);
+        }
+    }
+
+    @Override
+    public Boolean saveMoneyOdin(String po,Integer requirement) {
+        final boolean[] resp = {false};
+        repository.getCostPo(Constant.KEY_BD,po).ifPresent(e->{
+
+                Frecuently fre=    frecuentlyRepository.findById(e.getFrecuencia()).get();
+                double amount = e.getImporte()* fre.getFactor();
+            try {
+                sharedRepo.saveCostPo(requirement,Shared.encriptar(Double.toString(amount)),e.getMoneda());
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+            resp[0] =true;
+
+        });
+        return resp[0];
+
+    }
+
+
     private List<PaymentComponentDTO> validate(Ecuador methods, List<PaymentComponentDTO> componentDTO,ParametersDTO dto ,
                                                List<ParametersDTO> parameters ){
         // PARAMETROS PARA EL SUELDO BASE
         //Revision salarial
         if(dto.getParameter().getId()==1){
-           return methods.revisionSalary(componentDTO,dto,parameters);
+           return methods.revisionSalary(componentDTO,dto);
         }
         // Ajuste salario minimo
         if(dto.getParameter().getId()==2){
@@ -303,92 +563,135 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
 
 
-    private DataProjection getHeadcountByAccount(String bu , String period,List<PaymentComponentType> paymentComponent ,
-                                                      int range,int page,int size,String start,String end){
-        Integer[] nominalHheeEcuador= { 150,160,170,180,185};
-        Integer[] nominas= { 150,160,170,180,185,260};
-        List<String> entities = legalEntityRepository.findByBu(bu).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
-        List<ProjectionDTO> headcount=  repository.getHistoricalBuAndPeriod(period,entities)
-                .stream().map(c->ProjectionDTO.builder().
-                        po(c.getPosition()).
-                        poName(c.getPoname()).
-                        idssff(c.getIdssff()).
-                        build()).collect(Collectors.toList());
-        List<ComponentCashProjection> components = repository.getComponentCash(Constant.KEY_BD, String.join(",", entities), period);
+    private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
+        List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
+        List<HeadcountProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
+                        String.join(",", entities),projection.getPeriod(),String.join(",",
+                        projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent).collect(Collectors.joining(","))))
+                            .stream().map(e->HeadcountProjection.builder()
+                        .position(e.getPosition())
+                        .poname(e.getPoname())
+                        .idssff(e.getIdssff())
+                        .entitylegal(e.getEntitylegal())
+                        .gender(e.getGender())
+                        .bu(e.getBu())
+                        .wk(e.getWk())
+                        .division(e.getDivision())
+                        .department(e.getDepartment())
+                        .component(e.getComponent())
+                        .amount(e.getAmount())
+                            .build()).collect(Collectors.toList());
 
-
-        List<ComponentNominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,bu,start,end);
-        List<ProjectionDTO> resume = headcount.stream()
-                .skip(page)
-                .limit(size)
-                .collect(Collectors.toList());
-
-
-
-        resume.forEach(c-> {
-            List<PaymentComponentDTO> projectionsComponent =
-                    paymentComponent.stream().map(p -> {
-                        ComponentCashProjection am = components.stream()
-                                .filter(o -> o.getID_de_componente_de_pago().equalsIgnoreCase(p.getComponent()) &&
-                                        o.getID_posicion().equalsIgnoreCase(c.getPo()))
-                                .findFirst().orElse(null);
-                        Double amount = am != null ? am.getImporte() : 0.0;
-                        return PaymentComponentDTO.builder().
-                                type(p.getType()).
-                                paymentComponent(p.getComponent()).amount(amount)
-                                .projections(Shared.generateMonthProjection(period, range, amount)).build();
-                    }).collect(Collectors.toList());
-            if (bu.equalsIgnoreCase("T. ECUADOR"))
-            {
-                //Nomina
-                double hhee = 0.0;
-                double guarderia =0.0;
-                for(ComponentNominaProjection h : nominal.stream().filter(g->g.getID_SSFF()
-                        .equalsIgnoreCase(c.getIdssff())).collect(Collectors.toList()) ){
-                    if(Arrays.asList(nominalHheeEcuador).contains(h.getCodigoNomina())){
-                        hhee=+h.getImporte();
-                    }
-                    if(h.getCodigoNomina()==260){
-                        guarderia=h.getImporte();
-                    }
+        List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
+        List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
+                codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
+                .stream().map(e->NominaProjection.builder()
+                        .idssff(e.getID_SSFF())
+                        .codeNomina(e.getCodigoNomina())
+                        .importe(e.getImporte())
+                            .build()).collect(Collectors.toList());
+        if(!projection.getBc().getData().isEmpty()){
+            for (int i = 0; i < projection.getBc().getData().size() ; i++) {
+                Map<String,Object> resp = projection.getBc().getData().get(i);
+                for (Map.Entry<String, Object> entry : resp.entrySet()) {
+                    int finalI = i;
+                    projection.getPaymentComponent().stream().filter(t-> !entry.getKey().equals(HEADERPO) &&
+                          t.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresentOrElse(t->
+                      headcount.add(HeadcountProjection.builder()
+                                      .position(resp.get(HEADERPO).toString())
+                                      .idssff(String.valueOf(finalI))
+                                      .poname("")
+                                      .component(t.getComponent())
+                                      .amount(Double.parseDouble(resp.get(t.getName()).toString()))
+                              .build()),()->
+                      codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
+                              r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
+                          nominal.add(NominaProjection.builder()
+                                          .idssff(String.valueOf(finalI))
+                                          .codeNomina(q.getCodeNomina())
+                                        .importe(Double.parseDouble(resp.get(q.getName()).toString()))
+                                  .build())
+                      )
+                  );
                 }
-                projectionsComponent.add(PaymentComponentDTO.builder().
-                        type(7).
-                        paymentComponent("TURN").amount(hhee)
-                        .projections(Shared.generateMonthProjection(period,range,hhee)).build());
-                projectionsComponent.add(PaymentComponentDTO.builder().
-                        type(12).
-                        paymentComponent("260").amount(guarderia)
-                        .projections(Shared.generateMonthProjection(period,range,guarderia)).build());
-            }else if(bu.equalsIgnoreCase("T. URUGUAY")){
-                double hhee = 0.0;
-                for(ComponentNominaProjection h : nominal.stream().filter(g->g.getID_SSFF()
-                        .equalsIgnoreCase(c.getIdssff())).collect(Collectors.toList()) ){
-                    if(Arrays.asList(nominalHheeEcuador).contains(h.getCodigoNomina())) {
-                        hhee = +h.getImporte();
-                    }
-                }
-                projectionsComponent.add(PaymentComponentDTO.builder().
-                        type(16).
-                        paymentComponent("HHEE").amount(hhee)
-                        .projections(Shared.generateMonthProjection(period,range,hhee)).build());
             }
-            c.setComponents(projectionsComponent);
 
+        }
 
-        });
-        System.out.println("Pidiendo corrido " + new Date());
+        return new ArrayList<>(headcount.stream()
+                .collect(Collectors.groupingBy(
+                        object -> object.getPosition() + object.getIdssff(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> {
+                                    List<PaymentComponentDTO> projectionsComponent =
+                                            projection.getPaymentComponent().stream().map(p ->
+                                                    {
+                                                        PaymentComponentDTO r = PaymentComponentDTO.builder()
+                                                                .paymentComponent(p.getComponent())
+                                                                .type(p.getType())
+                                                                .amount(0.0)
+                                                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), 0.0))
+                                                                .build();
+                                                        list.stream().filter(t->t.getComponent().equalsIgnoreCase(p.getComponent())).findFirst().ifPresent(u->{
+                                                                    r.setPaymentComponent(p.getComponent());
+                                                                    r.setType(p.getType());
+                                                                    r.setAmount(u.getAmount());
+                                                                    r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), u.getAmount()));
+                                                                });
+                                                      return r;
+                                                    }
 
-
-
-        return DataProjection.builder().totalData(headcount).groupData(resume).components(components).build();
+                                            ).collect(Collectors.toList());
+                                    addNominal(projection,projectionsComponent,nominal,codeNominals,list);
+                                    return new ProjectionDTO(
+                                            list.get(0).getIdssff(),
+                                            list.get(0).getPosition(),
+                                            list.get(0).getPoname(),
+                                            projectionsComponent
+                                    );
+                                }
+                        )
+                )).values());
     }
 
+    private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
+                            List<NominaProjection> nominal , List<CodeNomina> codeNominas ,
+                            List<HeadcountProjection> list ){
+        if (projection.getBu().equalsIgnoreCase("T. ECUADOR"))
+        {
+            //Nomina
+            double hhee = 0.0;
+            double guarderia =0.0;
 
-
-
-
-
-
-
+            for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
+                    .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
+                if(!"0260".equalsIgnoreCase(h.getCodeNomina())){
+                    hhee+=h.getImporte();
+                }else if(h.getCodeNomina().equalsIgnoreCase("0260")){
+                    guarderia=h.getImporte();
+                }
+            }
+            projectionsComponent.add(PaymentComponentDTO.builder().
+                    type(7).
+                    paymentComponent("TURN").amount(hhee)
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),hhee)).build());
+            projectionsComponent.add(PaymentComponentDTO.builder().
+                    type(12).
+                    paymentComponent("260").amount(guarderia)
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),guarderia)).build());
+        }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY")){
+            double hhee = 0.0;
+            for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
+                    .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
+                if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
+                    hhee = +h.getImporte();
+                }
+            }
+            projectionsComponent.add(PaymentComponentDTO.builder().
+                    type(16).
+                    paymentComponent("HHEE").amount(hhee)
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),hhee)).build());
+        }
+    }
 }

@@ -1,0 +1,102 @@
+def config;
+node(){
+    configFileProvider([configFile(fileId: 'e739f5b7-27df-4f83-bd2a-7450d396412c', targetLocation: 'config')]) {
+        config = readJSON file: 'config'
+    }
+}
+pipeline {
+           agent any
+			options {
+				skipDefaultCheckout(true)
+			}
+			tools{
+				maven 'maven-default'
+				dockerTool 'docker'
+			}
+            stages {
+				stage('CleanWorkspace') {
+                    steps {
+						cleanWs()
+                    }
+                }
+				stage('Checkout') {
+                    steps {
+						checkout scm
+                    }
+                }
+                stage('UnitTest') {
+                                     steps {
+                 						script {
+                 							if("${config.enviroment}"=='develop' && !readFile('pom.xml').contains('SNAPSHOT')){
+                 								currentBuild.result = 'FAILURE'
+                 								error("No se encontró una versión SNAPSHOT.")
+                 							}
+                 						}
+                 						sh 'mvn clean install'
+                                     }
+                                 }
+                stage('Scan') {
+                					steps{
+                						script {
+                						  scannerHome = tool 'sonarQube'
+                						}
+                						withSonarQubeEnv('sonarQube') {
+                						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
+                						}
+                					}
+                				}
+				stage('Build') {
+                    steps {
+						sh 'mvn -f pom.xml clean install -DskipTests'
+                    }
+                }
+				stage('Package'){
+					environment {
+						VERSION = readMavenPom().getVersion()
+						ARTIFACT_ID = readMavenPom().getArtifactId()
+						NAME = "${ARTIFACT_ID}"
+					}
+					steps{
+						withCredentials([azureServicePrincipal('user_azure')]) {
+							sh 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID'
+							sh 'TOKEN=$(az acr login --name acrhispam --expose-token --output tsv --query accessToken) && docker login acrhispam.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $TOKEN'
+							sh 'cp target/${ARTIFACT_ID}-${VERSION}.jar cfg/'
+							sh 'docker build -t acrhispam.azurecr.io/${NAME}:${VERSION} --build-arg nombreArtefacto=${ARTIFACT_ID}-${VERSION}.jar cfg'
+							sh 'docker inspect -f . acrhispam.azurecr.io/${NAME}:${VERSION}'
+							sh 'docker tag acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker push acrhispam.azurecr.io/${NAME}:${VERSION}'
+							sh 'docker push acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker logout'
+							sh 'az logout'
+						}
+					}
+				}
+				stage('Delivery'){
+					environment {
+						ARTIFACT_ID = readMavenPom().getArtifactId()
+						AKS = "${config.aks}"
+						RESOURCE_GROUP = "${config.resource_group}"
+					}
+					steps{
+						withCredentials([azureServicePrincipal('user_azure')]) {
+							sh 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID'
+							sh 'az aks get-credentials --name ${AKS} --resource-group ${RESOURCE_GROUP} --admin --overwrite-existing'
+							sh 'kubectl apply -f ./cfg/${ARTIFACT_ID}-deployment.yml'
+						}
+					}
+					post{
+                         failure{
+                           script {
+                                 slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} sufrió un error en el despliegue")
+                             }
+                         }
+                         success{
+                                script {
+                                    slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} desplegó con éxito")
+                                }
+                         }
+				}
+            }
+        }
+     }

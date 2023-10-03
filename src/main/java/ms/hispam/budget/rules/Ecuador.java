@@ -107,6 +107,7 @@ public class Ecuador {
         return componentDTO;
     }
 
+
     public List<PaymentComponentDTO> addDecimoCuarto(List<PaymentComponentDTO> componentDTO,String period,
                                                       List<ParametersDTO> parameters ,Integer range){
         AtomicReference<Double> amount = new AtomicReference<>(0.0);
@@ -118,6 +119,7 @@ public class Ecuador {
         componentDTO.add(decimo);
         return componentDTO;
     }
+
 
     public List<PaymentComponentDTO>  adjustSalaryAdjustment(List<PaymentComponentDTO> componentDTO,ParametersDTO dto){
         componentDTO.stream().filter(f->( f.getType()==1|| f.getType()==2 || f.getType()==7) ).forEach(o->{
@@ -196,97 +198,82 @@ public class Ecuador {
         });
         return componentDTO;
     }
+    public List<PaymentComponentDTO> vacations(List<PaymentComponentDTO> componentDTO ,String period  ,
+                                                  List<ParametersDTO> parameters , Integer range){
+        AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
+        AtomicReference<Double> salary = new AtomicReference<>((double) 0);
+        AtomicReference<Double> coa = new AtomicReference<>((double) 0);
+        parameters.stream().filter(c->c.getParameter().getId()==17).findFirst().ifPresent(d-> parameter.set(d.getValue()));
+        componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(k->salary.set(k.getAmount()));
+        componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(k->coa.set(k.getAmount()));
+        PaymentComponentDTO vaca = new PaymentComponentDTO();
+        vaca.setPaymentComponent("VACA");
+        vaca.setAmount(((salary.get()+coa.get())/24)*(15-(15-parameter.get()))/12);
+        List<MonthProjection> months= Shared.generateMonthProjection(period,range,0.0);
+        months.forEach(f->{
+            AtomicReference<Double> salaryMonth = new AtomicReference<>((double) 0);
+            AtomicReference<Double> coaMonth = new AtomicReference<>((double) 0);
+            componentDTO.stream().filter(c -> c.getType() == 1).findFirst().flatMap(k -> k.getProjections().stream()
+                    .filter(y -> y.getMonth().equalsIgnoreCase(f.getMonth()))
+                    .findFirst()).ifPresent(u -> salaryMonth.set(u.getAmount()));
+            componentDTO.stream().filter(c -> c.getType() == 2).findFirst().flatMap(k -> k.getProjections().stream()
+                    .filter(y -> y.getMonth().equalsIgnoreCase(f.getMonth()))
+                    .findFirst()).ifPresent(u -> coaMonth.set(u.getAmount()));
+            f.setAmount(((salaryMonth.get()+coaMonth.get())/24)*(15-(15-parameter.get()))/12);
+        });
+        vaca.setProjections(months);
+        componentDTO.add(vaca);
+        return componentDTO;
+    }
 
-    public List<PaymentComponentDTO>  revisionSalary(List<PaymentComponentDTO> componentDTO,ParametersDTO dto ,
-                                                      List<ParametersDTO> parameters ){
-        int idxStart;
-        int idxEnd=0;
-        String[]   period;
-        if(dto.getIsRetroactive()){
+    public List<PaymentComponentDTO>  revisionSalary(List<PaymentComponentDTO> componentDTO,ParametersDTO dto  ){
+        double differPercent=0.0;
+        if(Boolean.TRUE.equals(dto.getIsRetroactive())){
+            int idxStart;
+            int idxEnd;
+            String[]   period;
             period = dto.getPeriodRetroactive().split("-");
             idxStart=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(d->d.getMonth()).collect(Collectors.toList()),period[0]);
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()),period[0]);
             idxEnd=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(d->d.getMonth()).collect(Collectors.toList()),period.length==1? period[0]:period[1]);
-        } else {
-            idxStart = 0;
-            period = null;
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()),period.length==1? period[0]:period[1]);
+            AtomicReference<Double> salaryFirst= new AtomicReference<>(0.0);
+            AtomicReference<Double> salaryEnd= new AtomicReference<>(0.0);
+            AtomicReference<Double> comisionFirst= new AtomicReference<>(0.0);
+            AtomicReference<Double> comisionEnd= new AtomicReference<>(0.0);
+            componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(l->{
+                salaryFirst.set(l.getProjections().get(idxStart).getAmount());
+                salaryEnd.set(l.getProjections().get(idxEnd).getAmount());
+            });
+            componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(l->{
+                comisionFirst.set(l.getProjections().get(idxStart).getAmount());
+                comisionEnd.set(l.getProjections().get(idxEnd).getAmount());
+            });
+            differPercent=(salaryEnd.get()+comisionEnd.get())/(salaryFirst.get()+comisionFirst.get())-1;
         }
-        int cantRetroactive=!dto.getIsRetroactive()?1:  (idxEnd-idxStart)+2;
         double percent = dto.getValue()/100;
-
-        AtomicReference<Double> asm = new AtomicReference<>(0.0);
-        if(period!=null){
-            parameters.stream().filter(p->p.getType()!=null).filter(p->(p.getType()==1 || p.getType()==2) && p.getPeriod().equalsIgnoreCase(period[0]) )
-                    .findFirst().ifPresent(p-> asm.set(p.getValue()));
-        }
         for(PaymentComponentDTO o : componentDTO.stream().filter(f->(
                 f.getType()==1|| f.getType()==2 || f.getType()==7)).collect(Collectors.toList())){
 
-            AtomicReference<Double> salaryMonthBeforeStart= new AtomicReference<>(0.0);
-            AtomicReference<Double> salaryMonthStart= new AtomicReference<>(o.getProjections().get(idxStart).getAmount());
-            AtomicReference<Double> comisionMonthBeforeStart= new AtomicReference<>(0.0);
-            AtomicReference<Double> comisionMonthStart= new AtomicReference<>(o.getProjections().get(idxStart).getAmount());
-            componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(l->{
-                salaryMonthBeforeStart.set(idxStart ==0?l.getAmount():l.getProjections().get(idxStart-1).getAmount());
-                salaryMonthStart.set(l.getProjections().get(idxStart).getAmount());
-            });
-            componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(l->{
-                comisionMonthBeforeStart.set(idxStart ==0?l.getAmount():l.getProjections().get(idxStart-1).getAmount());
-                comisionMonthStart.set(l.getProjections().get(idxStart).getAmount());
-            });
             int idx = Shared.getIndex(o.getProjections().stream()
-                    .map(d->d.getMonth()).collect(Collectors.toList()),dto.getPeriod());
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()),dto.getPeriod());
             for (int i = idx; i < o.getProjections().size(); i++) {
-                AtomicReference<Double> coa = new AtomicReference<>((double) 0);
-                int finalI = i;
-                //Obtener comision del mes anterior
-                if(finalI==0){
-                    componentDTO.stream().filter(w->w.getType()==2).findFirst()
-                            .ifPresent(c-> coa.set(c.getAmount()));
-                }else{
-                    componentDTO.stream().filter(w->w.getType()==2).findFirst()
-                            .ifPresent(c-> coa.set(c.getProjections().get(finalI - 1).getAmount()));
-                }
-
+                double v=0;
                 double amount = i==0?o.getProjections().get(i).getAmount(): o.getProjections().get(i-1).getAmount();
                 o.getProjections().get(i).setAmount(amount);
-                if(i == idx+1){
-                    double  afterRevision=0.0;
-                    if(i==1){
-                        afterRevision= o.getAmount();
-                    }else{
-                        afterRevision= o.getProjections().get(i-2).getAmount();
-                    }
-
-                    double v =afterRevision*(1+ ((salaryMonthBeforeStart.get().floatValue()!=salaryMonthStart.get().floatValue())?
-                            (asm.get()/(salaryMonthBeforeStart.get()+comisionMonthBeforeStart.get())-1< percent)?
-                                    percent-(asm.get()/(salaryMonthBeforeStart.get()+comisionMonthBeforeStart.get())-1):0 :percent));
-                    o.getProjections().get(i).setAmount(Math.round(v * 100d) / 100d);
-                }
                 if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
-                    double v=0;
-                    if(o.getType()==1 ||o.getType()==7 ){
+                    if(o.getType()==1 ||o.getType()==7|| o.getType()==2 ){
                         if(o.getType()==7){
                             amount=o.getAmount();
                         }
-                        v = amount +(cantRetroactive* amount*
-                                (salaryMonthBeforeStart.get().floatValue()!=salaryMonthStart.get().floatValue()?
-                                        (asm.get()/(salaryMonthBeforeStart.get()+ comisionMonthBeforeStart.get())-1<percent?
-                                                percent-(asm.get()/(salaryMonthBeforeStart.get()+comisionMonthBeforeStart.get())-1):0):percent));
+                        v = amount* (1+(differPercent>=percent?0:percent-differPercent));
                     }
-                    else{
-
-                        v = coa.get() +(cantRetroactive* coa.get()*
-                                (salaryMonthBeforeStart.get().floatValue()!=salaryMonthStart.get().floatValue()?
-                                        (asm.get()/(salaryMonthBeforeStart.get()+ comisionMonthBeforeStart.get())-1<percent?
-                                                percent-(asm.get()/(salaryMonthBeforeStart.get()+comisionMonthBeforeStart.get())-1):0):percent));
-                    }
-
                     o.getProjections().get(i).setAmount(Math.round(v * 100d) / 100d);
                 }
             }
         }
+
+
 
         return componentDTO;
     }

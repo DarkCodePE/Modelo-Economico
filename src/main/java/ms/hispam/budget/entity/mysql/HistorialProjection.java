@@ -36,7 +36,8 @@ public class HistorialProjection {
     private String nominaFrom;
     @Column(name = "nomina_to")
     private String nominaTo;
-
+    @Column(name = "is_top")
+    private Boolean isTop;
     @Column(name = "created_by")
     private String createdBy;
     @Column(name = "created_at")
@@ -45,5 +46,7 @@ public class HistorialProjection {
     private String updatedBy;
     @Column(name = "updated_at")
     private Date updatedAt;
+    @Column(name = "id_bu")
+    public Integer idBu;
 
 }

@@ -18,6 +18,7 @@ public class Page<T> {
     private List<T> items;
     private List<ComponentAmount> resume;
     private List<ComponentProjection> components;
+    private List<DisabledPoDTO> disabledPo;
     private List<ParametersDTO> parameters;
 
     public Page(Integer pageNumber, Integer totalPages, Integer totalResults, List<T> items, List<ComponentAmount> resume) {

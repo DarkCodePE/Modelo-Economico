@@ -7,9 +7,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentComponentType {
-    private String component;
+public class OperationResponse {
+    private String code;
     private String name;
-    private Integer type;
-
 }
