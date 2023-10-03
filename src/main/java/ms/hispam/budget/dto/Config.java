@@ -3,7 +3,6 @@ package ms.hispam.budget.dto;
 import lombok.*;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.dto.projections.ParameterProjection;
-import ms.hispam.budget.entity.mysql.BaseExtern;
 import ms.hispam.budget.entity.mysql.CodeNomina;
 import ms.hispam.budget.entity.mysql.ParameterDefault;
 

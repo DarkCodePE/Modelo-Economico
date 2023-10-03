@@ -104,7 +104,6 @@ public class ProjectionServiceImpl implements ProjectionService {
             data.setData(page);
             return  data;
         }catch (Exception ex){
-            ex.printStackTrace();
             Response<Page<ProjectionDTO>> data = new Response<>();
             data.setStatus(500);
             data.setSuccess(false);
@@ -359,7 +358,8 @@ public class ProjectionServiceImpl implements ProjectionService {
             return Response.<Boolean>builder().success(true).message("Eliminación con éxito").status(200).build();
 
         }catch (Exception ex){
-            return Response.<Boolean>builder().success(false).status(500).message("Ocurrio un error inesperado").error(ex.getStackTrace().toString()).build();
+            return Response.<Boolean>builder().success(false).status(500).message("Ocurrio un error inesperado")
+                    .error("Error").build();
 
         }
 

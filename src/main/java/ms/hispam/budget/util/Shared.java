@@ -3,7 +3,6 @@ package ms.hispam.budget.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersByProjection;
-import ms.hispam.budget.entity.mysql.PoHistorialExtern;
 import org.apache.commons.codec.binary.Base64;
 
 import javax.crypto.Cipher;
@@ -13,14 +12,20 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Shared {
 
-    private static final String vkey="d88E76na32VEY%ju2H36mhKRV!Gr7Jpo";
+    private Shared(){
+    }
+
+    private static final String $vKey="$SolucionesSDigitales2023@";
+    private static final String typeMonth="yyyyMM";
+
 
     public static List<MonthProjection> generateMonthProjection(String monthBase, int range, Double amount) {
         List<MonthProjection> dates = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
         for (int i = 0; i < range; i++) {
             dates.add( MonthProjection.builder().month( fechaActual.format(formatter)).amount(amount).build() );
@@ -31,7 +36,7 @@ public class Shared {
     }
     public static List<String> generateRangeMonth(String monthBase, int range) {
         List<String> dates = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
         DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
         for (int i = 0; i < range; i++) {
@@ -43,7 +48,7 @@ public class Shared {
     }
     public static String nameMonth(String monthBase) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
         DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
 
@@ -52,9 +57,9 @@ return fechaActual.format(formatterMonthName);
     }
 
     public static int compare(String date1, String date2) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-        if(date1==""){date1="290001";};
-        if(date2==""){date2="290001";};
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
+        if(Objects.equals(date1, "")){date1="290001";}
+        if(Objects.equals(date2, "")){date2="290001";}
 
         YearMonth yearMonth1 = YearMonth.parse(date1, formatter);
         YearMonth yearMonth2 = YearMonth.parse(date2, formatter);
@@ -72,9 +77,9 @@ return fechaActual.format(formatterMonthName);
         String mesInicioStr = partesRango[0];
         String mesFinStr = partesRango[1];
 
-        YearMonth mesInicio = YearMonth.parse(mesInicioStr, DateTimeFormatter.ofPattern("yyyyMM"));
-        YearMonth mesFin = YearMonth.parse(mesFinStr, DateTimeFormatter.ofPattern("yyyyMM"));
-        YearMonth mesVerificar = YearMonth.parse(mes, DateTimeFormatter.ofPattern("yyyyMM"));
+        YearMonth mesInicio = YearMonth.parse(mesInicioStr, DateTimeFormatter.ofPattern(typeMonth));
+        YearMonth mesFin = YearMonth.parse(mesFinStr, DateTimeFormatter.ofPattern(typeMonth));
+        YearMonth mesVerificar = YearMonth.parse(mes, DateTimeFormatter.ofPattern(typeMonth));
 
         return !mesVerificar.isBefore(mesInicio) && !mesVerificar.isAfter(mesFin);
     }
@@ -87,9 +92,9 @@ return fechaActual.format(formatterMonthName);
         projection.setNominaFrom(projection.getNominaFrom().replace("/",""));
         projection.setNominaTo(projection.getNominaTo().replace("/",""));
         projection.getParameters().forEach(k-> {
-            k.setPeriod(k.getPeriod().replaceAll("/",""));
-            k.setRange(k.getRange().replaceAll("/",""));
-            k.setPeriodRetroactive(k.getPeriodRetroactive().replaceAll("/",""));
+            k.setPeriod(k.getPeriod().replace("/",""));
+            k.setRange(k.getRange().replace("/",""));
+            k.setPeriodRetroactive(k.getPeriodRetroactive().replace("/",""));
         });
     }
 
@@ -105,8 +110,8 @@ return fechaActual.format(formatterMonthName);
 
     public static String encriptar(String texto)  {
         try {
-            SecretKeySpec key = new SecretKeySpec(vkey.getBytes(), "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            SecretKeySpec key = new SecretKeySpec($vKey.getBytes(), "AES");
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
             cipher.init(Cipher.ENCRYPT_MODE, key);
             byte[] textoEncriptado = cipher.doFinal(texto.getBytes());
             return Base64.encodeBase64String(textoEncriptado);
@@ -118,8 +123,8 @@ return fechaActual.format(formatterMonthName);
 
     public static String desencriptar(String textoEncriptado)  {
         try {
-            SecretKeySpec key = new SecretKeySpec(vkey.getBytes(), "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            SecretKeySpec key = new SecretKeySpec($vKey.getBytes(), "AES");
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] textoBytes = Base64.decodeBase64(textoEncriptado);
             byte[] textoDesencriptado = cipher.doFinal(textoBytes);
