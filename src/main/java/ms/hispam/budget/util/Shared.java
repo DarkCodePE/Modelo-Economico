@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersByProjection;
 import org.apache.commons.codec.binary.Base64;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,14 +19,14 @@ public class Shared {
 
     private Shared(){
     }
-
-    private static final String $vKey="$SolucionesSDigitales2023@";
-    private static final String typeMonth="yyyyMM";
+    @Value("${password-crypth}")
+    private static String passWord;
+    static final String TYPEMONTH="yyyyMM";
 
 
     public static List<MonthProjection> generateMonthProjection(String monthBase, int range, Double amount) {
         List<MonthProjection> dates = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
         for (int i = 0; i < range; i++) {
             dates.add( MonthProjection.builder().month( fechaActual.format(formatter)).amount(amount).build() );
@@ -36,7 +37,7 @@ public class Shared {
     }
     public static List<String> generateRangeMonth(String monthBase, int range) {
         List<String> dates = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
         for (int i = 0; i < range; i++) {
@@ -48,7 +49,7 @@ public class Shared {
     }
     public static String nameMonth(String monthBase) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
 
@@ -57,7 +58,7 @@ return fechaActual.format(formatterMonthName);
     }
 
     public static int compare(String date1, String date2) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(typeMonth);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         if(Objects.equals(date1, "")){date1="290001";}
         if(Objects.equals(date2, "")){date2="290001";}
 
@@ -77,9 +78,9 @@ return fechaActual.format(formatterMonthName);
         String mesInicioStr = partesRango[0];
         String mesFinStr = partesRango[1];
 
-        YearMonth mesInicio = YearMonth.parse(mesInicioStr, DateTimeFormatter.ofPattern(typeMonth));
-        YearMonth mesFin = YearMonth.parse(mesFinStr, DateTimeFormatter.ofPattern(typeMonth));
-        YearMonth mesVerificar = YearMonth.parse(mes, DateTimeFormatter.ofPattern(typeMonth));
+        YearMonth mesInicio = YearMonth.parse(mesInicioStr, DateTimeFormatter.ofPattern(TYPEMONTH));
+        YearMonth mesFin = YearMonth.parse(mesFinStr, DateTimeFormatter.ofPattern(TYPEMONTH));
+        YearMonth mesVerificar = YearMonth.parse(mes, DateTimeFormatter.ofPattern(TYPEMONTH));
 
         return !mesVerificar.isBefore(mesInicio) && !mesVerificar.isAfter(mesFin);
     }
@@ -110,7 +111,7 @@ return fechaActual.format(formatterMonthName);
 
     public static String encriptar(String texto)  {
         try {
-            SecretKeySpec key = new SecretKeySpec($vKey.getBytes(), "AES");
+            SecretKeySpec key = new SecretKeySpec(passWord.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
             cipher.init(Cipher.ENCRYPT_MODE, key);
             byte[] textoEncriptado = cipher.doFinal(texto.getBytes());
@@ -123,7 +124,7 @@ return fechaActual.format(formatterMonthName);
 
     public static String desencriptar(String textoEncriptado)  {
         try {
-            SecretKeySpec key = new SecretKeySpec($vKey.getBytes(), "AES");
+            SecretKeySpec key = new SecretKeySpec(passWord.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] textoBytes = Base64.decodeBase64(textoEncriptado);
