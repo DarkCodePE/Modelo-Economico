@@ -20,4 +20,5 @@ public class Config {
     private List<ParameterDefault> vDefault;
     private String money;
     private String icon;
+    private Boolean vViewPo;
 }

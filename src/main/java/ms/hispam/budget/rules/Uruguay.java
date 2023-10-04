@@ -25,7 +25,8 @@ public class Uruguay {
                     case 12:
                         AtomicReference<Double> sn = new AtomicReference<>(0.0);
                                 po.getComponents().stream()
-                                        .filter(c -> c.getType() == 1).findFirst().flatMap(f -> f.getProjections().stream().filter(w -> w.getMonth().equalsIgnoreCase(month.getMonth()))
+                                        .filter(c -> c.getType() == 1).findFirst().flatMap(f ->
+                                                f.getProjections().stream().filter(w -> w.getMonth().equalsIgnoreCase(month.getMonth()))
                                                 .findFirst()).ifPresent(g -> sn.set(g.getAmount()));
                                 month.setAmount(sn.get()*paymentComponentDTO.getAmount()/100);
                                 break;
@@ -41,6 +42,10 @@ public class Uruguay {
                         break;
                 }
             }
+           if(paymentComponentDTO.getType()==12){
+               paymentComponentDTO.setAmount(paymentComponentDTO.getProjections().get(0).getAmount());
+           }
+
             //Agregar esto al home
             if(paymentComponentDTO.getType()==15){
                 AtomicReference<Double> sn1 = new AtomicReference<>(0.0);
@@ -218,21 +223,16 @@ public class Uruguay {
                     .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> aguinaldo.set(k.getAmount()));
 
             //Parametro de monto tope de aportes patrimoniales
-            parameters.stream().filter(c->c.getParameter().getId()==19&&
-                            Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
-                    .findFirst().ifPresent(c-> pmontePio.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==20&&
-                            Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==19)
+                    .findFirst().ifPresent(c-> pmontePio.set(c.getValue()/100));
+            parameters.stream().filter(c->c.getParameter().getId()==20)
                     .findFirst().ifPresent(c-> pMaxMtApatri.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==21&&
-                            Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
-                    .findFirst().ifPresent(c-> pfonasa.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==22&&
-                            Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
-                    .findFirst().ifPresent(c-> pfrl.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==23&&
-                            Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
-                    .findFirst().ifPresent(c-> pfgcl.set(c.getValue()));
+            parameters.stream().filter(c->c.getParameter().getId()==21)
+                    .findFirst().ifPresent(c-> pfonasa.set(c.getValue()/100));
+            parameters.stream().filter(c->c.getParameter().getId()==22)
+                    .findFirst().ifPresent(c-> pfrl.set(c.getValue()/100));
+            parameters.stream().filter(c->c.getParameter().getId()==23)
+                    .findFirst().ifPresent(c-> pfgcl.set(c.getValue()/100));
 
 
             double monto = sn.get()+guardia.get()+premio.get()+hhee.get();
@@ -342,15 +342,15 @@ public class Uruguay {
             AtomicReference<Double> dayHabil = new AtomicReference<>(0.0);
             AtomicReference<Double> dayVac = new AtomicReference<>(0.0);
             AtomicReference<Double> divSem = new AtomicReference<>(0.0);
-            parameters.stream().filter(c->c.getParameter().getId()==11&& Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==11)
                     .findFirst().ifPresent(c-> vTicket.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==12 &&Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==12 )
                     .findFirst().ifPresent(c-> vDay.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==13 &&Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==13)
                     .findFirst().ifPresent(c-> dayHabil.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==14 && Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==14 )
                     .findFirst().ifPresent(c-> dayVac.set(c.getValue()));
-            parameters.stream().filter(c->c.getParameter().getId()==15 && Shared.verificarMesEnRango(c.getRange(),month.getMonth()))
+            parameters.stream().filter(c->c.getParameter().getId()==15 )
                     .findFirst().ifPresent(c-> divSem.set(c.getValue()));
             double value = typeUser==2 ?vTicket.get():(dayHabil.get()-dayVac.get())*(vDay.get()/divSem.get());
             value=Double.isNaN(value)?0.0:value;
@@ -377,17 +377,17 @@ public class Uruguay {
         AtomicReference<Double> value = new AtomicReference<>(0.0);
         switch (typePo){
             case 0:
-                parameters.stream().filter(f->f.getParameter().getId()==8 &&
-                        Shared.verificarMesEnRango(f.getRange(),month)).findFirst().ifPresent(f-> value.set(f.getValue()));
+                parameters.stream().filter(f->f.getParameter().getId()==8).findFirst().ifPresent(f-> value.set(f.getValue()));
                 break;
             case 1:
-                parameters.stream().filter(f->f.getParameter().getId()==7  &&
-                        Shared.verificarMesEnRango(f.getRange(),month)).findFirst().ifPresent(f-> value.set(f.getValue()));
+                parameters.stream().filter(f->f.getParameter().getId()==7).findFirst().ifPresent(f-> value.set(f.getValue()));
                 break;
             case 2|-1:
-                parameters.stream().filter(f->f.getParameter().getId()==6  &&
-                        Shared.verificarMesEnRango(f.getRange(),month)).findFirst().ifPresent(f-> value.set(f.getValue()));
+                parameters.stream().filter(f->f.getParameter().getId()==6).findFirst().ifPresent(f-> value.set(f.getValue()));
                 break;
+            default:
+                break;
+
         }
         return value.get();
     }
