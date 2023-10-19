@@ -629,6 +629,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .department(e.getDepartment())
                         .component(e.getComponent())
                         .amount(e.getAmount())
+                        .classEmp(e.getClassemp())
                             .build()).collect(Collectors.toList());
 
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
