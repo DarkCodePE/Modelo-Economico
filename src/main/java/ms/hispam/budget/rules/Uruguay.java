@@ -9,7 +9,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.lang.Double.NaN;
 
 public class Uruguay {
-
+    /***
+     *
+     * @param po :
+     * @param projection
+     */
     public void addParameter(ProjectionDTO po, ParametersByProjection projection){
         //validar que tipo de usuario es
         int typePo=validateTypePo(po.getPoName());

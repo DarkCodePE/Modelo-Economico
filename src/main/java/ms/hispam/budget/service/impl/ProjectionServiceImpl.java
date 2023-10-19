@@ -1,11 +1,13 @@
 package ms.hispam.budget.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
+import ms.hispam.budget.rules.Colombia;
 import ms.hispam.budget.rules.Ecuador;
 import ms.hispam.budget.rules.Uruguay;
 import ms.hispam.budget.service.ProjectionService;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Slf4j(topic = "PROJECTION_SERVICE")
 public class ProjectionServiceImpl implements ProjectionService {
 
     @Autowired
@@ -80,6 +83,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                 case "T. URUGUAY":
                     isUruguay(headcount,projection);
                     break;
+                case "T. COLOMBIA":
+                    isColombia(headcount,projection);
+                    break;
                 default:
                     break;
             }
@@ -112,7 +118,34 @@ public class ProjectionServiceImpl implements ProjectionService {
         }
 
     }
-
+    private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
+        Colombia methodsColombia = new Colombia();
+        log.info("HEADCOUNT: {}",headcount.size());
+        log.info("PARAMETERS: {}",projection.getParameters());
+        //Genera las proyecciones del rango
+        headcount.stream()
+                .parallel()
+                .forEach(headcountData -> {
+                    List<PaymentComponentDTO> component = headcountData.getComponents();
+                    if (!projection.getParameters().isEmpty()) {
+                        for (int j = 0; j < projection.getParameters().stream().filter(q -> q.getPeriod() != null).count(); j++) {
+                            component = validate(methodsColombia, component, projection.getParameters().get(j));
+                        }
+                    }
+                    methodsColombia.salMin(component, projection.getParameters());
+                    //parametros que no tienen periodo que se ejecutan siempre
+                  /*  methodsColombia.srv(component, projection.getParameters());
+                    methodsColombia.addDecimoCuarto(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+                    methodsColombia.iess(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+                    methodsColombia.decimoTercero(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+                    methodsColombia.fondoReserva(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
+                    methodsColombia.vacations(component, projection.getPeriod(), projection.getParameters(), projection.getRange());*/
+                    if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                        addBaseExtern(headcountData,projection.getBaseExtern(),
+                            projection.getPeriod(),projection.getRange());
+                    }
+                });
+    }
     private void isUruguay( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Uruguay methodsUruguay = new Uruguay();
         //Genera las proyecciones del rango
@@ -126,7 +159,10 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     private void isEcuador( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Ecuador methodsEcuador = new Ecuador();
-        projection.getParameters().sort((o1, o2) -> Shared.compare(o1.getPeriod(),o2.getPeriod()));
+        log.info("HEADCOUNT: {}",headcount.size());
+        log.info("PARAMETERS: {}",projection.getParameters());
+        projection.getParameters()
+                .sort((o1, o2) -> Shared.compare(o1.getPeriod(),o2.getPeriod()));
         //Genera las proyecciones del rango
         for (ProjectionDTO projectionDTO : headcount) {
             List<PaymentComponentDTO> component = projectionDTO.getComponents();
@@ -563,6 +599,18 @@ public class ProjectionServiceImpl implements ProjectionService {
         return componentDTO;
     }
 
+    private List<PaymentComponentDTO> validate(Colombia methods, List<PaymentComponentDTO> componentDTO,ParametersDTO dto){
+        // PARAMETROS PARA EL SUELDO BASE
+        //Revision salarial
+        if(dto.getParameter().getId()==1){
+            return methods.revisionSalary(componentDTO,dto);
+        }
+        // Ajuste salario minimo
+       /* if(dto.getParameter().getId()==2){
+            return methods.adjustSalaryAdjustment(componentDTO,dto);
+        }*/
+        return componentDTO;
+    }
 
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
