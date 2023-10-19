@@ -20,4 +20,5 @@ public class HeadcountProjection {
     private String department;
     private String component;
     private Double amount;
+    private String classEmp;
 }

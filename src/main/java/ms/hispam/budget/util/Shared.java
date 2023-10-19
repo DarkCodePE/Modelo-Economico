@@ -3,15 +3,24 @@ package ms.hispam.budget.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersByProjection;
-import org.apache.commons.codec.binary.Base64;
+
+
+import org.bouncycastle.crypto.BufferedBlockCipher;
+import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.engines.AESEngine;
+import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher;
+import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.*;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import org.apache.commons.codec.binary.Base64;
 import java.util.List;
 import java.util.Objects;
 
@@ -19,8 +28,10 @@ public class Shared {
 
     private Shared(){
     }
-    @Value("${password-crypth}")
-    private static String passWord;
+    //@Value("${password.crypth}")
+    private static final String vkey="d88E76na32VEY%ju2H36mhKRV!Gr7Jpo";
+
+
     static final String TYPEMONTH="yyyyMM";
 
 
@@ -111,8 +122,8 @@ return fechaActual.format(formatterMonthName);
 
     public static String encriptar(String texto)  {
         try {
-            SecretKeySpec key = new SecretKeySpec(passWord.getBytes(), "AES");
-            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
+            SecretKeySpec key = new SecretKeySpec(vkey.getBytes(), "AES");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, key);
             byte[] textoEncriptado = cipher.doFinal(texto.getBytes());
             return Base64.encodeBase64String(textoEncriptado);
@@ -124,8 +135,8 @@ return fechaActual.format(formatterMonthName);
 
     public static String desencriptar(String textoEncriptado)  {
         try {
-            SecretKeySpec key = new SecretKeySpec(passWord.getBytes(), "AES");
-            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
+            SecretKeySpec key = new SecretKeySpec(vkey.getBytes(), "AES");
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] textoBytes = Base64.decodeBase64(textoEncriptado);
             byte[] textoDesencriptado = cipher.doFinal(textoBytes);
@@ -144,4 +155,6 @@ return fechaActual.format(formatterMonthName);
             return null;
         }
     }
+
+
 }

@@ -12,6 +12,7 @@ public interface HeadcountHistoricalProjection {
     public String getDepartment();
     public String getComponent();
     public Double getAmount();
+    public String getClassemp();
 
 
 }
