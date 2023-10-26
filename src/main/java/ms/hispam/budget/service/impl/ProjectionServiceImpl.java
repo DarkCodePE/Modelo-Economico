@@ -460,11 +460,11 @@ public class ProjectionServiceImpl implements ProjectionService {
 
         List<DataBaseResponse> comparing = new ArrayList<>();
 
-       if(data.isComparing()){
+       if(Boolean.TRUE.equals(data.getIsComparing())){
            data.setPeriod(data.getPeriodComparing());
            data.setNominaFrom(data.getNominaFromComparing());
            data.setNominaTo(data.getNominaToComparing());
-           data.setComparing(false);
+           data.setIsComparing(false);
            comparing= getDataBase(data).getData();
        }
  return  DataBaseMainReponse.builder().data(deudasAgrupadas).components(components).nominas(codeNominas).comparing(comparing).build();
@@ -687,7 +687,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
                 if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
-                    hhee = +h.getImporte();
+                    hhee = hhee +h.getImporte();
                 }
             }
             projectionsComponent.add(PaymentComponentDTO.builder().
