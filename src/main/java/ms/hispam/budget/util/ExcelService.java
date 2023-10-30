@@ -111,7 +111,7 @@ public class ExcelService {
            pdataCell.setCellValue(dataBase.getData().get(i).getPoName());
            int starDetail=0;
            for (int j = 0; j < dataBase.getComponents().size(); j++) {
-               pdataCell = data.createCell(starDetail+3);
+               pdataCell = data.createCell(j+3);
                Cell finalPdataCell = pdataCell;
                int finalJ = j;
                dataBase.getData().get(i).getComponents().stream().filter(r->r.getComponent().equalsIgnoreCase(dataBase.getComponents().get(finalJ).getComponent())).findFirst()
@@ -119,11 +119,11 @@ public class ExcelService {
                        ()->finalPdataCell.setCellValue(0));
                starDetail++;
            }
-           for (int j = 0; j < dataBase.getNominas().size(); j++) {
-               pdataCell = data.createCell(starDetail);
+           for (int k = 0; k < dataBase.getNominas().size(); k++) {
+               pdataCell = data.createCell(starDetail+3);
                Cell finalPdataCell = pdataCell;
-               int finalJ = j;
-               dataBase.getData().get(i).getComponents().stream().filter(r->r.getComponent().equalsIgnoreCase(dataBase.getNominas().get(finalJ).getCodeNomina())).findFirst()
+               int finalK= k;
+               dataBase.getData().get(i).getComponents().stream().filter(r->r.getComponent().equalsIgnoreCase(dataBase.getNominas().get(finalK).getCodeNomina())).findFirst()
                        .ifPresentOrElse(r-> finalPdataCell.setCellValue(r.getAmount()),
                                ()->finalPdataCell.setCellValue(0));
                starDetail++;
