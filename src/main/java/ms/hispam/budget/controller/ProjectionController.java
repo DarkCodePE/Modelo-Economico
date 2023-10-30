@@ -63,8 +63,8 @@ public class ProjectionController {
         return service.deleteHistorical(id);
     }
     @PostMapping("/download-projection")
-    public ResponseEntity<byte[]> downloadHistorical(@RequestBody ParametersByProjection projection) {
-        Shared.replaceSLash(projection);
+    public ResponseEntity<byte[]> downloadHistorical(@RequestBody ParameterDownload projection) {
+        //Shared.replaceSLash(projection);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "datos.xlsx");

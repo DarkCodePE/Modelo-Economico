@@ -23,7 +23,7 @@ public interface ProjectionService {
 
     Response<Boolean> deleteHistorical( Integer id);
 
-    byte[] downloadProjection( ParametersByProjection projection);
+    byte[] downloadProjection( ParameterDownload projection);
 
     byte[] downloadProjectionHistorical( Integer id);
 

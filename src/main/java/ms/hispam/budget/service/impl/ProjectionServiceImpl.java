@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.xml.crypto.Data;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -367,26 +368,27 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
 
     @Override
-    public byte[] downloadProjection(  ParametersByProjection projection) {
-        List<ProjectionDTO> headcount=  getHeadcountByAccount(projection);
-        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
-        switch (projection.getBu()){
-            case "T. ECUADOR":
-                isEcuador(headcount,projection);
-                break;
-            case "T. URUGUAY":
-                isUruguay(headcount,projection);
-                break;
-            default:
-                break;
-        }
+    public byte[] downloadProjection(  ParameterDownload projection) {
+        projection.setPeriod(projection.getPeriod().replace("/",""));
+        projection.setNominaFrom(projection.getNominaFrom().replace("/",""));
+        projection.setNominaTo(projection.getNominaTo().replace("/",""));
 
-       return  ExcelService.generateExcelProjection(headcount,componentProjections,projection);
+        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
+        DataRequest dataBase = DataRequest.builder()
+                .idBu(projection.getIdBu())
+                .bu(projection.getBu())
+                .period(projection.getPeriod())
+                .nominaFrom(projection.getNominaFrom())
+                .nominaTo(projection.getNominaTo())
+                .isComparing(false)
+                .build();
+
+       return  ExcelService.generateExcelProjection(projection,componentProjections,getDataBase(dataBase));
     }
 
     @Override
     public byte[] downloadProjectionHistorical(Integer id) {
-        List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
+      /*  List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
         List<ComponentProjection> components = sharedRepo.getComponentByBu(parameters.get(0).getVbu());
         ParametersByProjection projection = ParametersByProjection
                 .builder()
@@ -409,9 +411,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .range(k.getVrange())
                         .build()).collect(Collectors.toList()))
                 .build();
-        replaceSlash(projection);
+        replaceSlash(projection);*/
 
-        return downloadProjection(projection);
+        return null;
     }
 
     @Override
