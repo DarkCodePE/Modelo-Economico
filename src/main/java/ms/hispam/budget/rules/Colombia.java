@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersDTO;
 import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.dto.projections.ParamFilterDTO;
 import ms.hispam.budget.util.Shared;
 
 import java.math.BigDecimal;
@@ -524,24 +525,12 @@ public class Colombia {
                         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
                             double amountF = i==0?c.getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
                             try {
-                                Map<String, Object> res = isRefreshParamCom(commissionList,paymentComponentDTO.getProjections().get(i).getMonth());
-                                if (Boolean.TRUE.equals(res.get("status"))){
-                                    double test = commissionList.stream()
-                                            .filter(p -> Objects.equals(p.getParameter().getId(), res.get("id")))
-                                            .findFirst()
-                                            .get()
-                                            .getValue();
-                                    log.info("test -> {}", test);
-                                    paramValue.set(commissionList.stream().filter(p -> Objects.equals(p.getParameter().getId(), (Integer) res.get("id"))).findFirst().get().getValue());
+                                ParamFilterDTO res = isRefreshCommisionValue(commissionList,paymentComponentDTO.getProjections().get(i).getMonth());
+                                if (Boolean.TRUE.equals(res.getStatus())){
+                                    paramValue.set(res.getValue());
                                 }
-                                log.info("getMonthProjection -> {}", paymentComponentDTO.getProjections().get(i).getMonth());
-                                log.info("paramValue -> {}", result);
-                                log.info("amountF -> {}", amountF);
-                                log.info("sum -> {}", sum.get());
-                                log.info("amountF/sum.get() -> {}", amountF/sum.get());
                                 if (sum.get() == 0) sum.set(1.0);
                                 double v = paramValue.get() /12*(amountF/sum.get());
-                                log.info("VALUE ------> {}", v);
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(v));
                             }catch (Exception e){
                                 log.error("{}", e.getMessage());
@@ -551,109 +540,6 @@ public class Colombia {
                 });
         component.add(paymentComponentDTO);
     }
-    public void commissionTest(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        // BUSCAMOS LOS PAYMENT COMPONENTS NECESARIOS PARA EL CALCUL  DE COMISIONES
-        AtomicReference<BigDecimal> commision1 = new AtomicReference<>(BigDecimal.ZERO);
-        AtomicReference<BigDecimal> commision2 = new AtomicReference<>(BigDecimal.ZERO);
-        //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC938003"))
-                .findFirst()
-                .ifPresent(p -> {
-                    commision1.set(p.getAmount());
-                });
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC938012"))
-                .findFirst()
-                .ifPresent(p -> {
-                    commision2.set(p.getAmount());
-                });
-        // Crear un componente de pago para las comisiones(sumatoria de los dos componentes)
-        PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
-        paymentComponentDTO.setPaymentComponent("COMMISSION");
-        //PC938003 / PC938012
-        paymentComponentDTO.setAmount(Stream.of(
-                commision1.get(),commision2.get()
-        ).reduce(BigDecimal.ZERO,BigDecimal::add));
-        paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
-        // buscamos el parametro de comision
-        AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
-        AtomicReference<String> periodParam = new AtomicReference<>((String) "");
-        parameters.stream()
-                .filter(p -> p.getParameter().getId() == 28)
-                .findFirst()
-                .ifPresent(param -> parameter.set
-                        (param.getValue()));
-        // get parametro by period and name
-        List<ParametersDTO> commissionList = parameters.stream()
-                .filter(p -> Objects.equals(p.getParameter().getName(), "Comisiones (anual)"))
-                .collect(Collectors.toList());
-        log.info("{}", commissionList);
-        AtomicReference<Double> sum = new AtomicReference<>((double) 0);
-        component.stream().filter(c->c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012"))
-                .findFirst()
-                .ifPresent(c -> {
-                    c.getProjections().stream()
-                            .parallel()
-                            .forEach(p -> {
-                                sum.set(sum.get() + p.getAmount().doubleValue());
-                            });
-                });
-        component.stream()
-                .parallel()
-                .forEach(c -> {
-                    if (c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
-                        for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                            int finalI = i;
-                            /*ParametersDTO commissionParam = commissionList
-                                    .stream()
-                                    .filter(parametersDTO -> parametersDTO.getPeriod().equalsIgnoreCase(paymentComponentDTO.getProjections().get(finalI).getMonth()))
-                                    .findFirst()
-                                    .get();*/
-                          /*  commissionList.stream().parallel().forEach(parametersDTO -> {
-                                if (parametersDTO.getPeriod().equalsIgnoreCase(paymentComponentDTO.getProjections().get(finalI).getMonth())){
-                                    parameter.set(parametersDTO.getValue());
-                                    periodParam.set(parametersDTO.getPeriod());
-                                }
-                            });*/
-                            commissionList.stream().parallel().forEach(parametersDTO -> {
-                                int idxF = Shared.getIndex(paymentComponentDTO
-                                        .getProjections()
-                                        .stream()
-                                        .map(MonthProjection::getMonth)
-                                        .collect(Collectors.toList()), parametersDTO.getPeriod());
-                                List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
-                                if (idxF != -1){
-                                    for (int j = idxF; j < monthsT1.size(); j++) {
-                                        double amountF = (j == 0) ? c.getAmount().doubleValue() : monthsT1.get(j-1).getAmount().doubleValue();
-                                        //formula
-                                        //$R$10/12*($H5/SUMA($H$4:$H$15))
-                                        //calcular perido de afecation del parametro
-                                        //bucar el parametro por periodo
-                                        int finalJ = j;
-                                /*    Double commissionValue = commissionList
-                                            .stream()
-                                            .filter(parametersDTO -> {
-                                                log.info("param -> {}", parametersDTO.getPeriod());
-                                                log.info("projection -> {}", monthsT1.get(finalJ).getMonth());
-                                                return parametersDTO.getPeriod().equalsIgnoreCase(monthsT1.get(finalJ).getMonth());
-                                            })
-                                            .findFirst()
-                                            .map(ParametersDTO::getValue)
-                                            .orElse(null);*/
-                                  /*  double commissionParamValue = commissionParam.getValue();
-                                    if (commissionParamValue == 0.0) commissionParamValue = commissionList.get(0).getValue();*/
-                                        double v = parametersDTO.getValue()/12*(amountF/sum.get());
-                                        monthsT1.get(j).setAmount(BigDecimal.valueOf(v));
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-        component.add(paymentComponentDTO);
-    }
-
     public static double getParamCommissionValue(List<ParametersDTO> params, String periodProjection, String period, Integer range){
         AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
         // necesito saber que parametro debo aplicar a la proyeccion
@@ -683,7 +569,6 @@ public class Colombia {
                 .ifPresent(parameter::set);
         return parameter.get();
     }
-
     public static boolean isRefreshParamCommission(List<ParametersDTO> params, String periodProjection){
         return params.stream()
                 .parallel()
@@ -715,6 +600,25 @@ public class Colombia {
         map.put("id",idParm.get());
         map.put("status",status);
         return map;
+    }
+    public static ParamFilterDTO isRefreshCommisionValue(List<ParametersDTO> params, String periodProjection){
+        AtomicReference<Double> value = new AtomicReference<>(0.0);
+        Boolean status = params.stream()
+                .parallel()
+                .anyMatch(p -> {
+                    DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
+                            .appendPattern(TYPEMONTH)
+                            .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+                            .toFormatter();
+                    LocalDate dateParam = LocalDate.parse(p.getPeriod(),dateFormat);
+                    LocalDate dateProjection = LocalDate.parse(periodProjection, dateFormat);
+                    value.set(p.getValue());
+                    return dateParam.equals(dateProjection);
+                });
+    return ParamFilterDTO.builder()
+            .status(status)
+            .value(value.get())
+            .build();
     }
     public void prodMonthPrime(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         // BUSCAMOS LOS PAYMENT COMPONENTS NECESARIOS PARA EL CALCUL  DE COMISIONES
