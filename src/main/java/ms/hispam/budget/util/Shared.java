@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
 import java.security.*;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -35,7 +36,7 @@ public class Shared {
     static final String TYPEMONTH="yyyyMM";
 
 
-    public static List<MonthProjection> generateMonthProjection(String monthBase, int range, Double amount) {
+    public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
@@ -64,7 +65,7 @@ public class Shared {
         DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
 
-return fechaActual.format(formatterMonthName);
+        return fechaActual.format(formatterMonthName);
 
     }
 

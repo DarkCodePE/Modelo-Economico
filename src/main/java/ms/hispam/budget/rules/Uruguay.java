@@ -3,6 +3,7 @@ package ms.hispam.budget.rules;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.util.Shared;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -24,25 +25,25 @@ public class Uruguay {
                 switch (paymentComponentDTO.getType()){
                     case 1:
                         Double variable = getValue(typePo,projection.getParameters(),month.getMonth());
-                        month.setAmount(paymentComponentDTO.getAmount()*(1+variable/100));
+                        month.setAmount(BigDecimal.valueOf(paymentComponentDTO.getAmount().doubleValue()*(1+variable/100)));
                         break;
                     case 12:
                         AtomicReference<Double> sn = new AtomicReference<>(0.0);
                                 po.getComponents().stream()
                                         .filter(c -> c.getType() == 1).findFirst().flatMap(f ->
                                                 f.getProjections().stream().filter(w -> w.getMonth().equalsIgnoreCase(month.getMonth()))
-                                                .findFirst()).ifPresent(g -> sn.set(g.getAmount()));
-                                month.setAmount(sn.get()*paymentComponentDTO.getAmount()/100);
+                                                .findFirst()).ifPresent(g -> sn.set(g.getAmount().doubleValue()));
+                                month.setAmount(BigDecimal.valueOf(sn.get() *paymentComponentDTO.getAmount().doubleValue()/100));
                                 break;
                     case 15:
                         AtomicReference<Double> sn1 = new AtomicReference<>(0.0);
                         AtomicReference<Double> fb = new AtomicReference<>(0.0);
                         po.getComponents().stream()
                                 .filter(c -> c.getType() == 1).findFirst().flatMap(f -> f.getProjections().stream().filter(w -> w.getMonth().equalsIgnoreCase(month.getMonth()))
-                                        .findFirst()).ifPresent(g -> sn1.set(g.getAmount()));
+                                        .findFirst()).ifPresent(g -> sn1.set(g.getAmount().doubleValue()));
                         projection.getParameters().stream().filter(c->c.getParameter().getId()==9).findFirst().ifPresent(d->fb.set(d.getValue()));
-                        Double value = sn1.get()*paymentComponentDTO.getAmount()*fb.get()/100/12;
-                        month.setAmount(Shared.getDoubleWithDecimal(value));
+                        Double value = sn1.get()*paymentComponentDTO.getAmount().doubleValue()*fb.get()/100/12;
+                        month.setAmount(BigDecimal.valueOf(Shared.getDoubleWithDecimal(value)));
                         break;
                 }
             }
@@ -55,11 +56,11 @@ public class Uruguay {
                 AtomicReference<Double> sn1 = new AtomicReference<>(0.0);
                 AtomicReference<Double> fb = new AtomicReference<>(0.0);
                 po.getComponents().stream()
-                        .filter(c->c.getType()==1).findFirst().ifPresent(f-> sn1.set(f.getAmount()));
+                        .filter(c->c.getType()==1).findFirst().ifPresent(f-> sn1.set(f.getAmount().doubleValue()));
                 projection.getParameters().stream().filter(c->c.getParameter().getId()==9).
                         findFirst().ifPresent(d->fb.set(d.getValue()));
-                Double value = sn1.get()*paymentComponentDTO.getAmount()*fb.get()/100/12;
-                paymentComponentDTO.setAmount(Shared.getDoubleWithDecimal(value));
+                Double value = sn1.get()*paymentComponentDTO.getAmount().doubleValue()*fb.get()/100/12;
+                paymentComponentDTO.setAmount(BigDecimal.valueOf(Shared.getDoubleWithDecimal(value)));
             }
         }
 
@@ -86,8 +87,8 @@ public class Uruguay {
         decimo.setPaymentComponent("SUAT");
         decimo.setType(21);
         Double value = typeUser==-1 ?amount.get():0.0;
-        decimo.setAmount(value);
-        decimo.setProjections(Shared.generateMonthProjection(period,range,value));
+        decimo.setAmount(BigDecimal.valueOf(value));
+        decimo.setProjections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(value)));
        return decimo;
     }
     public PaymentComponentDTO addAguinaldo( List<PaymentComponentDTO> components,String period,Integer range){
@@ -96,18 +97,18 @@ public class Uruguay {
         AtomicReference<Double> premio = new AtomicReference<>(0.0);
         AtomicReference<Double> bono = new AtomicReference<>(0.0);
         AtomicReference<Double> hhee = new AtomicReference<>(0.0);
-        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==15).findFirst().ifPresent(c->bono.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount()));
+        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==15).findFirst().ifPresent(c->bono.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount().doubleValue()));
 
         Double value = (sn.get()+guardia.get()+premio.get()+bono.get()+hhee.get())/12;
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setPaymentComponent("AGUI");
         decimo.setType(17);
-        decimo.setAmount(value);
-        decimo.setProjections(Shared.generateMonthProjection(period,range,value));
+        decimo.setAmount(BigDecimal.valueOf(value));
+        decimo.setProjections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(value)));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             AtomicReference<Double> snM = new AtomicReference<>(0.0);
@@ -116,17 +117,17 @@ public class Uruguay {
             AtomicReference<Double> bonoM = new AtomicReference<>(0.0);
             AtomicReference<Double> hheeM = new AtomicReference<>(0.0);
             components.stream().filter(f -> f.getType() == 1).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 12).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 18).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 15).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bonoM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bonoM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 16).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount().doubleValue()));
             Double valueM = (snM.get()+guardiaM.get()+premioM.get()+bonoM.get()+hheeM.get())/12;
-            month.setAmount(valueM);
+            month.setAmount(BigDecimal.valueOf(valueM));
         }
         return decimo;
     }
@@ -142,21 +143,21 @@ public class Uruguay {
         AtomicReference<Double> impuestoBSE = new AtomicReference<>(0.0);
         parameters.stream().filter(c->c.getParameter().getId()==18)
                 .findFirst().ifPresent(c-> impuestoBSE.set(c.getValue()));
-        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==15).findFirst().ifPresent(c->bono.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ali.set(c.getAmount()));
+        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==15).findFirst().ifPresent(c->bono.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ali.set(c.getAmount().doubleValue()));
         components.stream().filter(f->f.getPaymentComponent()
-                .equalsIgnoreCase("bcbs")).findFirst().ifPresent(c->bse.set(c.getAmount()));
+                .equalsIgnoreCase("bcbs")).findFirst().ifPresent(c->bse.set(c.getAmount().doubleValue()));
 
         Double value = (sn.get()+guardia.get()+premio.get()+bono.get()+hhee.get()+bse.get()+ali.get())*impuestoBSE.get();
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setPaymentComponent("BSE");
         decimo.setType(18);
-        decimo.setAmount(value);
-        decimo.setProjections(Shared.generateMonthProjection(period,range,value));
+        decimo.setAmount(BigDecimal.valueOf(value));
+        decimo.setProjections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(value)));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             AtomicReference<Double> snM = new AtomicReference<>(0.0);
@@ -167,22 +168,22 @@ public class Uruguay {
             AtomicReference<Double> aliM = new AtomicReference<>(0.0);
             AtomicReference<Double> bseM = new AtomicReference<>(0.0);
             components.stream().filter(f -> f.getType() == 1).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 12).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 18).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 15).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bonoM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bonoM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 16).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 20).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> aliM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> aliM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getPaymentComponent()
                     .equalsIgnoreCase("bcbs")).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bseM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bseM.set(k.getAmount().doubleValue()));
             Double valueM = (snM.get()+guardiaM.get()+premioM.get()+bonoM.get()+hheeM.get()+aliM.get()+bseM.get())*impuestoBSE.get();
-            month.setAmount(valueM);
+            month.setAmount(BigDecimal.valueOf(valueM));
         }
         return decimo;
     }
@@ -190,7 +191,7 @@ public class Uruguay {
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setType(29);
         decimo.setPaymentComponent("APORPATRI");
-        decimo.setProjections(Shared.generateMonthProjection(period,range,0.0));
+        decimo.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.ZERO));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             //Parametros
@@ -211,20 +212,20 @@ public class Uruguay {
 
             components.stream().filter(f -> f.getType() == 1).findFirst().flatMap(c -> c.getProjections().stream()
                     .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth()))
-                    .findFirst()).ifPresent(k -> sn.set(k.getAmount()));
+                    .findFirst()).ifPresent(k -> sn.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 12).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardia.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardia.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 18).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premio.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premio.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 15).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bono.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bono.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 16).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hhee.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hhee.set(k.getAmount().doubleValue()));
             components.stream().filter(f->f.getPaymentComponent()
-                    .equalsIgnoreCase("bcbs")).findFirst().ifPresent(c->bse.set(c.getAmount()));
-            components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ticketAli.set(c.getAmount()));
+                    .equalsIgnoreCase("bcbs")).findFirst().ifPresent(c->bse.set(c.getAmount().doubleValue()));
+            components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ticketAli.set(c.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 17).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> aguinaldo.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> aguinaldo.set(k.getAmount().doubleValue()));
 
             //Parametro de monto tope de aportes patrimoniales
             parameters.stream().filter(c->c.getParameter().getId()==19)
@@ -249,9 +250,9 @@ public class Uruguay {
                     ((bse.get()+ticketAli.get())*pmontePio.get())+(aguinaldo.get()*pmontePio.get()));
             value= Double.isNaN(value) ?0.0:value;
             if(j==0){
-                decimo.setAmount(value);
+                decimo.setAmount(BigDecimal.valueOf(value));
             }
-            month.setAmount(value);
+            month.setAmount(BigDecimal.valueOf(value));
         }
         return decimo;
     }
@@ -266,19 +267,19 @@ public class Uruguay {
 
         parameters.stream().filter(c->c.getParameter().getId()==16).findFirst().ifPresent(c-> pdm.set(c.getValue()));
 
-        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ticketAli.set(c.getAmount()));
+        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==12).findFirst().ifPresent(c->guardia.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==18).findFirst().ifPresent(c->premio.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==16).findFirst().ifPresent(c->hhee.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==20).findFirst().ifPresent(c->ticketAli.set(c.getAmount().doubleValue()));
 
 
         Double value = (sn.get()+guardia.get()+premio.get()+ticketAli.get()+hhee.get())/30*pdm.get()/12;
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setPaymentComponent("SALVAC");
         decimo.setType(19);
-        decimo.setAmount(value);
-        decimo.setProjections(Shared.generateMonthProjection(period,range,value));
+        decimo.setAmount(BigDecimal.valueOf(value));
+        decimo.setProjections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(value)));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             AtomicReference<Double> snM = new AtomicReference<>(0.0);
@@ -287,18 +288,18 @@ public class Uruguay {
             AtomicReference<Double> ticketAliM = new AtomicReference<>(0.0);
             AtomicReference<Double> hheeM = new AtomicReference<>(0.0);
             components.stream().filter(f -> f.getType() == 1).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> snM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 12).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> guardiaM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 18).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> premioM.set(k.getAmount().doubleValue()));
 
             components.stream().filter(f -> f.getType() == 16).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> hheeM.set(k.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 20).findFirst().flatMap(c -> c.getProjections().stream()
-                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> ticketAliM.set(k.getAmount()));
+                    .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> ticketAliM.set(k.getAmount().doubleValue()));
             Double valueM = (snM.get()+guardiaM.get()+premioM.get()+ticketAliM.get()+hheeM.get())/30*pdm.get()/12;
-            month.setAmount(valueM);
+            month.setAmount(BigDecimal.valueOf(valueM));
         }
         return decimo;
     }
@@ -307,28 +308,28 @@ public class Uruguay {
         AtomicReference<Double> sn = new AtomicReference<>(0.0);
         AtomicReference<Double> pre = new AtomicReference<>(0.0);
         AtomicReference<Double> preCuatri = new AtomicReference<>(0.0);
-        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==13).findFirst().ifPresent(c->pre.set(c.getAmount()));
-        components.stream().filter(f->f.getType()==14).findFirst().ifPresent(c->preCuatri.set(c.getAmount()));
+        components.stream().filter(f->f.getType()==1).findFirst().ifPresent(c->sn.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==13).findFirst().ifPresent(c->pre.set(c.getAmount().doubleValue()));
+        components.stream().filter(f->f.getType()==14).findFirst().ifPresent(c->preCuatri.set(c.getAmount().doubleValue()));
         Double value = (pre.get()>preCuatri.get()?pre.get():preCuatri.get())*sn.get()/100;
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setPaymentComponent("PREMIO");
         decimo.setType(18);
-        decimo.setAmount(value);
-        decimo.setProjections(Shared.generateMonthProjection(period,range,0.0));
+        decimo.setAmount(BigDecimal.valueOf(value));
+        decimo.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.ZERO));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             AtomicReference<Double> snM = new AtomicReference<>(0.0);
             AtomicReference<Double> preM = new AtomicReference<>(0.0);
             AtomicReference<Double> preCuatriM = new AtomicReference<>(0.0);
             components.stream().filter(f -> f.getType() == 1).findFirst().flatMap(c -> c.getProjections().stream().filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth()))
-                    .findFirst()).ifPresent(g -> snM.set(g.getAmount()));
+                    .findFirst()).ifPresent(g -> snM.set(g.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 13).findFirst().flatMap(c -> c.getProjections().stream().filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth()))
-                    .findFirst()).ifPresent(g -> preM.set(g.getAmount()));
+                    .findFirst()).ifPresent(g -> preM.set(g.getAmount().doubleValue()));
             components.stream().filter(f -> f.getType() == 14).findFirst().flatMap(c -> c.getProjections().stream().filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth()))
-                    .findFirst()).ifPresent(g -> preCuatriM.set(g.getAmount()));
+                    .findFirst()).ifPresent(g -> preCuatriM.set(g.getAmount().doubleValue()));
             Double valueM = (preM.get()>preCuatriM.get()?preM.get():preCuatriM.get())*snM.get()/100;
-            month.setAmount(valueM);
+            month.setAmount(BigDecimal.valueOf(valueM));
         }
         return decimo;
     }
@@ -338,7 +339,7 @@ public class Uruguay {
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setType(20);
         decimo.setPaymentComponent("ALI");
-        decimo.setProjections(Shared.generateMonthProjection(period,range,0.0));
+        decimo.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.ZERO));
         for (int j = 0; j < decimo.getProjections().size(); j++) {
             MonthProjection month = decimo.getProjections().get(j);
             AtomicReference<Double> vTicket = new AtomicReference<>(0.0);
@@ -359,9 +360,9 @@ public class Uruguay {
             double value = typeUser==2 ?vTicket.get():(dayHabil.get()-dayVac.get())*(vDay.get()/divSem.get());
             value=Double.isNaN(value)?0.0:value;
             if(j==0){
-                decimo.setAmount(value);
+                decimo.setAmount(BigDecimal.valueOf(value));
             }
-            month.setAmount(value);
+            month.setAmount(BigDecimal.valueOf(value));
         }
         return decimo;
     }

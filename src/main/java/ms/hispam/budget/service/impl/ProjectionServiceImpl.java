@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -92,12 +93,14 @@ public class ProjectionServiceImpl implements ProjectionService {
 
             List<ComponentAmount> groupedData = headcount.stream()
                     .flatMap(j -> j.getComponents().stream())
+                    //  TODO: QUITAR EL FILTRO DE AQUI
+                    .filter(w -> !Objects.equals(w.getPaymentComponent(), "PC938003") || !Objects.equals(w.getPaymentComponent(), "PC938012"))
                     .collect(Collectors.groupingBy(
                             PaymentComponentDTO::getPaymentComponent,
-                            Collectors.summingDouble(PaymentComponentDTO::getAmount)
+                            Collectors.summingDouble(p -> p.getAmount().doubleValue())
                     )).entrySet()
                     .stream()
-                    .map(entry -> new ComponentAmount(entry.getKey(), entry.getValue()))
+                    .map(entry -> new ComponentAmount(entry.getKey(), BigDecimal.valueOf(entry.getValue())))
                     .collect(Collectors.toList());
 
 
@@ -120,26 +123,25 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Colombia methodsColombia = new Colombia();
-        log.info("HEADCOUNT: {}",headcount.size());
-        log.info("PARAMETERS: {}",projection.getParameters());
+        /*log.info("HEADCOUNT: {}",headcount.size());
+        log.info("PARAMETERS: {}",projection.getParameters());*/
         //Genera las proyecciones del rango
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    if (!projection.getParameters().isEmpty()) {
-                        for (int j = 0; j < projection.getParameters().stream().filter(q -> q.getPeriod() != null).count(); j++) {
-                            component = validate(methodsColombia, component, projection.getParameters().get(j));
-                        }
-                    }
-                    methodsColombia.salMin(component, projection.getParameters());
-                    //parametros que no tienen periodo que se ejecutan siempre
-                  /*  methodsColombia.srv(component, projection.getParameters());
-                    methodsColombia.addDecimoCuarto(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-                    methodsColombia.iess(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-                    methodsColombia.decimoTercero(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-                    methodsColombia.fondoReserva(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-                    methodsColombia.vacations(component, projection.getPeriod(), projection.getParameters(), projection.getRange());*/
+                   /* log.info("COMPONENT: {}",component);
+                    log.info("getClassEmployee: {}",headcountData.getClassEmployee());*/
+                  /*  List<PaymentComponentDTO> filterSalaryMin =  component.stream().filter(c -> {
+                        log.info("getAmount: {}",c.getAmount());
+                        return c.getAmount().doubleValue() == 116000.0 || c.getAmount().doubleValue() == 120000.0 || c.getAmount().doubleValue() == 1300000.0 || c.getAmount().doubleValue() == 0.0;
+                    }).collect(Collectors.toList());
+                    log.info("filterSalaryMin: {}",filterSalaryMin);*/
+                    //methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    //methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    //methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    //log.info("component: {}",component);
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                             projection.getPeriod(),projection.getRange());
@@ -159,8 +161,6 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     private void isEcuador( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Ecuador methodsEcuador = new Ecuador();
-        log.info("HEADCOUNT: {}",headcount.size());
-        log.info("PARAMETERS: {}",projection.getParameters());
         projection.getParameters()
                 .sort((o1, o2) -> Shared.compare(o1.getPeriod(),o2.getPeriod()));
         //Genera las proyecciones del rango
@@ -191,9 +191,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                p->
                        PaymentComponentDTO.builder()
                        .paymentComponent(p)
-                       .amount(po!=null && po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0)
-                       .projections(Shared.generateMonthProjection(period,range,po!=null&&
-                               po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0))
+                       .amount(BigDecimal.valueOf(po!=null && po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0))
+                       .projections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(po!=null&&
+                               po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0)))
                        .build()
        ).collect(Collectors.toList());
         headcount.getComponents().addAll(bases);
@@ -480,7 +480,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         List<DataBaseResponse> deudasAgrupadas = headcount.stream()
                 .collect(Collectors.groupingBy(
                         HeadcountHistoricalProjection::getPosition,
-                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(), deuda.getAmount()), Collectors.toList())
+                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(), BigDecimal.valueOf(deuda.getAmount())), Collectors.toList())
                 )).entrySet().stream()
                 .map(entry -> {
                     HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
@@ -491,7 +491,7 @@ public class ProjectionServiceImpl implements ProjectionService {
        deudasAgrupadas.forEach(u-> u.getComponents().addAll(nominal.stream().filter(k->  k.getID_SSFF().equalsIgnoreCase(u.getIdssff()))
                .map(o->ComponentAmount.builder()
                        .component(o.getCodigoNomina())
-                       .amount(o.getImporte())
+                       .amount(BigDecimal.valueOf(o.getImporte()))
                        .build()).collect(Collectors.toList())));
 
         List<DataBaseResponse> comparing = new ArrayList<>();
@@ -599,19 +599,6 @@ public class ProjectionServiceImpl implements ProjectionService {
         return componentDTO;
     }
 
-    private List<PaymentComponentDTO> validate(Colombia methods, List<PaymentComponentDTO> componentDTO,ParametersDTO dto){
-        // PARAMETROS PARA EL SUELDO BASE
-        //Revision salarial
-        if(dto.getParameter().getId()==1){
-            return methods.revisionSalary(componentDTO,dto);
-        }
-        // Ajuste salario minimo
-       /* if(dto.getParameter().getId()==2){
-            return methods.adjustSalaryAdjustment(componentDTO,dto);
-        }*/
-        return componentDTO;
-    }
-
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<HeadcountProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
@@ -680,14 +667,14 @@ public class ProjectionServiceImpl implements ProjectionService {
                                                         PaymentComponentDTO r = PaymentComponentDTO.builder()
                                                                 .paymentComponent(p.getComponent())
                                                                 .type(p.getType())
-                                                                .amount(0.0)
-                                                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), 0.0))
+                                                                .amount(BigDecimal.ZERO)
+                                                                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                                                                 .build();
                                                         list.stream().filter(t->t.getComponent().equalsIgnoreCase(p.getComponent())).findFirst().ifPresent(u->{
                                                                     r.setPaymentComponent(p.getComponent());
                                                                     r.setType(p.getType());
-                                                                    r.setAmount(u.getAmount());
-                                                                    r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), u.getAmount()));
+                                                                    r.setAmount(BigDecimal.valueOf(u.getAmount()));
+                                                                    r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
                                                                 });
                                                       return r;
                                                     }
@@ -698,7 +685,8 @@ public class ProjectionServiceImpl implements ProjectionService {
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
                                             list.get(0).getPoname(),
-                                            projectionsComponent
+                                            projectionsComponent,
+                                            list.get(0).getClassEmp()
                                     );
                                 }
                         )
@@ -724,12 +712,12 @@ public class ProjectionServiceImpl implements ProjectionService {
             }
             projectionsComponent.add(PaymentComponentDTO.builder().
                     type(7).
-                    paymentComponent("TURN").amount(hhee)
-                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),hhee)).build());
+                    paymentComponent("TURN").amount(BigDecimal.valueOf(hhee))
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(hhee))).build());
             projectionsComponent.add(PaymentComponentDTO.builder().
                     type(12).
-                    paymentComponent("260").amount(guarderia)
-                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),guarderia)).build());
+                    paymentComponent("260").amount(BigDecimal.valueOf(guarderia))
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(guarderia))).build());
         }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY")){
             double hhee = 0.0;
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
@@ -740,8 +728,8 @@ public class ProjectionServiceImpl implements ProjectionService {
             }
             projectionsComponent.add(PaymentComponentDTO.builder().
                     type(16).
-                    paymentComponent("HHEE").amount(hhee)
-                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),hhee)).build());
+                    paymentComponent("HHEE").amount(BigDecimal.valueOf(hhee))
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(hhee))).build());
         }
     }
 }

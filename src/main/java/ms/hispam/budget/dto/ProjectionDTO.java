@@ -15,6 +15,6 @@ public class ProjectionDTO {
     private String po;
     private String poName;
     private List<PaymentComponentDTO> components;
-
+    private String classEmployee;
 
 }

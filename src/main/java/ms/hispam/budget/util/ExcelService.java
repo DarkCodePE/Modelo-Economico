@@ -101,13 +101,13 @@ public class ExcelService {
                     .filter(u->u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
             if (componentDTO.isPresent()){
                 cell = row.createCell(2);
-                cell.setCellValue( componentDTO.get().getAmount());
+                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                 cell.setCellStyle(style);
                 int column=3;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
                     MonthProjection month = componentDTO.get().getProjections().get(k);
                     cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount());
+                    cell.setCellValue(month.getAmount().doubleValue());
                     cell.setCellStyle(style);
                     column++;
                 }

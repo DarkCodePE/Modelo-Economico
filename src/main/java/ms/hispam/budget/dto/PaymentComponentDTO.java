@@ -2,6 +2,7 @@ package ms.hispam.budget.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 @Getter
 @Setter
@@ -11,12 +12,12 @@ import java.util.List;
 public class PaymentComponentDTO {
     private String paymentComponent;
     private Integer type;
-    private Double amount;
+    private BigDecimal amount;
     private List<MonthProjection> projections;
 
-    public Double getAmount() {
+    public BigDecimal getAmount() {
         if(amount==null){
-            return 0.0;
+            return BigDecimal.ZERO;
         }
         return amount;
     }
