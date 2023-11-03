@@ -1,9 +1,11 @@
 package ms.hispam.budget.service.impl;
 
+import com.azure.core.exception.ResourceNotFoundException;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
+import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.Ecuador;
@@ -61,17 +63,13 @@ public class ProjectionServiceImpl implements ProjectionService {
 
 
     @Override
-    public Response<Page<ProjectionDTO>> getProjection(ParametersByProjection projection) {
-        try {
+    public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
+
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
 
 
             if(headcount.isEmpty()){
-                Response<Page<ProjectionDTO>> data = new Response<>();
-                data.setStatus(404);
-                data.setSuccess(false);
-                data.setMessage("No existe datos para este periodo");
-                return  data;
+               throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
 
             switch (projection.getBu()){
@@ -99,18 +97,9 @@ public class ProjectionServiceImpl implements ProjectionService {
             Page<ProjectionDTO> page = new Page<>(0,0, headcount.size(),
                     headcount,groupedData);
 
-            Response<Page<ProjectionDTO>> data = new Response<>();
-            data.setStatus(200);
-            data.setSuccess(true);
-            data.setData(page);
-            return  data;
-        }catch (Exception ex){
-            Response<Page<ProjectionDTO>> data = new Response<>();
-            data.setStatus(500);
-            data.setSuccess(false);
-            data.setMessage(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString).collect(Collectors.joining(",")));
-            return  data;
-        }
+
+            return  page;
+
 
     }
 
@@ -188,7 +177,7 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
-    public Response<Boolean> saveProjection(ParameterHistorial projection,String email) {
+    public Boolean saveProjection(ParameterHistorial projection,String email) {
 
             HistorialProjection historial = new HistorialProjection();
             historial.setBu(projection.getBu());
@@ -265,7 +254,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             sharedRepo.insertHistorialExtern(json.getId(),2);
         }
 
-            return Response.<Boolean>builder().success(true).message("Proyección guardada con éxito").status(200).build();
+            return true;
 
 
     }
@@ -353,18 +342,11 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
-    public Response<Boolean> deleteHistorical(Integer id) {
-        try {
+    public Boolean deleteHistorical(Integer id) {
+
             parameterProjectionRepository.deleteByIdHistorial(id);
             historialProjectionRepository.deleteById(id);
-            return Response.<Boolean>builder().success(true).message("Eliminación con éxito").status(200).build();
-
-        }catch (Exception ex){
-            return Response.<Boolean>builder().success(false).status(500).message("Ocurrio un error inesperado")
-                    .error("Error").build();
-
-        }
-
+            return true;
     }
 
     @Override
@@ -478,18 +460,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
 
     @Override
-    public Response<List<AccountProjection>> getAccountsByBu(Integer idBu) {
-
-        try {
-            return Response.<List<AccountProjection>>builder().status(200)
-                    .data(sharedRepo.getAccount(idBu)).success(true).message("ok").build();
-        }catch (Exception ex ){
-            return Response.<List<AccountProjection>>builder().status(500).success(false)
-                    .error(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString)
-                            .collect(Collectors.joining(","))
-            ).build();
-        }
-
+    public List<AccountProjection> getAccountsByBu(Integer idBu) {
+            return sharedRepo.getAccount(idBu);
     }
 
     @Override

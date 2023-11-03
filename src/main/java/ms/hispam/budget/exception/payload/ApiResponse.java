@@ -8,12 +8,12 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 public class ApiResponse {
-    private Date tiempo = new Date();
-    private String mensaje;
+    private Date date = new Date();
+    private String message;
     private String url;
 
     public ApiResponse(String mensaje, String url) {
-        this.mensaje = mensaje;
+        this.message = mensaje;
         this.url = url.replace("uri=","");
     }
 }

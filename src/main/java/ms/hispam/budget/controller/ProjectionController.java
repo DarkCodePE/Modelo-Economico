@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -21,7 +23,7 @@ public class ProjectionController {
     @Autowired
     private ProjectionService service;
     @PostMapping("/projection")
-    public Response<Page<ProjectionDTO>> getProjection(@RequestBody ParametersByProjection projection) {
+    public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
 
         return service.getProjection(projection);
@@ -43,7 +45,7 @@ public class ProjectionController {
     }
 
     @PostMapping("/save-projection")
-    public Response<Boolean> saveProjection(@RequestBody ParameterHistorial projection ,@RequestHeader String user) {
+    public Boolean saveProjection(@RequestBody ParameterHistorial projection ,@RequestHeader String user) {
         projection.setPeriod(projection.getPeriod().replace("/",""));
 
         return service.saveProjection(projection,user);
@@ -59,7 +61,7 @@ public class ProjectionController {
     }
 
     @DeleteMapping("/historial")
-    public Response<Boolean> deleteHistorical(@RequestParam Integer id) {
+    public Boolean deleteHistorical(@RequestParam Integer id) {
         return service.deleteHistorical(id);
     }
     @PostMapping("/download-projection")
@@ -79,7 +81,7 @@ public class ProjectionController {
     }
 
     @GetMapping("/account")
-    public Response<List<AccountProjection>> getAccount(@RequestParam Integer id) {
+    public List<AccountProjection> getAccount(@RequestParam Integer id) {
         return service.getAccountsByBu(id);
     }
     @GetMapping("/rosseta")
