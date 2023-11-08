@@ -133,7 +133,6 @@ public class Colombia {
     }
 
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
-        log.info("{}", component);
         // HEADCOUNT: OBTIENS LAS PROYECCION Y LA PO, AQUI AGREGAMOS LOS PARAMETROS CUSTOM
         AtomicReference<Double> baseSalary = new AtomicReference<>((double) 0);
         AtomicReference<Double> baseSalaryIntegral = new AtomicReference<>((double) 0);
@@ -289,17 +288,6 @@ public class Colombia {
                 break;
             default:
                 //revision param
-              /*  ParamSalaryDTO paramRevisionDTO = parameters
-                        .stream()
-                        .filter(p -> p.getParameter().getId() == 1)
-                        .findFirst()
-                        .map(p -> ParamSalaryDTO.builder()
-                                .salary(p.getValue())
-                                .period(p.getPeriod())
-                                .isRetroactive(p.getIsRetroactive())
-                                .periodRetroactive(p.getPeriodRetroactive())
-                                .build()).orElseThrow(() -> new RuntimeException("Parametro no encontrado"));*/
-                //salario minimo
                 parameters.stream()
                         .filter(p -> p.getParameter().getId() == 2)
                         .findFirst()
@@ -323,21 +311,6 @@ public class Colombia {
                         }else {
                             paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                         }
-                     /*   double differPercent=0.0;
-                        ParamSalaryDTO paramSalaryDTO = parameters.stream()
-                                .filter(p -> p.getParameter().getId() == 1)
-                                .findFirst().map(parametersDTO -> ParamSalaryDTO.builder()
-                                        .salary(parametersDTO.getValue())
-                                        .period(parametersDTO.getPeriod())
-                                        .isRetroactive(parametersDTO.getIsRetroactive())
-                                        .periodRetroactive(parametersDTO.getPeriodRetroactive())
-                                        .build()).orElseThrow(() -> new RuntimeException("Parametro no encontrado"));*/
-                        //exist param revision
-                       /* boolean isRev = parameters.stream().anyMatch((ParametersDTO p) -> p.getParameter().getId() == 1);
-                        if (isRev){
-                            paymentComponentDTO = execRevisionSalary(paymentComponentDTO,parameters);
-                        }*/
-                        //execRevisionSalary(paymentComponentDTO,parameters);
                     }
                 }
         }
@@ -499,13 +472,14 @@ public class Colombia {
                 commision1.get(),commision2.get()
         ).reduce(BigDecimal.ZERO,BigDecimal::add));
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
-        // buscamos el parametro de comision
-        AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
+        // buscamos el primer valor del parametro de comisiones
+        AtomicReference<Double> paramCommissionInitValue = new AtomicReference<>((double) 0);
         parameters.stream()
                 .filter(p -> p.getParameter().getId() == 28)
                 .findFirst()
-                .ifPresent(param -> parameter.set
+                .ifPresent(param -> paramCommissionInitValue.set
                         (param.getValue()));
+
         AtomicReference<Double> sum = new AtomicReference<>((double) 0);
         component.stream().filter(c->c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012"))
                 .findFirst()
@@ -517,23 +491,21 @@ public class Colombia {
                             });
                 });
         AtomicReference<Double> paramValue = new AtomicReference<>(0.0);
-        AtomicReference<Double> result = new AtomicReference<>(0.0);
         component.stream()
                 .parallel()
                 .forEach(c -> {
                     if (c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
                         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                            double amountF = i==0?c.getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
+                            double amountF = paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
                             try {
                                 ParamFilterDTO res = isRefreshCommisionValue(commissionList,paymentComponentDTO.getProjections().get(i).getMonth());
-                                if (Boolean.TRUE.equals(res.getStatus())){
-                                    paramValue.set(res.getValue());
-                                }
+                                if (Boolean.TRUE.equals(res.getStatus())) paramValue.set(res.getValue());
+                                //if (paramValue.get() == 0.0) paramValue.set(paramCommissionInitValue.get());
                                 if (sum.get() == 0) sum.set(1.0);
                                 double v = paramValue.get() /12*(amountF/sum.get());
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(v));
                             }catch (Exception e){
-                                log.error("{}", e.getMessage());
+                                log.error("error -> {}", e.getMessage());
                             }
                         }
                     }
