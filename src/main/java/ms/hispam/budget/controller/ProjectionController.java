@@ -33,8 +33,7 @@ public class ProjectionController {
         return service.getDataBase(dataRequest);
     }
     @GetMapping("/bu")
-    public List<Bu> accessBu(@RequestParam String user) {
-
+    public List<Bu> accessBu(@RequestHeader String user) {
         return service.findByBuAccess(user);
     }
     @GetMapping("/componentByCountry")
