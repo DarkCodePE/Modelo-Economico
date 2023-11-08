@@ -130,10 +130,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                     //Max
                     double totalPO = headcountData.getComponents().stream()
                             .filter(c-> Objects.equals(c.getPaymentComponent(), "PC938012") || Objects.equals(c.getPaymentComponent(), "PC938001"))
-                            .mapToDouble(c->c.getAmount().doubleValue()).sum();
+                            .mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble();
+                    log.info("totalPO: {}",totalPO);
                     sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
                 });
-
+        log.info("sum: {}",sum.get());
         //Genera las proyecciones del rango
         headcount.stream()
                 .parallel()

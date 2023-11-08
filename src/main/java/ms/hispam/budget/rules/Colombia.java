@@ -495,12 +495,12 @@ public class Colombia {
                                 //if (paramValue.get() == 0.0) paramValue.set(paramCommissionInitValue.get());
                                 //if (sumCommission.doubleValue() == 0)
                                 double sum = sumCommission.doubleValue()==0?defaultSum:sumCommission.doubleValue();
-                                log.info("value sum --> {}", sum);
                                 double vc = amountF/sum;
                                 double vd = paramValue.get()/12;
                                 double v = vc * vd;
-                                log.info("value mensual --> {}", vc);
-                                log.info("value amoutf--> {}", vd);
+                                double val = v * amountF;
+                                log.info("value amountF --> {}", amountF);
+                                log.info("value mensual --> {}", val);
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(v));
                             }catch (Exception e){
                                 log.error("error -> {}", e.getMessage());
@@ -618,30 +618,11 @@ public class Colombia {
                         //buscar le payment comoment PC938001
                         if (!c.getPaymentComponent().isEmpty() && !c.getPaymentComponent().equalsIgnoreCase("PC938001")){
                             for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                                int idxF = Shared.getIndex(paymentComponentDTO.getProjections()
-                                        .stream()
-                                        .map(MonthProjection::getMonth)
-                                        .collect(Collectors.toList()),period);
-                                List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
-                                if (idxF != -1){
-                                    for (int j = idxF; j < monthsT1.size(); j++) {
-                                        double amountF = (j == 0) ? paymentComponentDTO.getAmount().doubleValue() : monthsT1.get(j-1).getAmount().doubleValue();
-                                        monthsT1.get(j).setAmount(BigDecimal.valueOf(amountF));
-                                    }
-                                }
+                                paymentComponentDTO.getProjections().get(i).setAmount(paymentComponentDTO.getAmount());
                             }
                         }else {
                             for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                                int idxF = Shared.getIndex(paymentComponentDTO.getProjections()
-                                        .stream()
-                                        .map(MonthProjection::getMonth)
-                                        .collect(Collectors.toList()),period);
-                                    List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
-                                if (idxF != -1){
-                                    for (int j = idxF; j < monthsT1.size(); j++) {
-                                        monthsT1.get(j).setAmount(BigDecimal.ZERO);
-                                    }
-                                }
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.ZERO);
                             }
                         }
                     });
@@ -652,16 +633,7 @@ public class Colombia {
                         //buscar le payment comoment PC938001
                         if (!c.getPaymentComponent().isEmpty() && !c.getPaymentComponent().equalsIgnoreCase("PC938001")) {
                             for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                                int idxF = Shared.getIndex(paymentComponentDTO.getProjections()
-                                        .stream()
-                                        .map(MonthProjection::getMonth)
-                                        .collect(Collectors.toList()), period);
-                                List<MonthProjection> monthsT1 = paymentComponentDTO.getProjections();
-                                if (idxF != -1) {
-                                    for (int j = idxF; j < monthsT1.size(); j++) {
-                                        monthsT1.get(j).setAmount(BigDecimal.ZERO);
-                                    }
-                                }
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.ZERO);
                             }
                         }
                     });
