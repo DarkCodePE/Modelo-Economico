@@ -479,8 +479,6 @@ public class Colombia {
                 .findFirst()
                 .ifPresent(param -> paramCommissionInitValue.set
                         (param.getValue()));
-
-
         AtomicReference<Double> paramValue = new AtomicReference<>(0.0);
         component.stream()
                 .parallel()
@@ -489,7 +487,7 @@ public class Colombia {
                             || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
                         double defaultSum = 1.0;
                         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                            double amountF = paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
+                            double amountF = paymentComponentDTO.getAmount().doubleValue();
                             try {
                                 ParamFilterDTO res = isRefreshCommisionValue(commissionList,paymentComponentDTO.getProjections().get(i).getMonth());
                                 if (Boolean.TRUE.equals(res.getStatus())) paramValue.set(res.getValue());
@@ -616,10 +614,13 @@ public class Colombia {
             component.stream()
                     .parallel()
                     .forEach(c -> {
+                        log.info("{}", c.getPaymentComponent());
                         //buscar le payment comoment PC938001
-                        if (!c.getPaymentComponent().isEmpty() && !c.getPaymentComponent().equalsIgnoreCase("PC938001")){
+                        if (!c.getPaymentComponent().isEmpty()){
                             for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-                                paymentComponentDTO.getProjections().get(i).setAmount(paymentComponentDTO.getAmount());
+                                double amount = paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf((Math.round(paymentComponentDTO.getAmount().doubleValue() * 100d) / 100d)));
+
                             }
                         }else {
                             for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
