@@ -34,6 +34,7 @@ public class ProjectionController {
     }
     @GetMapping("/bu")
     public List<Bu> accessBu(@RequestHeader String user) {
+
         return service.findByBuAccess(user);
     }
     @GetMapping("/componentByCountry")

@@ -468,9 +468,9 @@ public class Colombia {
         PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
         paymentComponentDTO.setPaymentComponent("COMMISSION");
         //PC938003 / PC938012
-        paymentComponentDTO.setAmount(Stream.of(
-                commision1.get(),commision2.get()
-        ).reduce(BigDecimal.ZERO,BigDecimal::add));
+        BigDecimal totalBase = BigDecimal.valueOf(commissionList.isEmpty()?0:commissionList.get(0).getValue());
+        paymentComponentDTO.setAmount(BigDecimal.valueOf(totalBase.doubleValue()/12*
+                (getMayor(commision1.get(),commision2.get()).doubleValue()/sumCommission.doubleValue())));
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
         // buscamos el primer valor del parametro de comisiones
         AtomicReference<Double> paramCommissionInitValue = new AtomicReference<>((double) 0);
@@ -485,7 +485,8 @@ public class Colombia {
         component.stream()
                 .parallel()
                 .forEach(c -> {
-                    if (c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
+                    if (c.getPaymentComponent().equalsIgnoreCase("PC938003")
+                            || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
                         double defaultSum = 1.0;
                         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
                             double amountF = paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
@@ -641,4 +642,7 @@ public class Colombia {
         component.add(paymentComponentDTO);
     }
 
+    private BigDecimal getMayor(BigDecimal b1 , BigDecimal b2){
+         return b1.doubleValue()>b2.doubleValue()?b1:b2;
+    }
 }
