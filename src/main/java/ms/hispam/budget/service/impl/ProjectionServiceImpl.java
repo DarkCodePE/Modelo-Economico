@@ -129,7 +129,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .forEach(headcountData -> {
                     //Max
                     double totalPO = headcountData.getComponents().stream()
-                            .filter(c-> Objects.equals(c.getPaymentComponent(), "PC938005") || Objects.equals(c.getPaymentComponent(), "PC938001"))
+                            .filter(c-> Objects.equals(c.getPaymentComponent(), "PC938012") || Objects.equals(c.getPaymentComponent(), "PC938001"))
                             .mapToDouble(c->c.getAmount().doubleValue()).sum();
                     sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
                 });
