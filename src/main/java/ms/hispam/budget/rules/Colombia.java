@@ -444,7 +444,7 @@ public class Colombia {
                 });
     }
 
-    public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission) {
         // BUSCAMOS LOS PAYMENT COMPONENTS NECESARIOS PARA EL CALCUL  DE COMISIONES
         AtomicReference<BigDecimal> commision1 = new AtomicReference<>(BigDecimal.ZERO);
         AtomicReference<BigDecimal> commision2 = new AtomicReference<>(BigDecimal.ZERO);
@@ -480,29 +480,27 @@ public class Colombia {
                 .ifPresent(param -> paramCommissionInitValue.set
                         (param.getValue()));
 
-        AtomicReference<Double> sum = new AtomicReference<>((double) 0);
-        component.stream().filter(c->c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012"))
-                .findFirst()
-                .ifPresent(c -> {
-                    c.getProjections().stream()
-                            .parallel()
-                            .forEach(p -> {
-                                sum.set(sum.get() + p.getAmount().doubleValue());
-                            });
-                });
+
         AtomicReference<Double> paramValue = new AtomicReference<>(0.0);
         component.stream()
                 .parallel()
                 .forEach(c -> {
                     if (c.getPaymentComponent().equalsIgnoreCase("PC938003") || c.getPaymentComponent().equalsIgnoreCase("PC938012")){
+                        double defaultSum = 1.0;
                         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
                             double amountF = paymentComponentDTO.getProjections().get(i).getAmount().doubleValue();
                             try {
                                 ParamFilterDTO res = isRefreshCommisionValue(commissionList,paymentComponentDTO.getProjections().get(i).getMonth());
                                 if (Boolean.TRUE.equals(res.getStatus())) paramValue.set(res.getValue());
                                 //if (paramValue.get() == 0.0) paramValue.set(paramCommissionInitValue.get());
-                                if (sum.get() == 0) sum.set(1.0);
-                                double v = paramValue.get() /12*(amountF/sum.get());
+                                //if (sumCommission.doubleValue() == 0)
+                                double sum = sumCommission.doubleValue()==0?defaultSum:sumCommission.doubleValue();
+                                log.info("value sum --> {}", sum);
+                                double vc = amountF/sum;
+                                double vd = paramValue.get()/12;
+                                double v = vc * vd;
+                                log.info("value mensual --> {}", vc);
+                                log.info("value amoutf--> {}", vd);
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(v));
                             }catch (Exception e){
                                 log.error("error -> {}", e.getMessage());
@@ -638,7 +636,7 @@ public class Colombia {
                                         .stream()
                                         .map(MonthProjection::getMonth)
                                         .collect(Collectors.toList()),period);
-                                List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
+                                    List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
                                 if (idxF != -1){
                                     for (int j = idxF; j < monthsT1.size(); j++) {
                                         monthsT1.get(j).setAmount(BigDecimal.ZERO);

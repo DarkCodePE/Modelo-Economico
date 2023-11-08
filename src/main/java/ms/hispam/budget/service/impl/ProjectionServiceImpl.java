@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 
@@ -93,8 +94,6 @@ public class ProjectionServiceImpl implements ProjectionService {
 
             List<ComponentAmount> groupedData = headcount.stream()
                     .flatMap(j -> j.getComponents().stream())
-                    //  TODO: QUITAR EL FILTRO DE AQUI
-                    .filter(w -> !Objects.equals(w.getPaymentComponent(), "PC938003") || !Objects.equals(w.getPaymentComponent(), "PC938012"))
                     .collect(Collectors.groupingBy(
                             PaymentComponentDTO::getPaymentComponent,
                             Collectors.summingDouble(p -> p.getAmount().doubleValue())
@@ -123,25 +122,27 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Colombia methodsColombia = new Colombia();
-        /*log.info("HEADCOUNT: {}",headcount.size());
-        log.info("PARAMETERS: {}",projection.getParameters());*/
+        //SUMATORIA LOS COMPONENTES  PC938003 / PC938012
+        AtomicReference<BigDecimal> sum = new AtomicReference<>(BigDecimal.ZERO);
+        headcount.stream()
+                .parallel()
+                .forEach(headcountData -> {
+                    //Max
+                    double totalPO = headcountData.getComponents().stream()
+                            .filter(c-> Objects.equals(c.getPaymentComponent(), "PC938005") || Objects.equals(c.getPaymentComponent(), "PC938001"))
+                            .mapToDouble(c->c.getAmount().doubleValue()).sum();
+                    sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
+                });
+
         //Genera las proyecciones del rango
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                   /* log.info("COMPONENT: {}",component);
-                    log.info("getClassEmployee: {}",headcountData.getClassEmployee());*/
-                  /*  List<PaymentComponentDTO> filterSalaryMin =  component.stream().filter(c -> {
-                        log.info("getAmount: {}",c.getAmount());
-                        return c.getAmount().doubleValue() == 116000.0 || c.getAmount().doubleValue() == 120000.0 || c.getAmount().doubleValue() == 1300000.0 || c.getAmount().doubleValue() == 0.0;
-                    }).collect(Collectors.toList());
-                    log.info("filterSalaryMin: {}",filterSalaryMin);*/
-                    //methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    //methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    //methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    //log.info("component: {}",component);
+                    methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get());
+                    methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                             projection.getPeriod(),projection.getRange());
