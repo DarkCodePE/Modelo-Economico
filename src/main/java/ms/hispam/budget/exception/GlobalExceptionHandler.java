@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
                     mapErrors.put(clave, valor);
                 }
         );
-        ApiResponse apiResponse = new ApiResponse(mapErrors.toString(), webRequest.getDescription(false));
+        ApiResponse apiResponse = new ApiResponse(mapErrors, webRequest.getDescription(false));
         return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
     }
 }

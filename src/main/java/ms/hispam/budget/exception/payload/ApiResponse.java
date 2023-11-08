@@ -7,12 +7,12 @@ import java.util.Date;
 
 @Data
 @NoArgsConstructor
-public class ApiResponse {
+public class ApiResponse<T> {
     private Date date = new Date();
-    private String message;
+    private T message;
     private String url;
 
-    public ApiResponse(String mensaje, String url) {
+    public ApiResponse(T mensaje, String url) {
         this.message = mensaje;
         this.url = url.replace("uri=","");
     }
