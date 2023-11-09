@@ -112,6 +112,8 @@ public class ProjectionServiceImpl implements ProjectionService {
             data.setData(page);
             return  data;
         }catch (Exception ex){
+            //log.error("Error al generar proyección",ex.getStackTrace());
+            //ex.printStackTrace();
             Response<Page<ProjectionDTO>> data = new Response<>();
             data.setStatus(500);
             data.setSuccess(false);
@@ -149,6 +151,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     }
                 });
     }
+
     private void isUruguay( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Uruguay methodsUruguay = new Uruguay();
         //Genera las proyecciones del rango
@@ -413,6 +416,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                 break;
             case "T. URUGUAY":
                 isUruguay(headcount,projection);
+                break;
+            case "T. COLOMBIA":
+                isColombia(headcount,projection);
                 break;
             default:
                 break;
@@ -719,7 +725,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     type(12).
                     paymentComponent("260").amount(BigDecimal.valueOf(guarderia))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(guarderia))).build());
-        }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY")){
+        }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY") || projection.getBu().equalsIgnoreCase("T. COLOMBIA")){
             double hhee = 0.0;
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
