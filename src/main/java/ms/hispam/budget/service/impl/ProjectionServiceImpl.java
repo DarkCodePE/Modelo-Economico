@@ -61,6 +61,9 @@ public class ProjectionServiceImpl implements ProjectionService {
     private ParameterDefaultRepository parameterDefaultRepository;
     @Autowired
     private BusinessCaseRepository businessCaseRepository;
+    @Autowired
+    private TypEmployeeRepository typEmployeeRepository;
+
 
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="POXXXXXX";
@@ -449,10 +452,12 @@ public class ProjectionServiceImpl implements ProjectionService {
 
         List<ComponentProjection> components =sharedRepo.getComponentByBu(data.getBu()).stream().filter(ComponentProjection::getIscomponent)
                .collect(Collectors.toList());
+        List<String> typeEmployee = typEmployeeRepository.findByBu(data.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
+
 
         List<HeadcountHistoricalProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
                 String.join(",", entities),data.getPeriod(),
-                components.stream().map(ComponentProjection::getComponent).collect(Collectors.joining(",")));
+                components.stream().map(ComponentProjection::getComponent).collect(Collectors.joining(",")), String.join(",", typeEmployee));
 
         if(headcount.isEmpty()){
          return   DataBaseMainReponse.builder().data(new ArrayList<>()).components(components).nominas(new ArrayList<>()).comparing(new ArrayList<>()).build();
@@ -579,9 +584,11 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
+        List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
+
         List<HeadcountProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
                         String.join(",", entities),projection.getPeriod(),String.join(",",
-                        projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent).collect(Collectors.joining(","))))
+                        projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent).collect(Collectors.joining(","))),String.join(",", typeEmployee))
                             .stream().map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())

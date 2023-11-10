@@ -26,11 +26,12 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
                                                        @Param("p_ini") String p_ini, @Param("p_fin") String p_fin,
                                                        @Param("co_nomina") String co_nomina);
 
-        @Query(nativeQuery = true,value = "EXEC get_data_bu @password = :password, @entities = :entities, @periodo = :periodo,@component= :component")
+        @Query(nativeQuery = true,value = "EXEC get_data_bu @password = :password, @entities = :entities, @periodo = :periodo,@component= :component,@classEmployee=:classEmployee")
     List<HeadcountHistoricalProjection> getHistoricalBuAndPeriodSp(@Param("password") String password,
                                                                    @Param("entities")String entities,
                                                                    @Param("periodo")String periodo,
-                                                                   @Param("component")String component);
+                                                                   @Param("component")String component,
+                                                                   @Param("classEmployee")String classEmployee);
 
     @Query(nativeQuery = true,value = "EXEC get_cost_po @password = :password, @po = :po")
     Optional<CostPoProjection> getCostPo(@Param("password") String password, @Param("po")String po );
