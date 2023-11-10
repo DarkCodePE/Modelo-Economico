@@ -9,4 +9,5 @@ public class ParamFilterDTO {
     private Integer id;
     private Double value;
     private Boolean status;
+    private String period;
 }

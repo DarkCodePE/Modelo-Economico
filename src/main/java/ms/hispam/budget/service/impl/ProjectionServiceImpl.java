@@ -9,6 +9,7 @@ import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.Colombia;
 import ms.hispam.budget.rules.Ecuador;
+import ms.hispam.budget.rules.Mexico;
 import ms.hispam.budget.rules.Uruguay;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.util.Constant;
@@ -88,6 +89,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                 case "T. COLOMBIA":
                     isColombia(headcount,projection);
                     break;
+                case "T. MEXICO":
+                    isMexico(headcount,projection);
+                    break;
                 default:
                     break;
             }
@@ -113,7 +117,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             return  data;
         }catch (Exception ex){
             //log.error("Error al generar proyección",ex.getStackTrace());
-            //ex.printStackTrace();
+            ex.printStackTrace();
             Response<Page<ProjectionDTO>> data = new Response<>();
             data.setStatus(500);
             data.setSuccess(false);
@@ -121,6 +125,20 @@ public class ProjectionServiceImpl implements ProjectionService {
             return  data;
         }
 
+    }
+    private void isMexico(List<ProjectionDTO>  headcount , ParametersByProjection projection){
+        Mexico methodsMexico = new Mexico();
+        //Genera las proyecciones del rango
+        headcount.stream()
+                .parallel()
+                .forEach(headcountData -> {
+                    List<PaymentComponentDTO> component = headcountData.getComponents();
+                    methodsMexico.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                        addBaseExtern(headcountData,projection.getBaseExtern(),
+                                projection.getPeriod(),projection.getRange());
+                    }
+                });
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Colombia methodsColombia = new Colombia();
@@ -419,6 +437,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                 break;
             case "T. COLOMBIA":
                 isColombia(headcount,projection);
+                break;
+            case "T. MEXICO":
+                isMexico(headcount,projection);
                 break;
             default:
                 break;

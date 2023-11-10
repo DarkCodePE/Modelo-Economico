@@ -1,5 +1,7 @@
 package ms.hispam.budget.dto.projections;
 
+import java.util.Date;
+
 public interface HeadcountHistoricalProjection {
     public String getPosition();
     public String getPoname();
@@ -13,6 +15,6 @@ public interface HeadcountHistoricalProjection {
     public String getComponent();
     public Double getAmount();
     public String getClassemp();
-
-
+    public Date getFnac();
+    public Date getFcontra();
 }

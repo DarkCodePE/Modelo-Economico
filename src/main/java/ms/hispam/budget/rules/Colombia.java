@@ -276,12 +276,12 @@ public class Colombia {
                          idxStart=  Shared.getIndex(paymentComponentDTO.getProjections().stream()
                                  .map(MonthProjection::getMonth).collect(Collectors.toList()),periodRevisionSalary[0]);
                          idxEnd=  Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                                 .map(monthProjection -> monthProjection.getMonth()).collect(Collectors.toList()),periodRevisionSalary.length==1? periodRevisionSalary[0]:periodRevisionSalary[1]);
+                                 .map(MonthProjection::getMonth).collect(Collectors.toList()),periodRevisionSalary.length==1? periodRevisionSalary[0]:periodRevisionSalary[1]);
                          AtomicReference<Double> salaryFirst= new AtomicReference<>(0.0);
                          AtomicReference<Double> salaryEnd= new AtomicReference<>(0.0);
                          salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
                          salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
-                             differPercent=(salaryEnd.get())/(salaryFirst.get())-1;
+                         differPercent=(salaryEnd.get())/(salaryFirst.get())-1;
                      }
                      double percent = percetange.get()/100;
                      int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
