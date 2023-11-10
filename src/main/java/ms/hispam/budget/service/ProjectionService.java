@@ -10,20 +10,20 @@ import java.util.List;
 
 public interface ProjectionService {
 
-    public Response<Page<ProjectionDTO>> getProjection(ParametersByProjection projection);
+    public Page<ProjectionDTO> getProjection(ParametersByProjection projection);
 
     Config getComponentByBu(String bu);
 
-    Response<Boolean> saveProjection( ParameterHistorial projection,String email);
+    Boolean saveProjection( ParameterHistorial projection,String email);
 
     List<HistorialProjectionDTO> getHistorial( String email);
 
 
     ProjectionInformation getHistorialProjection( Integer id);
 
-    Response<Boolean> deleteHistorical( Integer id);
+    Boolean deleteHistorical( Integer id);
 
-    byte[] downloadProjection( ParametersByProjection projection);
+    byte[] downloadProjection( ParameterDownload projection);
 
     byte[] downloadProjectionHistorical( Integer id);
 
@@ -31,7 +31,7 @@ public interface ProjectionService {
 
     List<Bu> findByBuAccess(String email);
 
-    Response<List<AccountProjection>>getAccountsByBu(Integer idBu);
+    List<AccountProjection>getAccountsByBu(Integer idBu);
 
     List<RosetaDTO> getRoseta(Integer bu);
 

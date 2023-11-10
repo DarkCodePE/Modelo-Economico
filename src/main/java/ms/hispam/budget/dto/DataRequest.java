@@ -17,5 +17,5 @@ public class DataRequest {
     private String periodComparing;
     private String nominaFromComparing;
     private String nominaToComparing;
-    private boolean isComparing;
+    private Boolean isComparing;
 }

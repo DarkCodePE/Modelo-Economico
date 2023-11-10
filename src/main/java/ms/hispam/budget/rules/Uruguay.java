@@ -184,6 +184,7 @@ public class Uruguay {
                     .filter(h -> h.getMonth().equalsIgnoreCase(month.getMonth())).findFirst()).ifPresent(k -> bseM.set(k.getAmount().doubleValue()));
             Double valueM = (snM.get()+guardiaM.get()+premioM.get()+bonoM.get()+hheeM.get()+aliM.get()+bseM.get())*impuestoBSE.get();
             month.setAmount(BigDecimal.valueOf(valueM));
+
         }
         return decimo;
     }
@@ -242,13 +243,27 @@ public class Uruguay {
 
             double monto = sn.get()+guardia.get()+premio.get()+hhee.get();
             Double value = monto>pMaxMtApatri.get()?
-                    (pMaxMtApatri.get()*pmontePio.get())+
-                    (monto*(pfonasa.get()+pfrl.get()+pfgcl.get()))+
-                            ((bse.get()+ticketAli.get())*pmontePio.get()
-                                    +(pmontePio.get()*aguinaldo.get()>pMaxMtApatri.get()/2?pMaxMtApatri.get()/2:aguinaldo.get()
-                            )):monto*(pmontePio.get()+pfonasa.get()+pfrl.get()+pfgcl.get()+
-                    ((bse.get()+ticketAli.get())*pmontePio.get())+(aguinaldo.get()*pmontePio.get()));
-            value= Double.isNaN(value) ?0.0:value;
+                        (pMaxMtApatri.get()*pmontePio.get())+
+                            (monto*(pfonasa.get()+pfrl.get()+pfgcl.get()))+
+                            ((bse.get()+ticketAli.get())*pmontePio.get())+
+                                    (pmontePio.get()* ((aguinaldo.get()>pMaxMtApatri.get()/2)?pMaxMtApatri.get()/2:aguinaldo.get())):
+                    monto*(pmontePio.get()+pfonasa.get()+pfrl.get()+pfgcl.get())+
+                    ((bse.get()+ticketAli.get())*pmontePio.get()+
+                            (aguinaldo.get()*pmontePio.get()));
+            value= Double.isNaN(value) ?0.0: 0.98* value;
+/*
+            if (sueldoNominal + guardia + premio + promHHEE > parametros28) {
+                result = (parametros28 * parametrosC29) +
+                        ((sueldoNominal + guardia + premio + promHHEE) * (parametrosC30 + parametrosC31 + parametrosC32)) +
+                        ((bcBs + ticketAlim) * parametrosC29) +
+                        (parametrosC29 * ((aguinaldo > parametros28 / 2) ? parametros28 / 2 : aguinaldo));
+            } else {
+                result = (sueldoNominal + guardia + premio + promHHEE) * (parametrosC29 + parametrosC30 + parametrosC31 + parametrosC32) +
+                        ((bcBs + ticketAlim) * parametrosC29) +
+                        (aguinaldo * parametrosC29);
+            }
+
+ */
             if(j==0){
                 decimo.setAmount(BigDecimal.valueOf(value));
             }
@@ -370,7 +385,7 @@ public class Uruguay {
     public Integer validateTypePo(String poname){
         if(poname.toLowerCase().contains("ceo")){
             return 0;
-        }else if(poname.toLowerCase().contains("gerente")){
+        }else if(poname.toLowerCase().contains("gerente") || poname.toLowerCase().contains("director")){
             return 1;
         }else if(poname.toLowerCase().contains("asesor de atención telefonica")){
             return 2;

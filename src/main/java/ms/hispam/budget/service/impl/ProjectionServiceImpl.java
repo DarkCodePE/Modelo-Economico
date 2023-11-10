@@ -1,10 +1,12 @@
 package ms.hispam.budget.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import com.azure.core.exception.ResourceNotFoundException;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
+import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.Colombia;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import javax.xml.crypto.Data;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -65,17 +68,13 @@ public class ProjectionServiceImpl implements ProjectionService {
 
 
     @Override
-    public Response<Page<ProjectionDTO>> getProjection(ParametersByProjection projection) {
-        try {
+    public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
+
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
 
 
             if(headcount.isEmpty()){
-                Response<Page<ProjectionDTO>> data = new Response<>();
-                data.setStatus(404);
-                data.setSuccess(false);
-                data.setMessage("No existe datos para este periodo");
-                return  data;
+               throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
 
             switch (projection.getBu()){
@@ -106,20 +105,11 @@ public class ProjectionServiceImpl implements ProjectionService {
             Page<ProjectionDTO> page = new Page<>(0,0, headcount.size(),
                     headcount,groupedData);
 
-            Response<Page<ProjectionDTO>> data = new Response<>();
-            data.setStatus(200);
-            data.setSuccess(true);
-            data.setData(page);
-            return  data;
-        }catch (Exception ex){
-            //log.error("Error al generar proyección",ex.getStackTrace());
-            //ex.printStackTrace();
-            Response<Page<ProjectionDTO>> data = new Response<>();
-            data.setStatus(500);
-            data.setSuccess(false);
-            data.setMessage(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString).collect(Collectors.joining(",")));
-            return  data;
-        }
+
+
+            return  page;
+
+
 
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
@@ -227,7 +217,7 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
-    public Response<Boolean> saveProjection(ParameterHistorial projection,String email) {
+    public Boolean saveProjection(ParameterHistorial projection,String email) {
 
             HistorialProjection historial = new HistorialProjection();
             historial.setBu(projection.getBu());
@@ -304,7 +294,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             sharedRepo.insertHistorialExtern(json.getId(),2);
         }
 
-            return Response.<Boolean>builder().success(true).message("Proyección guardada con éxito").status(200).build();
+            return true;
 
 
     }
@@ -392,44 +382,35 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
-    public Response<Boolean> deleteHistorical(Integer id) {
-        try {
+    public Boolean deleteHistorical(Integer id) {
+
             parameterProjectionRepository.deleteByIdHistorial(id);
             historialProjectionRepository.deleteById(id);
-            return Response.<Boolean>builder().success(true).message("Eliminación con éxito").status(200).build();
-
-        }catch (Exception ex){
-            return Response.<Boolean>builder().success(false).status(500).message("Ocurrio un error inesperado")
-                    .error("Error").build();
-
-        }
-
+            return true;
     }
 
     @Override
-    public byte[] downloadProjection(  ParametersByProjection projection) {
-        List<ProjectionDTO> headcount=  getHeadcountByAccount(projection);
-        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
-        switch (projection.getBu()){
-            case "T. ECUADOR":
-                isEcuador(headcount,projection);
-                break;
-            case "T. URUGUAY":
-                isUruguay(headcount,projection);
-                break;
-            case "T. COLOMBIA":
-                isColombia(headcount,projection);
-                break;
-            default:
-                break;
-        }
+    public byte[] downloadProjection(  ParameterDownload projection) {
+        projection.setPeriod(projection.getPeriod().replace("/",""));
+        projection.setNominaFrom(projection.getNominaFrom().replace("/",""));
+        projection.setNominaTo(projection.getNominaTo().replace("/",""));
 
-       return  ExcelService.generateExcelProjection(headcount,componentProjections,projection);
+        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
+        DataRequest dataBase = DataRequest.builder()
+                .idBu(projection.getIdBu())
+                .bu(projection.getBu())
+                .period(projection.getPeriod())
+                .nominaFrom(projection.getNominaFrom())
+                .nominaTo(projection.getNominaTo())
+                .isComparing(false)
+                .build();
+
+       return  ExcelService.generateExcelProjection(projection,componentProjections,getDataBase(dataBase));
     }
 
     @Override
     public byte[] downloadProjectionHistorical(Integer id) {
-        List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
+      /*  List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
         List<ComponentProjection> components = sharedRepo.getComponentByBu(parameters.get(0).getVbu());
         ParametersByProjection projection = ParametersByProjection
                 .builder()
@@ -452,9 +433,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .range(k.getVrange())
                         .build()).collect(Collectors.toList()))
                 .build();
-        replaceSlash(projection);
+        replaceSlash(projection);*/
 
-        return downloadProjection(projection);
+        return null;
     }
 
     @Override
@@ -503,11 +484,11 @@ public class ProjectionServiceImpl implements ProjectionService {
 
         List<DataBaseResponse> comparing = new ArrayList<>();
 
-       if(data.isComparing()){
+       if(Boolean.TRUE.equals(data.getIsComparing())){
            data.setPeriod(data.getPeriodComparing());
            data.setNominaFrom(data.getNominaFromComparing());
            data.setNominaTo(data.getNominaToComparing());
-           data.setComparing(false);
+           data.setIsComparing(false);
            comparing= getDataBase(data).getData();
        }
  return  DataBaseMainReponse.builder().data(deudasAgrupadas).components(components).nominas(codeNominas).comparing(comparing).build();
@@ -519,18 +500,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
 
     @Override
-    public Response<List<AccountProjection>> getAccountsByBu(Integer idBu) {
-
-        try {
-            return Response.<List<AccountProjection>>builder().status(200)
-                    .data(sharedRepo.getAccount(idBu)).success(true).message("ok").build();
-        }catch (Exception ex ){
-            return Response.<List<AccountProjection>>builder().status(500).success(false)
-                    .error(Arrays.stream(ex.getStackTrace()).map(StackTraceElement::toString)
-                            .collect(Collectors.joining(","))
-            ).build();
-        }
-
+    public List<AccountProjection> getAccountsByBu(Integer idBu) {
+            return sharedRepo.getAccount(idBu);
     }
 
     @Override
@@ -730,7 +701,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
                 if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
-                    hhee = +h.getImporte();
+                    hhee = hhee +h.getImporte();
                 }
             }
             projectionsComponent.add(PaymentComponentDTO.builder().
