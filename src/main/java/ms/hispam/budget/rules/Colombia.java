@@ -281,6 +281,8 @@ public class Colombia {
                          AtomicReference<Double> salaryEnd= new AtomicReference<>(0.0);
                          salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
                          salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
+                         //SI(T13<=U$3;U$3;T13);SI(T13<U$4;U$4;T13));
+                         //T13*(1+SI(S13/R13-1>0;SI(S13/R13-1<=U$8;U$8-(S13/R13-1);0);U$8)));
                          differPercent=(salaryEnd.get())/(salaryFirst.get())-1;
                      }
                      double percent = percetange.get()/100;

@@ -17,11 +17,15 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.security.*;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import org.apache.commons.codec.binary.Base64;
+
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -158,4 +162,9 @@ public class Shared {
     }
 
 
+    public static LocalDate convertToLocalDateViaInstant(Date dateContract) {
+        return dateContract.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+    }
 }
