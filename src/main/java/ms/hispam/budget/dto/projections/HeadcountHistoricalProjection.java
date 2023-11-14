@@ -1,7 +1,14 @@
 package ms.hispam.budget.dto.projections;
 
-import java.util.Date;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Optional;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Optional;
 public interface HeadcountHistoricalProjection {
     public String getPosition();
     public String getPoname();
@@ -17,4 +24,12 @@ public interface HeadcountHistoricalProjection {
     public String getClassemp();
     public Date getFnac();
     public Date getFcontra();
+
+    default Optional<LocalDate> getFnacAsLocalDate() {
+        return Optional.ofNullable(getFnac()).map(Date::toLocalDate);
+    }
+
+    default Optional<LocalDate> getFcontraAsLocalDate() {
+        return Optional.ofNullable(getFcontra()).map(Date::toLocalDate);
+    }
 }

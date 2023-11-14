@@ -4,7 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.Date;
+import java.sql.Date;
+import java.time.LocalDate;
+
 
 @Data
 @AllArgsConstructor
@@ -23,6 +25,6 @@ public class HeadcountProjection {
     private String component;
     private Double amount;
     private String classEmp;
-    private Date fNac;
-    private Date fContra;
+    private LocalDate fNac;
+    private LocalDate fContra;
 }

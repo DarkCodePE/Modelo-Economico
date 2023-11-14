@@ -9,7 +9,15 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MonthProjection {
+public class MonthProjection implements Cloneable{
     private String month;
     private BigDecimal amount;
+    @Override
+    public MonthProjection clone() {
+        try {
+            return (MonthProjection) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Error al clonar MonthProjection", e);
+        }
+    }
 }

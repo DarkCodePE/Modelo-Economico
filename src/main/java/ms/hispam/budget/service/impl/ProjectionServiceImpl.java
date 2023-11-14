@@ -8,20 +8,20 @@ import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
-import ms.hispam.budget.rules.Colombia;
-import ms.hispam.budget.rules.Ecuador;
-import ms.hispam.budget.rules.Mexico;
-import ms.hispam.budget.rules.Uruguay;
+import ms.hispam.budget.rules.*;
+import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.util.Constant;
 import ms.hispam.budget.util.ExcelService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -64,17 +64,27 @@ public class ProjectionServiceImpl implements ProjectionService {
     private TypEmployeeRepository typEmployeeRepository;
     @Autowired
     private DaysVacationOfTimeRepository daysVacationOfTimeRepository;
-
+    private final MexicoService mexicoService;
+    @Autowired
+    public ProjectionServiceImpl(MexicoService mexicoService) {
+        this.mexicoService = mexicoService;
+    }
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="POXXXXXX";
 
-
+    @Cacheable("daysVacationCache")
+    public List<DaysVacationOfTime> getAllDaysVacation() {
+        return daysVacationOfTimeRepository.findAll();
+    }
 
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(p -> p.getPo().equals("PO10038566")).collect(Collectors.toList());
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+            //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
+         /*   List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO9980826")).collect(Collectors.toList());*/
 
+            //.info("headcount {}",headcount);
 
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
@@ -92,6 +102,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                     break;
                 case "T. MEXICO":
                     isMexico(headcount,projection);
+                    break;
+                case "T. PERU":
+
                     break;
                 default:
                     break;
@@ -117,17 +130,23 @@ public class ProjectionServiceImpl implements ProjectionService {
             return new Page<>();
         }
     }
+    private void isPeru( List<ProjectionDTO>  headcount , ParametersByProjection projection){
+        Peru methodsPeru = new Peru();
+    }
     private void isMexico(List<ProjectionDTO>  headcount , ParametersByProjection projection){
-        Mexico methodsMexico = new Mexico(daysVacationOfTimeRepository);
+        Mexico methodsMexico = new Mexico(mexicoService);
         //Genera las proyecciones del rango
+        AtomicInteger i = new AtomicInteger();
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
+                    log.info("headcountData {}",headcountData.getPo());
+                    log.info("headcountData {}",  i.getAndIncrement());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsMexico.revisionSalary(component, projection.getParameters());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
-                    //methodsMexico.provVacaciones(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac());
+                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
@@ -219,8 +238,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElse(null);
         if(vbu!=null){
-            return Config.builder().
-                    components(sharedRepo.getComponentByBu(bu))
+            return Config.builder()
+                    .components(sharedRepo.getComponentByBu(bu))
                     .parameters(parameterRepository.getParameterBu(bu))
                     .icon(vbu.getIcon())
                     .money(vbu.getMoney())
@@ -619,11 +638,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .department(e.getDepartment())
                         .component(e.getComponent())
                         .amount(e.getAmount())
-                        .fContra(e.getFcontra())
-                        .fNac(e.getFnac())
+                        .fContra(e.getFcontraAsLocalDate().isPresent()?e.getFcontraAsLocalDate().get():null)
+                        .fNac(e.getFnacAsLocalDate().isPresent()?e.getFnacAsLocalDate().get():null)
                         .classEmp(e.getClassemp())
                             .build()).collect(Collectors.toList());
-
+        //log.info("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                 codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
