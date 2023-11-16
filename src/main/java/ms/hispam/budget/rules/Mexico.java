@@ -3,11 +3,10 @@ package ms.hispam.budget.rules;
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.cache.DateCache;
 import ms.hispam.budget.cache.SimpleCache;
-import ms.hispam.budget.dto.MonthProjection;
-import ms.hispam.budget.dto.ParametersDTO;
-import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.ParamFilterDTO;
 import ms.hispam.budget.entity.mysql.DaysVacationOfTime;
+import ms.hispam.budget.entity.mysql.RangeBu;
 import ms.hispam.budget.repository.mysql.DaysVacationOfTimeRepository;
 import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.impl.ProjectionServiceImpl;
@@ -60,8 +59,8 @@ public class Mexico {
         this.mexicoService = mexicoService;
     }
 
-    public List<DaysVacationOfTime> getAllDaysVacation() {
-        return mexicoService.getAllDaysVacation();
+    public List<RangeBuDetail> getAllDaysVacation(List<RangeBuDetail> rangeBu, Integer idBu) {
+        return mexicoService.getAllDaysVacation(rangeBu, idBu);
     }
 
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
@@ -287,27 +286,27 @@ public class Mexico {
         // Si no hay uno o dos valores, el formato no es válido
         return false;
     }
-    private int getVacationsDays(long seniority, Map<String, DaysVacationOfTime> daysVacationsMap) {
-        return daysVacationsMap.values().parallelStream()
-                .filter(daysVacation -> isValidRange(seniority, daysVacation.getRange()))
-                .findAny()
-                .map(DaysVacationOfTime::getVacationDays)
-                .orElse(0);
-    }
 
-    public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth) {
+    public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth, List<RangeBuDTO> rangeBu, Integer idBu) {
         Objects.requireNonNull(dateContract, "La fecha de contrato no puede ser nula");
 
         LocalDate dateActual = LocalDate.now();
         long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
-
-        List<DaysVacationOfTime> daysVacations = getAllDaysVacation();
-        Map<String, DaysVacationOfTime> daysVacationsMap = daysVacations.stream()
-                .collect(Collectors.toMap(DaysVacationOfTime::getRange, Function.identity()));
+        RangeBuDTO rangeBuByBU = rangeBu.stream()
+                .filter(r -> r.getIdBu().equals(idBu))
+                .findFirst()
+                .orElse(null);
+        List<RangeBuDetail> daysVacations;
+        if (rangeBuByBU != null) {
+             daysVacations = getAllDaysVacation(rangeBuByBU.getRangeBuDetails(), idBu);
+        }else {
+            daysVacations = getDaysVacationList();
+        }
+        if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
+        Map<String, RangeBuDetail> daysVacationsMap = daysVacations.stream()
+                .collect(Collectors.toMap(RangeBuDetail::getRange, Function.identity()));
 
         int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
-      /*  List<DaysVacationInfo> daysVacations = getDaysVacationList();
-        int vacationsDays = getVacationsDays(seniority, daysVacations);*/
 
         if (vacationsDays == 0) {
             int daysVacationPerMonth = daysVacationList.get(0).getVacationDays() / 12;
@@ -339,41 +338,32 @@ public class Mexico {
             component.add(paymentComponentProvVacations);
         }
     }
-    private List<DaysVacationInfo> getDaysVacationList() {
+    //TODO: REFACTOR FALLBACK --> URGENTE
+    private List<RangeBuDetail> getDaysVacationList() {
         // Puedes inicializar tu lista aquí con los valores proporcionados
-        List<DaysVacationInfo> daysVacations = Arrays.asList(
-                new DaysVacationInfo(1, 1, 12),
-                new DaysVacationInfo(2, 2, 14),
-                new DaysVacationInfo(3, 3, 16),
-                new DaysVacationInfo(4, 4, 19),
-                new DaysVacationInfo(5, 9, 22),
-                new DaysVacationInfo(10, 14, 24),
-                new DaysVacationInfo(15, 19, 26),
-                new DaysVacationInfo(20, 24, 28),
-                new DaysVacationInfo(25, 30, 30),
-                new DaysVacationInfo(31, 35, 32)
+        return Arrays.asList(
+                new RangeBuDetail(4, "1", 12),
+                new RangeBuDetail(4, "2", 14),
+                new RangeBuDetail(4, "3", 16),
+                new RangeBuDetail(4, "4", 19),
+                new RangeBuDetail(4, "5 a 9", 22),
+                new RangeBuDetail(4, "10 a 14", 24),
+                new RangeBuDetail(4, "15 a 19", 26),
+                new RangeBuDetail(4, "20 a 24", 28),
+                new RangeBuDetail(4, "25 a 30", 30),
+                new RangeBuDetail(4, "31 a 35", 32)
         );
-        return daysVacations;
     }
-    private int getCachedVacationsDays(long seniority, Map<String, DaysVacationOfTime> daysVacationsMap) {
+    private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetail> daysVacationsMap) {
         String seniorityKey = String.valueOf(seniority);
 
         return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
-            DaysVacationOfTime daysVacation = daysVacationsMap.get(key);
+            RangeBuDetail daysVacation = daysVacationsMap.get(key);
             if (daysVacation != null) {
-                return daysVacation.getVacationDays();
+                return daysVacation.getValue();
             }
             return 0;
         });
-    }
-
-    private int getVacationsDays(long seniority, List<DaysVacationInfo> daysVacations) {
-        for (DaysVacationInfo daysVacation : daysVacations) {
-            if (isValidRange(seniority, daysVacation)) {
-                return daysVacation.getVacationDays();
-            }
-        }
-        return 0;
     }
 
     private boolean isValidRange(long seniority, DaysVacationInfo daysVacation) {

@@ -1,5 +1,6 @@
 package ms.hispam.budget.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 
+@Slf4j(topic = "PROJECTION_CONTROLLER")
 @RestController
 @RequestMapping("budget/v1")
 @CrossOrigin("*")
@@ -25,7 +27,7 @@ public class ProjectionController {
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
-
+        log.info("Projection: {}", projection);
         return service.getProjection(projection);
     }
 

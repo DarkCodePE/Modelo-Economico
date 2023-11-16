@@ -5,6 +5,7 @@ import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.dto.projections.ParameterProjection;
 import ms.hispam.budget.entity.mysql.CodeNomina;
 import ms.hispam.budget.entity.mysql.ParameterDefault;
+import ms.hispam.budget.entity.mysql.RangeBu;
 
 import java.util.List;
 @Getter
@@ -18,6 +19,7 @@ public class Config {
     private List<OperationResponse> baseExtern;
     private List<CodeNomina> nominas;
     private List<ParameterDefault> vDefault;
+    private List<RangeBuDTO> vTemporal;
     private String money;
     private String icon;
     private Boolean vViewPo;

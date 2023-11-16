@@ -26,12 +26,11 @@ public class ParametersByProjection {
     private Integer range;
     private List<ParametersDTO> parameters;
     private List<PaymentComponentType> paymentComponent;
+    private List<RangeBuDTO> temporalParameters;
     @NotEmpty(message="Se requiere nomina From")
     private String nominaFrom;
     @NotEmpty(message="Se requiere nomina to")
     private String nominaTo;
     private BaseExternResponse baseExtern;
     private BaseExternResponse bc;
-
-
 }

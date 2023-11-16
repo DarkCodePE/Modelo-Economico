@@ -9,6 +9,7 @@ import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.*;
+import ms.hispam.budget.service.BuService;
 import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.util.Constant;
@@ -64,6 +65,10 @@ public class ProjectionServiceImpl implements ProjectionService {
     private TypEmployeeRepository typEmployeeRepository;
     @Autowired
     private DaysVacationOfTimeRepository daysVacationOfTimeRepository;
+    @Autowired
+    private RangeBuPivotRepository rangeBuPivotRepository;
+    @Autowired
+    private BuService buService;
     private final MexicoService mexicoService;
     @Autowired
     public ProjectionServiceImpl(MexicoService mexicoService) {
@@ -133,20 +138,21 @@ public class ProjectionServiceImpl implements ProjectionService {
     private void isPeru( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Peru methodsPeru = new Peru();
     }
-    private void isMexico(List<ProjectionDTO>  headcount , ParametersByProjection projection){
+    private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
         Mexico methodsMexico = new Mexico(mexicoService);
         //Genera las proyecciones del rango
         AtomicInteger i = new AtomicInteger();
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
-                    log.info("headcountData {}",headcountData.getPo());
-                    log.info("headcountData {}",  i.getAndIncrement());
+                    //log.info("headcountData {}",headcountData.getPo());
+                    //log.info("headcountData {}",  i.getAndIncrement());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsMexico.revisionSalary(component, projection.getParameters());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
-                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac());
+                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), projection.getTemporalParameters(), projection.getIdBu());
+
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
@@ -244,6 +250,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .icon(vbu.getIcon())
                     .money(vbu.getMoney())
                     .vViewPo(vbu.getVViewPo())
+                    .vTemporal(buService.getAllBuWithRangos())
                     .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                     .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                     .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
