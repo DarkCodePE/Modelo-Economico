@@ -292,11 +292,14 @@ public class Mexico {
 
         LocalDate dateActual = LocalDate.now();
         long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
+        //log.info("seniority: {}",seniority);
         RangeBuDTO rangeBuByBU = rangeBu.stream()
                 .filter(r -> r.getIdBu().equals(idBu))
                 .findFirst()
                 .orElse(null);
+        //log.info("rangeBuByBU: {}",rangeBuByBU);
         List<RangeBuDetail> daysVacations;
+
         if (rangeBuByBU != null) {
              daysVacations = getAllDaysVacation(rangeBuByBU.getRangeBuDetails(), idBu);
         }else {
@@ -342,21 +345,15 @@ public class Mexico {
     private List<RangeBuDetail> getDaysVacationList() {
         // Puedes inicializar tu lista aquí con los valores proporcionados
         return Arrays.asList(
-                new RangeBuDetail(4, "1", 12),
-                new RangeBuDetail(4, "2", 14),
-                new RangeBuDetail(4, "3", 16),
-                new RangeBuDetail(4, "4", 19),
-                new RangeBuDetail(4, "5 a 9", 22),
-                new RangeBuDetail(4, "10 a 14", 24),
-                new RangeBuDetail(4, "15 a 19", 26),
-                new RangeBuDetail(4, "20 a 24", 28),
-                new RangeBuDetail(4, "25 a 30", 30),
-                new RangeBuDetail(4, "31 a 35", 32)
+                new RangeBuDetail(1, "1", 10, 12),
+                new RangeBuDetail(1, "2",11, 14),
+                new RangeBuDetail(1, "3", 12,16),
+                new RangeBuDetail(1, "4", 13,19),
+                new RangeBuDetail(1, "5 a 9",14, 22)
         );
     }
     private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetail> daysVacationsMap) {
         String seniorityKey = String.valueOf(seniority);
-
         return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
             RangeBuDetail daysVacation = daysVacationsMap.get(key);
             if (daysVacation != null) {
