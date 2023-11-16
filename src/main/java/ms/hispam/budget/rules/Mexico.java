@@ -66,51 +66,45 @@ public class Mexico {
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
        //SI(ESNUMERO(HALLAR("CP";$H4));
         // HEADCOUNT: OBTIENS LAS PROYECCION Y LA PO, AQUI AGREGAMOS LOS PARAMETROS CUSTOM
-        AtomicReference<Double> baseSalary = new AtomicReference<>((double) 0);
-        AtomicReference<Double> baseSalaryIntegral = new AtomicReference<>((double) 0);
+        double baseSalary = 0;
+        double baseSalaryIntegral = 0;
         //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC320001"))
-                .findFirst()
-                .ifPresent(p -> {
-                    baseSalary.set(p.getAmount().doubleValue());
-                });
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC320002"))
-                .findFirst()
-                .ifPresent(p -> {
-                    baseSalaryIntegral.set(p.getAmount().doubleValue());
-                });
+        for (PaymentComponentDTO p : component) {
+            if (p.getPaymentComponent().equalsIgnoreCase("PC320001")) {
+                baseSalary = p.getAmount().doubleValue();
+            } else if (p.getPaymentComponent().equalsIgnoreCase("PC320002")) {
+                baseSalaryIntegral = p.getAmount().doubleValue();
+            }
+        }
         PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
         paymentComponentDTO.setPaymentComponent("SALARY");
-        paymentComponentDTO.setAmount(BigDecimal.valueOf(Stream.of(
-                baseSalary.get(),baseSalaryIntegral.get()
-        ).max(Double::compareTo).orElse(0.0)));
-        paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
-        AtomicReference<Double> incrementSalaryPercent = new AtomicReference<>((double) 0);
-        parameters.stream()
-                .filter(p -> p.getParameter().getId() == 32)
-                .findFirst()
-                .ifPresent(param -> {
-                    incrementSalaryPercent.set(param.getValue());
-                });
+        paymentComponentDTO.setAmount(BigDecimal.valueOf(Math.max(baseSalary, baseSalaryIntegral)));
+        paymentComponentDTO.setProjections(Shared.generateMonthProjection(period, range, paymentComponentDTO.getAmount()));
+
+        double incrementSalaryPercent = 0;
+        for (ParametersDTO param : parameters) {
+            if (param.getParameter().getId() == 32) {
+                incrementSalaryPercent = param.getValue();
+            }
+        }
         //List min salaries
         List<ParametersDTO> salaryList = parameters.stream()
                 .filter(p -> Objects.equals(p.getParameter().getName(), "Salario Mínimo Mexico"))
                 .collect(Collectors.toList());
-        double percent = incrementSalaryPercent.get()/100;
+
+        double percent = incrementSalaryPercent / 100;
         double paramValueSalary;
         boolean currentSalaryParamStatus;
         for (int i = 0; i < paymentComponentDTO.getProjections().size(); i++) {
-            double amount = i==0?paymentComponentDTO.getProjections().get(i).getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i-1).getAmount().doubleValue();
+            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
             if (salaryList.isEmpty()) {
                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                 continue;
             }
             String currentMonthProjection = paymentComponentDTO.getProjections().get(i).getMonth();
-            ParamFilterDTO currentSalaryParamByMonth = getValueSalaryByPeriod(salaryList,currentMonthProjection);
+            ParamFilterDTO currentSalaryParamByMonth = getValueSalaryByPeriod(salaryList, currentMonthProjection);
             currentSalaryParamStatus = currentSalaryParamByMonth.getStatus();
-            //log.info("currentSalaryParamStatus: {}",currentSalaryParamStatus);
+
             if (Boolean.TRUE.equals(currentSalaryParamStatus)) {
                 paramValueSalary = currentSalaryParamByMonth.getValue();
                 DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
@@ -118,10 +112,8 @@ public class Mexico {
                         .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
                         .toFormatter();
                 LocalDate dateProjection = LocalDate.parse(currentMonthProjection, dateFormat);
-                //save in cache current salary min
-                this.dateCache.put(dateProjection,paramValueSalary);
+                this.dateCache.put(dateProjection, paramValueSalary);
                 if (amount < paramValueSalary && paramValueSalary != 0.0) {
-                    // R11*(1+SI(R11<S$2;S$3;0)));
                     double incrementSalary = amount * percent;
                     paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount + incrementSalary));
                 } else {

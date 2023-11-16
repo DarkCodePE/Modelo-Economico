@@ -30,9 +30,12 @@ public class BuService {
         this.rangeBuRepository = rangeBuRepository;
     }
 
-    public List<RangeBuDTO> getAllBuWithRangos() {
+    public List<RangeBuDTO> getAllBuWithRangos(Integer buId) {
         // Obtener todas las unidades de negocio
-        List<Bu> allBu = buRepository.findAll();
+        List<Bu> allBu = buRepository.findAll()
+                .stream()
+                .filter(bu -> buId == null || bu.getId().equals(buId))
+                .collect(Collectors.toList());
         // Convertir las unidades de negocio a RangeBuDTO
         return allBu.stream()
                 .map(this::convertBuToRangeBuDTO)
@@ -44,14 +47,14 @@ public class BuService {
     }
 
     private RangeBuDTO convertBuToRangeBuDTO(Bu bu) {
-        RangeBuDTO rangeBuDTO = RangeBuDTO.builder()
-                .idBu(bu.getId())
-                .name(bu.getBu())
-                .build();
         List<RangoBuPivot> pivotBuRanges = pivotBuRangeRepository.findByBu_Id(bu.getId());
         List<RangeBuDetail> rangeBuDetails = pivotBuRanges.stream()
                 .flatMap(pivotBuRange -> convertPivotBuRangeToRangeBuDetail(pivotBuRange).stream())
                 .collect(Collectors.toList());
+        RangeBuDTO rangeBuDTO = RangeBuDTO.builder()
+                .idBu(bu.getId())
+                .name(pivotBuRanges.stream().findFirst().get().getName())
+                .build();
         rangeBuDTO.setRangeBuDetails(rangeBuDetails);
 
         return rangeBuDTO;

@@ -250,7 +250,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .icon(vbu.getIcon())
                     .money(vbu.getMoney())
                     .vViewPo(vbu.getVViewPo())
-                    .vTemporal(buService.getAllBuWithRangos())
+                    .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
                     .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                     .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                     .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
