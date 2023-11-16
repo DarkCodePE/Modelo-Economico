@@ -46,6 +46,7 @@ public class BuService {
     private RangeBuDTO convertBuToRangeBuDTO(Bu bu) {
         RangeBuDTO rangeBuDTO = RangeBuDTO.builder()
                 .idBu(bu.getId())
+                .name(bu.getBu())
                 .build();
         List<RangoBuPivot> pivotBuRanges = pivotBuRangeRepository.findByBu_Id(bu.getId());
         List<RangeBuDetail> rangeBuDetails = pivotBuRanges.stream()
@@ -60,7 +61,8 @@ public class BuService {
         List<RangeBu> rangeBuList = rangeBuRepository.findByPivotBuRange_Id(pivotBuRange.getId());
         return rangeBuList.stream()
                 .map(rangeBu -> RangeBuDetail.builder()
-                        .id(pivotBuRange.getId().intValue())
+                        .id(rangeBu.getId())
+                        .idPivot(pivotBuRange.getId().intValue())
                         .range(rangeBu.getRange())
                         .value(rangeBu.getValueOfRange())
                         .build())

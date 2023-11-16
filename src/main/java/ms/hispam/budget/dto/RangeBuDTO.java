@@ -14,7 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RangeBuDTO {
-    private Integer id;
     private String name;
     private Integer idBu;
     private List<RangeBuDetail> rangeBuDetails;

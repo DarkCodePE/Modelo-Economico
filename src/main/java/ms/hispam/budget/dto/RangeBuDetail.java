@@ -12,5 +12,6 @@ import lombok.*;
 public class RangeBuDetail {
     private Integer id;
     private String range;
+    private Integer idPivot;
     private Integer value;
 }
