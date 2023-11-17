@@ -51,9 +51,10 @@ public class BuService {
         List<RangeBuDetail> rangeBuDetails = pivotBuRanges.stream()
                 .flatMap(pivotBuRange -> convertPivotBuRangeToRangeBuDetail(pivotBuRange).stream())
                 .collect(Collectors.toList());
+        RangoBuPivot pivot = pivotBuRanges.stream().findFirst().orElse(null);
         RangeBuDTO rangeBuDTO = RangeBuDTO.builder()
                 .idBu(bu.getId())
-                .name(pivotBuRanges.stream().findFirst().get().getName())
+                .name(pivot!= null ? pivot.getName(): " ")
                 .build();
         rangeBuDTO.setRangeBuDetails(rangeBuDetails);
 

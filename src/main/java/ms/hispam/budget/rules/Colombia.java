@@ -80,6 +80,7 @@ public class Colombia {
         // HEADCOUNT: OBTIENS LAS PROYECCION Y LA PO, AQUI AGREGAMOS LOS PARAMETROS CUSTOM
         AtomicReference<Double> baseSalary = new AtomicReference<>((double) 0);
         AtomicReference<Double> baseSalaryIntegral = new AtomicReference<>((double) 0);
+        boolean flagExistSalaryBase = false;
         //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
         component.stream()
                 .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC938001"))
@@ -102,6 +103,8 @@ public class Colombia {
         //SALARIO MIN
         AtomicReference<Double> salaryMin = new AtomicReference<>((double) 0);
         AtomicReference<String> periodSalaryMin = new AtomicReference<>((String) "");
+        AtomicReference<Double> salaryIntegral = new AtomicReference<>((double) 0);
+        AtomicReference<String> periodSalaryMinIntegral = new AtomicReference<>((String) "");
         switch (classEmployee){
             case "PRA":
                 parameters.stream()
@@ -125,6 +128,9 @@ public class Colombia {
                         //log.info("{}", classEmployee);
                         //FORMULA
                         //SI(R13<=S$5;S$5;R13);
+                       /* SI($F4<>"";
+                        SI(R13<=S$3;S$3;R13);SI(R13<S$4;S$4;R13));*/
+
                         if (amount <= salaryMin.get()){
                             months.get(i).setAmount(BigDecimal.valueOf(salaryMin.get()));
                         }else {
@@ -225,8 +231,18 @@ public class Colombia {
                             salaryMin.set(param.getValue());
                             periodSalaryMin.set(param.getPeriod());
                         });
+                parameters.stream()
+                        .filter(p -> p.getParameter().getId() == 42)
+                        .findFirst()
+                        .ifPresent(param -> {
+                            salaryIntegral.set(param.getValue());
+                            periodSalaryMinIntegral.set(param.getPeriod());
+                        });
+
+                double salaryMinInternal = baseSalary.get() == 0.0?salaryIntegral.get(): salaryMin.get();
+                String periodSalaryMinInternal = baseSalary.get() == 0.0?periodSalaryMinIntegral.get(): periodSalaryMin.get();
                 int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMin.get());
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMinInternal);
                 if (idxEmp != -1){
                     for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
                         double amount = i==0?paymentComponentDTO.getProjections().get(i).getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i-1).getAmount().doubleValue();
@@ -234,10 +250,9 @@ public class Colombia {
                         //ignore month marcth
                         if(paymentComponentDTO
                                 .getProjections()
-                                .get(i).getMonth().equalsIgnoreCase(periodSalaryMin.get())){
-                            //SI(R13 <= S$3;S$3;R13);
-                            log.info("{}", salaryMin.get());
-                            if (amount <= salaryMin.get()){
+                                .get(i).getMonth().equalsIgnoreCase(periodSalaryMinInternal)){
+                            //SI($F4<>"";SI(R13<=S$3;S$3;R13);SI(R13<S$4;S$4;R13));
+                            if (amount <= salaryMinInternal){
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMin.get()));
                             }else {
                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
