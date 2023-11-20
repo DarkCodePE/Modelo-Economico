@@ -59,7 +59,7 @@ public class Mexico {
         this.mexicoService = mexicoService;
     }
 
-    public List<RangeBuDetail> getAllDaysVacation(List<RangeBuDetail> rangeBu, Integer idBu) {
+    public List<RangeBuDetailDTO> getAllDaysVacation(List<RangeBuDetailDTO> rangeBu, Integer idBu) {
         return mexicoService.getAllDaysVacation(rangeBu, idBu);
     }
 
@@ -290,7 +290,7 @@ public class Mexico {
                 .findFirst()
                 .orElse(null);
         //log.info("rangeBuByBU: {}",rangeBuByBU);
-        List<RangeBuDetail> daysVacations;
+        List<RangeBuDetailDTO> daysVacations;
 
         if (rangeBuByBU != null) {
              daysVacations = getAllDaysVacation(rangeBuByBU.getRangeBuDetails(), idBu);
@@ -298,8 +298,8 @@ public class Mexico {
             daysVacations = getDaysVacationList();
         }
         if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
-        Map<String, RangeBuDetail> daysVacationsMap = daysVacations.stream()
-                .collect(Collectors.toMap(RangeBuDetail::getRange, Function.identity()));
+        Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
+                .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
 
         int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
 
@@ -334,20 +334,20 @@ public class Mexico {
         }
     }
     //TODO: REFACTOR FALLBACK --> URGENTE
-    private List<RangeBuDetail> getDaysVacationList() {
+    private List<RangeBuDetailDTO> getDaysVacationList() {
         // Puedes inicializar tu lista aquí con los valores proporcionados
         return Arrays.asList(
-                new RangeBuDetail(1, "1", 10, 12),
-                new RangeBuDetail(1, "2",11, 14),
-                new RangeBuDetail(1, "3", 12,16),
-                new RangeBuDetail(1, "4", 13,19),
-                new RangeBuDetail(1, "5 a 9",14, 22)
+                new RangeBuDetailDTO(1, "1", 10, 12),
+                new RangeBuDetailDTO(1, "2",11, 14),
+                new RangeBuDetailDTO(1, "3", 12,16),
+                new RangeBuDetailDTO(1, "4", 13,19),
+                new RangeBuDetailDTO(1, "5 a 9",14, 22)
         );
     }
-    private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetail> daysVacationsMap) {
+    private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetailDTO> daysVacationsMap) {
         String seniorityKey = String.valueOf(seniority);
         return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
-            RangeBuDetail daysVacation = daysVacationsMap.get(key);
+            RangeBuDetailDTO daysVacation = daysVacationsMap.get(key);
             if (daysVacation != null) {
                 return daysVacation.getValue();
             }

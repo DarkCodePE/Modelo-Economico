@@ -16,5 +16,5 @@ import java.util.List;
 public class RangeBuDTO {
     private String name;
     private Integer idBu;
-    private List<RangeBuDetail> rangeBuDetails;
+    private List<RangeBuDetailDTO> rangeBuDetails;
 }

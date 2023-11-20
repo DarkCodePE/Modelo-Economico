@@ -1,9 +1,13 @@
 package ms.hispam.budget.util;
 
 import ms.hispam.budget.dto.*;
+import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
+import ms.hispam.budget.entity.mysql.Bu;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 
 import java.io.ByteArrayOutputStream;
@@ -11,6 +15,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,6 +51,142 @@ public class ExcelService {
             return outputStream.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static byte[] generateExcelType(List<ProjectionDTO> vdata,Integer type, Bu bu,List<AccountProjection> accountProjections) {
+     if(type==1){
+         return generatePlanner(vdata,accountProjections);
+     }else{
+         return generateCdg(vdata,bu,accountProjections);
+     }
+    }
+
+    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections){
+        try {
+
+            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
+            // Crea un nuevo libro de Excel
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Proyecciones de Pago");
+
+            // Encabezados
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("ID_PO");
+            headerRow.createCell(1).setCellValue("ID_SSFF");
+            headerRow.createCell(2).setCellValue("AF");
+            headerRow.createCell(3).setCellValue("Segmento");
+            headerRow.createCell(4).setCellValue("CeCo");
+            headerRow.createCell(5).setCellValue("Concepto");
+            headerRow.createCell(6).setCellValue("Cuenta SAP");
+            headerRow.createCell(7).setCellValue("Mes");
+            headerRow.createCell(8).setCellValue("Monto");
+            // Contador para el número de filas
+            int rowNum = 1;
+
+            // Itera sobre la lista de objetos
+            for (ProjectionDTO data : vdata) {
+                // Obtiene la lista de componentes
+                List<PaymentComponentDTO> components = data.getComponents();
+
+                // Recorre la lista de componentes
+                for (PaymentComponentDTO component : components) {
+                    // Obtiene la lista de proyecciones
+                    List<MonthProjection> projections = component.getProjections();
+
+                    // Recorre la lista de proyecciones
+                    for (MonthProjection projection : projections) {
+                        // Crea una nueva fila en el Excel
+                        Row row = sheet.createRow(rowNum++);
+
+                        // Agrega la información a la fila
+                        row.createCell(0).setCellValue(data.getPo());
+                        row.createCell(1).setCellValue(data.getIdssff());
+                        row.createCell(2).setCellValue(data.getAreaFuncional());
+                        row.createCell(3).setCellValue(data.getDivision());
+                        row.createCell(4).setCellValue(data.getCCostos());
+                        row.createCell(5).setCellValue(component.getName());
+                        row.createCell(6).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
+                        row.createCell(7).setCellValue(projection.getMonth());
+                        row.createCell(8).setCellValue(projection.getAmount().doubleValue());
+                    }
+                }
+            }
+
+            // Guarda el libro de Excel en un archivo
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+        }
+    }
+
+    private static byte[] generateCdg(List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections){
+        try {
+            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
+            // Crea un nuevo libro de Excel
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("CDG");
+
+
+            // Encabezados
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Periodo");
+            headerRow.createCell(1).setCellValue("Escenario");
+            headerRow.createCell(2).setCellValue("Cuenta");
+            headerRow.createCell(3).setCellValue("Ceco");
+            headerRow.createCell(4).setCellValue("Actividad");
+            headerRow.createCell(5).setCellValue("Concepto");
+            headerRow.createCell(6).setCellValue("Moneda");
+            headerRow.createCell(7).setCellValue("Importe");
+            headerRow.createCell(8).setCellValue("año");
+            // Contador para el número de filas
+            int rowNum = 1;
+
+            // Itera sobre la lista de objetos
+            for (ProjectionDTO data : vdata) {
+                // Obtiene la lista de componentes
+                List<PaymentComponentDTO> components = data.getComponents();
+
+                // Recorre la lista de componentes
+                for (PaymentComponentDTO component : components) {
+                    // Obtiene la lista de proyecciones
+                    List<MonthProjection> projections = component.getProjections();
+
+                    // Recorre la lista de proyecciones
+                    for (MonthProjection projection : projections) {
+                        // Crea una nueva fila en el Excel
+                        Row row = sheet.createRow(rowNum++);
+
+                        // Agrega la información a la fila
+                        row.createCell(0).setCellValue(projection.getMonth());
+                        row.createCell(1).setCellValue("PPTO_0");
+                        row.createCell(2).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
+                        row.createCell(3).setCellValue(data.getCCostos());
+                        row.createCell(4).setCellValue("");
+                        row.createCell(5).setCellValue(component.getName());
+                        row.createCell(6).setCellValue(bu.getCurrent());
+                        row.createCell(7).setCellValue(projection.getAmount().doubleValue());
+                        row.createCell(8).setCellValue(projection.getMonth().substring(0,4));
+                    }
+                }
+            }
+
+            // Guarda el libro de Excel en un archivo
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
+
         }
     }
 

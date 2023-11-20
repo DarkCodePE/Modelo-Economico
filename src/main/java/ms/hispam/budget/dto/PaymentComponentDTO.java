@@ -15,6 +15,8 @@ public class PaymentComponentDTO implements Cloneable{
     private Integer type;
     private BigDecimal amount;
     private List<MonthProjection> projections;
+    private Boolean show;
+    private String name;
 
     public BigDecimal getAmount() {
         if(amount==null){

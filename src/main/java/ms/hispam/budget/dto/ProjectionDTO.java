@@ -21,4 +21,7 @@ public class ProjectionDTO {
     private String classEmployee;
     private LocalDate fNac;
     private LocalDate fContra;
+    private String areaFuncional;
+    private String division;
+    private String cCostos;
 }
