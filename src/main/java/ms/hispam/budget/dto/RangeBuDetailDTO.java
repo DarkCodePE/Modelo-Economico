@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class RangeBuDetail {
+public class RangeBuDetailDTO {
     private Integer id;
     private String range;
     private Integer idPivot;

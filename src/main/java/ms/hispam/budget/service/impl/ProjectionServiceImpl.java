@@ -9,6 +9,8 @@ import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.*;
+import ms.hispam.budget.rules.operations.Operation;
+import ms.hispam.budget.rules.operations.salary.*;
 import ms.hispam.budget.service.BuService;
 import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
@@ -20,10 +22,12 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -70,6 +74,9 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private BuService buService;
     private final MexicoService mexicoService;
+
+    private List<Operation> operations;
+    private Peru methodsPeru;
     @Autowired
     public ProjectionServiceImpl(MexicoService mexicoService) {
         this.mexicoService = mexicoService;
@@ -82,12 +89,25 @@ public class ProjectionServiceImpl implements ProjectionService {
         return daysVacationOfTimeRepository.findAll();
     }
 
+    @PostConstruct
+    public void init() {
+        operations = new ArrayList<>();
+        methodsPeru = new Peru(operations);
+        operations.add(new SalaryOperationPeru());
+        operations.add(new RevisionSalaryOperationPeru());
+        operations.add(new VacationEnjoymentOperation());
+        operations.add(new BaseSalaryOperation());
+        operations.add(new VacationProvisionOperation());
+        operations.add(new GratificationOperation());
+    }
+
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+            //log.info("headcount {}",headcount);
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
-         /*   List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO9980826")).collect(Collectors.toList());*/
+          /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO10007788")).collect(Collectors.toList());*/
 
             //.info("headcount {}",headcount);
 
@@ -109,7 +129,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     isMexico(headcount,projection);
                     break;
                 case "T. PERU":
-
+                    isPeru(headcount,projection);
                     break;
                 default:
                     break;
@@ -135,13 +155,23 @@ public class ProjectionServiceImpl implements ProjectionService {
             return new Page<>();
         }
     }
-    private void isPeru( List<ProjectionDTO>  headcount , ParametersByProjection projection){
-        Peru methodsPeru = new Peru();
+    private void isPeru(List<ProjectionDTO> headcount, ParametersByProjection projection) {
+        BaseExternResponse baseExtern = projection.getBaseExtern();
+        boolean hasBaseExtern = baseExtern != null && !baseExtern.getData().isEmpty();
+        headcount
+                .parallelStream()
+                .forEach(headcountData -> {
+            if (hasBaseExtern) {
+                addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
+            }
+            //log.info("headcountData {}",headcountData.getPo());
+            methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+            //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+        });
     }
     private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
         Mexico methodsMexico = new Mexico(mexicoService);
         //Genera las proyecciones del rango
-        AtomicInteger i = new AtomicInteger();
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
@@ -198,7 +228,6 @@ public class ProjectionServiceImpl implements ProjectionService {
             methodsUruguay.addParameter(projectionDTO, projection);
         }
     }
-
     private void isEcuador( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Ecuador methodsEcuador = new Ecuador();
         projection.getParameters()
@@ -220,7 +249,8 @@ public class ProjectionServiceImpl implements ProjectionService {
             methodsEcuador.vacations(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
             if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                 addBaseExtern(projectionDTO,projection.getBaseExtern(),
-                    projection.getPeriod(),projection.getRange());}
+                    projection.getPeriod(),projection.getRange());
+            }
         }
     }
     private void  addBaseExtern(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
@@ -239,7 +269,29 @@ public class ProjectionServiceImpl implements ProjectionService {
         headcount.getComponents().addAll(bases);
 
     }
-
+    private void addBaseExternV2(ProjectionDTO headcount, BaseExternResponse baseExtern, String period, Integer range) {
+        Map<String, Map<String, Object>> baseExternMap = baseExtern.getData().stream()
+                .collect(Collectors.toMap(u -> (String) u.get("po"), Function.identity()));
+        Map<String, Object> po = baseExternMap.get(headcount.getPo());
+        List<PaymentComponentDTO> bases = baseExtern.getHeaders().stream()
+                .filter(t -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(t)))
+                .map(p -> {
+                    if (p.equalsIgnoreCase("promo")) {
+                        return PaymentComponentDTO.builder()
+                                .paymentComponent(p)
+                                .amountString(po != null && po.get(p) != null ? po.get(p).toString() : null)
+                                .build();
+                    } else {
+                        return PaymentComponentDTO.builder()
+                                .paymentComponent(p)
+                                .amount(BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0))
+                                .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0)))
+                                .build();
+                    }
+                })
+                .collect(Collectors.toList());
+        headcount.getComponents().addAll(bases);
+    }
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElse(null);

@@ -1,14 +1,11 @@
 package ms.hispam.budget.service;
 
-import ms.hispam.budget.dto.RangeBuDTO;
-import ms.hispam.budget.dto.RangeBuDetail;
-import ms.hispam.budget.entity.mysql.DaysVacationOfTime;
+import ms.hispam.budget.dto.RangeBuDetailDTO;
 import ms.hispam.budget.repository.mysql.DaysVacationOfTimeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,7 +20,7 @@ public class MexicoService {
     }
 
     @Cacheable("daysVacationCache")
-    public List<RangeBuDetail> getAllDaysVacation(List<RangeBuDetail> rangeBu, Integer idBu) {
+    public List<RangeBuDetailDTO> getAllDaysVacation(List<RangeBuDetailDTO> rangeBu, Integer idBu) {
         //List<DaysVacationOfTime> originalList = daysVacationOfTimeRepository.findAll();
         //daysVacationOfTimeService.replaceValues(originalList, rangeBu);
         return rangeBu;

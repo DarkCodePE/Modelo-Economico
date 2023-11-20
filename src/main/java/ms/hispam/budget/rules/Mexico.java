@@ -2,24 +2,16 @@ package ms.hispam.budget.rules;
 
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.cache.DateCache;
-import ms.hispam.budget.cache.SimpleCache;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.ParamFilterDTO;
-import ms.hispam.budget.entity.mysql.DaysVacationOfTime;
-import ms.hispam.budget.entity.mysql.RangeBu;
-import ms.hispam.budget.repository.mysql.DaysVacationOfTimeRepository;
 import ms.hispam.budget.service.MexicoService;
-import ms.hispam.budget.service.impl.ProjectionServiceImpl;
 import ms.hispam.budget.util.DaysVacationInfo;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.sql.Date;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -33,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
 @Component
 @Slf4j(topic = "Mexico")
 public class Mexico {
@@ -59,7 +51,7 @@ public class Mexico {
         this.mexicoService = mexicoService;
     }
 
-    public List<RangeBuDetail> getAllDaysVacation(List<RangeBuDetail> rangeBu, Integer idBu) {
+    public List<RangeBuDetailDTO> getAllDaysVacation(List<RangeBuDetailDTO> rangeBu, Integer idBu) {
         return mexicoService.getAllDaysVacation(rangeBu, idBu);
     }
 
@@ -290,7 +282,7 @@ public class Mexico {
                 .findFirst()
                 .orElse(null);
         //log.info("rangeBuByBU: {}",rangeBuByBU);
-        List<RangeBuDetail> daysVacations;
+        List<RangeBuDetailDTO> daysVacations;
 
         if (rangeBuByBU != null) {
              daysVacations = getAllDaysVacation(rangeBuByBU.getRangeBuDetails(), idBu);
@@ -298,8 +290,8 @@ public class Mexico {
             daysVacations = getDaysVacationList();
         }
         if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
-        Map<String, RangeBuDetail> daysVacationsMap = daysVacations.stream()
-                .collect(Collectors.toMap(RangeBuDetail::getRange, Function.identity()));
+        Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
+                .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
 
         int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
 
@@ -334,20 +326,20 @@ public class Mexico {
         }
     }
     //TODO: REFACTOR FALLBACK --> URGENTE
-    private List<RangeBuDetail> getDaysVacationList() {
+    private List<RangeBuDetailDTO> getDaysVacationList() {
         // Puedes inicializar tu lista aquí con los valores proporcionados
         return Arrays.asList(
-                new RangeBuDetail(1, "1", 10, 12),
-                new RangeBuDetail(1, "2",11, 14),
-                new RangeBuDetail(1, "3", 12,16),
-                new RangeBuDetail(1, "4", 13,19),
-                new RangeBuDetail(1, "5 a 9",14, 22)
+                new RangeBuDetailDTO(1, "1", 10, 12),
+                new RangeBuDetailDTO(1, "2",11, 14),
+                new RangeBuDetailDTO(1, "3", 12,16),
+                new RangeBuDetailDTO(1, "4", 13,19),
+                new RangeBuDetailDTO(1, "5 a 9",14, 22)
         );
     }
-    private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetail> daysVacationsMap) {
+    private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetailDTO> daysVacationsMap) {
         String seniorityKey = String.valueOf(seniority);
         return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
-            RangeBuDetail daysVacation = daysVacationsMap.get(key);
+            RangeBuDetailDTO daysVacation = daysVacationsMap.get(key);
             if (daysVacation != null) {
                 return daysVacation.getValue();
             }

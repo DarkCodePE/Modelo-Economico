@@ -3,7 +3,6 @@ package ms.hispam.budget.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 
@@ -16,5 +15,5 @@ import java.util.List;
 public class RangeBuDTO {
     private String name;
     private Integer idBu;
-    private List<RangeBuDetail> rangeBuDetails;
+    private List<RangeBuDetailDTO> rangeBuDetails;
 }

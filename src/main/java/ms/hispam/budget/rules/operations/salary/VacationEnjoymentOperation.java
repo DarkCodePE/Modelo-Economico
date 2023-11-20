@@ -7,10 +7,9 @@ import ms.hispam.budget.rules.operations.Operation;
 
 import java.util.List;
 
-public class SalaryOperationPeru implements Operation {
+public class VacationEnjoymentOperation implements Operation {
     @Override
     public void execute(Mediator mediator, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        //methodsPeru.salary(component, parameters, classEmployee, period, range);
         mediator.executeOperation(this, component, parameters, classEmployee, period, range);
     }
 }

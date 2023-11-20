@@ -2,7 +2,7 @@ package ms.hispam.budget.service;
 
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.RangeBuDTO;
-import ms.hispam.budget.dto.RangeBuDetail;
+import ms.hispam.budget.dto.RangeBuDetailDTO;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.RangeBu;
 import ms.hispam.budget.entity.mysql.RangoBuPivot;
@@ -31,24 +31,40 @@ public class BuService {
     }
 
     public List<RangeBuDTO> getAllBuWithRangos(Integer buId) {
-        // Obtener todas las unidades de negocio
-        List<Bu> allBu = buRepository.findAll()
-                .stream()
-                .filter(bu -> buId == null || bu.getId().equals(buId))
-                .collect(Collectors.toList());
+        // Obtener los RangoBuPivot asociados con el BU dado
+        List<RangoBuPivot> rangoBuPivots = pivotBuRangeRepository.findByBu_Id(buId);
         // Convertir las unidades de negocio a RangeBuDTO
-        return allBu.stream()
-                .map(this::convertBuToRangeBuDTO)
+        return rangoBuPivots.stream()
+                .map(this::convertRangoBuPivotToRangeBuDTO)
                 .collect(Collectors.toList());
     }
     public RangeBuDTO getBuWithRangos(Integer buId) {
         Optional<Bu> buOptional = buRepository.findById(buId);
         return buOptional.map(this::convertBuToRangeBuDTO).orElse(null);
     }
+    private RangeBuDTO convertRangoBuPivotToRangeBuDTO(RangoBuPivot rangoBuPivot) {
+        List<RangoBuPivot> rangeBuDetails = pivotBuRangeRepository.findByBu_Id(rangoBuPivot.getBu().getId());
+        List<RangeBuDetailDTO> rangeBuDet = rangeBuDetails.stream()
+                .flatMap(pivotBuRange -> convertPivotBuRangeToRangeBuDetail(pivotBuRange).stream())
+                .collect(Collectors.toList());
+        return RangeBuDTO.builder()
+                .idBu(rangoBuPivot.getBu().getId())
+                .name(rangoBuPivot.getName())
+                .rangeBuDetails(rangeBuDet)
+                .build();
+    }
 
+    private RangeBuDetailDTO convertRangeBuDetail(RangeBuDetailDTO rangeBuDetail) {
+        return RangeBuDetailDTO.builder()
+                .id(rangeBuDetail.getId())
+                .idPivot(rangeBuDetail.getIdPivot())
+                .range(rangeBuDetail.getRange())
+                .value(rangeBuDetail.getValue())
+                .build();
+    }
     private RangeBuDTO convertBuToRangeBuDTO(Bu bu) {
         List<RangoBuPivot> pivotBuRanges = pivotBuRangeRepository.findByBu_Id(bu.getId());
-        List<RangeBuDetail> rangeBuDetails = pivotBuRanges.stream()
+        List<RangeBuDetailDTO> rangeBuDetails = pivotBuRanges.stream()
                 .flatMap(pivotBuRange -> convertPivotBuRangeToRangeBuDetail(pivotBuRange).stream())
                 .collect(Collectors.toList());
         RangoBuPivot pivot = pivotBuRanges.stream().findFirst().orElse(null);
@@ -61,10 +77,10 @@ public class BuService {
         return rangeBuDTO;
     }
 
-    private List<RangeBuDetail> convertPivotBuRangeToRangeBuDetail(RangoBuPivot pivotBuRange) {
+    private List<RangeBuDetailDTO> convertPivotBuRangeToRangeBuDetail(RangoBuPivot pivotBuRange) {
         List<RangeBu> rangeBuList = rangeBuRepository.findByPivotBuRange_Id(pivotBuRange.getId());
         return rangeBuList.stream()
-                .map(rangeBu -> RangeBuDetail.builder()
+                .map(rangeBu -> RangeBuDetailDTO.builder()
                         .id(rangeBu.getId())
                         .idPivot(pivotBuRange.getId().intValue())
                         .range(rangeBu.getRange())
