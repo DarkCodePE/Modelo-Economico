@@ -13,5 +13,5 @@ public class RangeBuDetailDTO {
     private Integer id;
     private String range;
     private Integer idPivot;
-    private Integer value;
+    private Double value;
 }

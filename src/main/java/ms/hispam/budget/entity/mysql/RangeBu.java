@@ -23,7 +23,7 @@ public class RangeBu {
     private String range;
 
     @Column(name = "value_of_range")
-    private Integer valueOfRange;
+    private Double valueOfRange;
 
     @ManyToOne
     @JoinColumn(name = "pivot_bu_range_id")

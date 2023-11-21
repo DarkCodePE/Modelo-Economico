@@ -1,9 +1,7 @@
 package ms.hispam.budget.rules.operations.salary;
 
 import lombok.extern.slf4j.Slf4j;
-import ms.hispam.budget.dto.MonthProjection;
-import ms.hispam.budget.dto.ParametersDTO;
-import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.dto.*;
 import ms.hispam.budget.rules.countries.Country;
 import ms.hispam.budget.rules.operations.Mediator;
 import ms.hispam.budget.rules.operations.Operation;
@@ -11,13 +9,15 @@ import ms.hispam.budget.util.Shared;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 @Slf4j(topic = "Peru")
@@ -29,6 +29,10 @@ public class Peru implements Country, Mediator {
     private static final String BASE_SALARY = "BASE-SALARY";
     private static final String VACATION_PROVISION = "VACATION-PROVISION";
     private static final String GRATIFICATIONS = "GRATIFICATIONS";
+    private static final String FOOD_BENEFITS = "FOOD-BENEFITS";
+    private static final String LIFE_INSURANCE = "LIFE-INSURANCE";
+    private static final String FOOD_TEMPORAL_LIST = "V. Alimentación";
+    private static final String LIFE_INSURANCE_LIST = "SV Ley";
     private static final String PC960400 = "PC960400";
     private static final String PC960401 = "PC960401";
 
@@ -37,13 +41,13 @@ public class Peru implements Country, Mediator {
     }
 
     @Override
-    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
         for (Operation operation : operations) {
-            operation.execute(this, component, parameters, classEmployee, period, range);
+            operation.execute(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate);
         }
     }
     @Override
-    public void executeOperation(Operation operation, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void executeOperation(Operation operation, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
         if (operation instanceof SalaryOperationPeru) {
             processSalaryOperation(component, parameters, period, range);
         } else if (operation instanceof RevisionSalaryOperationPeru) {
@@ -57,16 +61,138 @@ public class Peru implements Country, Mediator {
             processVacationProvisionOperation(component, parameters);
         }else if(operation instanceof GratificationOperation) {
             processGratificationsOperation(component);
+        }else if(operation instanceof FoodBenefitsOperation) {
+            processFoodBenefitsOperation(component, temporalParameters, classEmployee, period, range);
+        }else if(operation instanceof CTSOperation) {
+            processCTSOperation(component);
+        }else if(operation instanceof LifeInsuranceOperation) {
+            processLifeInsuranceOperation(component, temporalParameters,parameters, birthDate);
         }
     }
 
+    private void processLifeInsuranceOperation(List<PaymentComponentDTO> component, List<RangeBuDTO> temporalParameters,List<ParametersDTO> parameters, LocalDate birthDate) {
+        // Obtener el PaymentComponentDTO para THEORETICAL_SALARY
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        // Obtener los PaymentComponentDTO para THEORETICAL_SALARY y GRATIFICATIONS
+        PaymentComponentDTO theoreticalSalaryComponent = componentMap.get(THEORETICAL_SALARY);
+        // Obtener el parámetro SV grupo
+        ParametersDTO svGroupParameter = getParametersById(parameters, 41);
+        double svGroupParameterDouble = svGroupParameter != null ? svGroupParameter.getValue() : 0.09;
+        if (theoreticalSalaryComponent != null) {
+            PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
+            lifeInsuranceComponent.setPaymentComponent(LIFE_INSURANCE);
+            int ageInit = calculateAge(birthDate, theoreticalSalaryComponent.getProjections().get(0).getMonth());
+            Optional<RangeBuDetailDTO> matchingDetailInit = findMatchingDetail(temporalParameters, ageInit);
+            double lifeInsuranceInit = matchingDetailInit.isPresent() ? matchingDetailInit.get().getValue() : 0.0;
+            lifeInsuranceComponent.setAmount(BigDecimal.valueOf(theoreticalSalaryComponent.getAmount().doubleValue() * ((svGroupParameterDouble + lifeInsuranceInit) / 100 )));
+            List<MonthProjection> lifeInsuranceProjections = new ArrayList<>();
+            for (MonthProjection salaryProjection : theoreticalSalaryComponent.getProjections()) {
+                int age = calculateAge(birthDate, salaryProjection.getMonth());
+                Optional<RangeBuDetailDTO> matchingDetail = findMatchingDetail(temporalParameters, age);
+                double lifeInsurance = matchingDetail.isPresent() ? matchingDetail.get().getValue() : 0.0;
+                double lifeInsuranceValue = calculateLifeInsuranceValue(salaryProjection, svGroupParameterDouble, lifeInsurance);
+                MonthProjection lifeInsuranceProjection = createLifeInsuranceProjection(salaryProjection, lifeInsuranceValue);
+                lifeInsuranceProjections.add(lifeInsuranceProjection);
+            }
+            //log.info("{}", lifeInsuranceProjections);
+            lifeInsuranceComponent.setProjections(lifeInsuranceProjections);
+            component.add(lifeInsuranceComponent);
+        }
+    }
+    private int calculateAge(LocalDate birthDate, String projectionMonth) {
+        return Period.between(birthDate, LocalDate.parse(projectionMonth + "01", DateTimeFormatter.ofPattern("yyyyMMdd"))).getYears();
+    }
+
+    private Optional<RangeBuDetailDTO> findMatchingDetail(List<RangeBuDTO> temporalParameters, int age) {
+        return temporalParameters.stream()
+                .filter(rangeBuDTO -> rangeBuDTO.getName().equalsIgnoreCase(LIFE_INSURANCE_LIST))
+                .flatMap(rangeBuDTO -> rangeBuDTO.getRangeBuDetails().stream())
+                .filter(detail -> {
+                    String[] rangeLimits = detail.getRange().trim().split("a");
+                    int lowerLimit = Integer.parseInt(rangeLimits[0].trim());
+                    int upperLimit = Integer.parseInt(rangeLimits[1].trim());
+                    return age >= lowerLimit && age <= upperLimit;
+                })
+                .findFirst();
+    }
+
+    private double calculateLifeInsuranceValue(MonthProjection salaryProjection, double svGroupParameter, double matchingDetail) {
+        return salaryProjection.getAmount().doubleValue() * ((svGroupParameter + matchingDetail) / 100);
+    }
+
+    private MonthProjection createLifeInsuranceProjection(MonthProjection salaryProjection, double lifeInsuranceValue) {
+        MonthProjection lifeInsuranceProjection = new MonthProjection();
+        lifeInsuranceProjection.setMonth(salaryProjection.getMonth());
+        lifeInsuranceProjection.setAmount(BigDecimal.valueOf(lifeInsuranceValue));
+        return lifeInsuranceProjection;
+    }
+    private void processCTSOperation(List<PaymentComponentDTO> component) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        // Obtener los PaymentComponentDTO para THEORETICAL_SALARY y GRATIFICATIONS
+        PaymentComponentDTO theoreticalSalaryComponent = componentMap.get(THEORETICAL_SALARY);
+        PaymentComponentDTO gratificationsComponent = componentMap.get(GRATIFICATIONS);
+        if (theoreticalSalaryComponent != null && gratificationsComponent != null) {
+            // Crear el PaymentComponentDTO para CTS
+            PaymentComponentDTO ctsComponent = new PaymentComponentDTO();
+            ctsComponent.setPaymentComponent("CTS");
+            // Calcular el valor de CTS a partir de THEORETICAL_SALARY y GRATIFICATIONS
+            double theoreticalSalary = theoreticalSalaryComponent.getAmount().doubleValue();
+            double gratifications = gratificationsComponent.getAmount().doubleValue();
+            double ctsValue = theoreticalSalary / 12 + gratifications / 2 / 6;
+            ctsComponent.setAmount(BigDecimal.valueOf(ctsValue));
+            // Crear una lista para las proyecciones de CTS
+            List<MonthProjection> ctsProjections = new ArrayList<>();
+            // Iterar sobre las proyecciones de THEORETICAL_SALARY y GRATIFICATIONS
+            for (int i = 0; i < theoreticalSalaryComponent.getProjections().size(); i++) {
+                MonthProjection theoreticalSalaryProjection = theoreticalSalaryComponent.getProjections().get(i);
+                MonthProjection gratificationsProjection = gratificationsComponent.getProjections().get(i);
+                // Calcular el valor de CTS para el mes
+                double monthlyTheoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
+                double monthlyGratifications = gratificationsProjection.getAmount().doubleValue();
+                double monthlyCtsValue = monthlyTheoreticalSalary / 12.0 + (monthlyGratifications / 2.0) / 6.0;
+                // Crear una nueva proyección para CTS
+                MonthProjection ctsProjection = new MonthProjection();
+                ctsProjection.setMonth(theoreticalSalaryProjection.getMonth());
+                ctsProjection.setAmount(BigDecimal.valueOf(monthlyCtsValue));
+                // Agregar la proyección a CTS
+                ctsProjections.add(ctsProjection);
+            }
+            // Establecer las proyecciones de CTS en ctsComponent
+            ctsComponent.setProjections(ctsProjections);
+            // Agregar CTS a la lista de componentes
+            component.add(ctsComponent);
+        }
+    }
+
+    private void processFoodBenefitsOperation(List<PaymentComponentDTO> component, List<RangeBuDTO> temporalParameters, String classEmployee, String period, Integer range) {
+        // Calcular el valor de los beneficios alimentarios
+        double foodBenefitsValue = calculateFoodBenefits(classEmployee, temporalParameters);
+        // Crear un nuevo PaymentComponentDTO para los beneficios alimentarios
+        PaymentComponentDTO foodBenefitsComponent = new PaymentComponentDTO();
+        foodBenefitsComponent.setPaymentComponent(FOOD_BENEFITS);
+        foodBenefitsComponent.setAmount(BigDecimal.valueOf(foodBenefitsValue));
+        foodBenefitsComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(foodBenefitsValue)));
+        // Agregar el nuevo PaymentComponentDTO a la lista de componentes
+        component.add(foodBenefitsComponent);
+    }
+    private double calculateFoodBenefits(String classEmployee, List<RangeBuDTO> temporalParameters) {
+        //log.info("{}", temporalParameters);
+        //log.info("{}", classEmployee);
+        Optional<RangeBuDetailDTO> matchingDetail = temporalParameters.stream()
+                .filter(rangeBuDTO -> rangeBuDTO.getName().equalsIgnoreCase(FOOD_TEMPORAL_LIST))
+                .flatMap(rangeBuDTO -> rangeBuDTO.getRangeBuDetails().stream())
+                .filter(detail -> detail.getRange().contains(classEmployee))
+                .findFirst();
+        //throw new IllegalArgumentException("No se encontró un rango que coincida con el valor de entrada");
+        return matchingDetail.map(rangeBuDetailDTO -> rangeBuDetailDTO.getValue() / 12.0).orElse(0.0);
+    }
     private void processBaseSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
        // Obtener los PaymentComponentDTO para THEORETICAL_SALARY y VACATION_ENJOYMENT
         PaymentComponentDTO theoreticalSalaryComponent = componentMap.get(THEORETICAL_SALARY);
         PaymentComponentDTO vacationEnjoymentComponent = componentMap.get(VACATION_ENJOYMENT);
-        log.info("{}", theoreticalSalaryComponent);
-        log.info("{}", vacationEnjoymentComponent);
+        //log.info("{}", theoreticalSalaryComponent);
+        //log.info("{}", vacationEnjoymentComponent);
         if (theoreticalSalaryComponent != null && vacationEnjoymentComponent != null) {
             // Crear el PaymentComponentDTO para baseSalary
             PaymentComponentDTO baseSalaryComponent = new PaymentComponentDTO();
@@ -104,6 +230,7 @@ public class Peru implements Country, Mediator {
             // Crear el PaymentComponentDTO para GRATIFICATIONS
             PaymentComponentDTO gratificationsComponent = new PaymentComponentDTO();
             gratificationsComponent.setPaymentComponent(GRATIFICATIONS);
+            gratificationsComponent.setAmount(BigDecimal.valueOf((theoreticalSalaryComponent.getAmount().doubleValue() * 2)/12));
             // Crear una lista para las proyecciones de GRATIFICATIONS
             List<MonthProjection> gratificationsProjections = new ArrayList<>();
             // Iterar sobre las proyecciones de THEORETICAL_SALARY
@@ -135,7 +262,7 @@ public class Peru implements Country, Mediator {
             ParametersDTO vacationSeasonality = getParametersById(parameters, 40);
             double vacationDaysValue = 30;
             if (vacationDays != null) vacationDaysValue = vacationDays.getValue();
-            double vacationSeasonalityValue = 8.33;
+            double vacationSeasonalityValue = 8.33/100;
             if (vacationSeasonality != null) vacationSeasonalityValue = vacationSeasonality.getValue() / 100;
             // Crear el PaymentComponentDTO para vacationEnjoyment
             PaymentComponentDTO vacationEnjoymentComponent = new PaymentComponentDTO();
@@ -191,24 +318,6 @@ public class Peru implements Country, Mediator {
             component.add(vacationProvisionComponent);
         }
     }
-    @Override
-    public void revisionSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        RevisionSalaryOperationPeru operation = new RevisionSalaryOperationPeru();
-        operation.execute(this,component, parameters, classEmployee, period, range);
-    }
-
-    @Override
-    public void vacationEnjoyment(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        VacationEnjoymentOperation operation = new VacationEnjoymentOperation();
-        operation.execute(this,component, parameters, classEmployee, period, range);
-    }
-
-    @Override
-    public void baseSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        BaseSalaryOperation operation = new BaseSalaryOperation();
-        operation.execute(this,component, parameters, classEmployee, period, range);
-    }
-
     private void processSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO pc960400Component = componentMap.get(PC960400);
@@ -216,7 +325,8 @@ public class Peru implements Country, Mediator {
         PaymentComponentDTO promoComponent = componentMap.get("promo");
         PaymentComponentDTO theoreticalSalaryComponent = createTheoreticalSalaryComponent(pc960400Component, pc960401Component, period, range);
         ParametersDTO promotionParameter = getParametersById(parameters, 38);
-        double percentPromotion = 0.0;
+        //TODO: DEFAULT PROMOTION 25%
+        double percentPromotion = 0.25;
         if (promotionParameter != null) percentPromotion = promotionParameter.getValue() / 100;
         //AA15*(1+SI($M4="emp";AB$2;AB$3)+AB$5)*(1+SI($W4<>"";SI($W4<=AB$11;SI(MES($W4)=MES(AB$11);$Z$6;0);0);0))
         if (theoreticalSalaryComponent.getProjections() != null) {
@@ -229,7 +339,14 @@ public class Peru implements Country, Mediator {
                             .appendPattern(TYPEMONTH)
                             .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
                             .toFormatter();
-                    LocalDate promoDate = LocalDate.parse(promoComponent.getAmountString(), dateFormat);
+                    LocalDate promoDate;
+                    try {
+                        promoDate = LocalDate.parse(promoComponent.getAmountString(), dateFormat);
+                    } catch (DateTimeParseException e) {
+                        int excelDate = Integer.parseInt(promoComponent.getAmountString());
+                        promoDate = LocalDate.of(1900, 1, 1).plusDays(excelDate - 2);
+                    }
+                    //log.info("{}", promoDate);
                     LocalDate date = LocalDate.parse(theoreticalSalaryComponent.getProjections().get(i).getMonth(), dateFormat);
                     // compara fechas SI($W4<=AC$11;SI(MES($W4)=MES(AC$11);$Z$6;0);0)
                     // $W4 = promoDate
@@ -302,7 +419,6 @@ public class Peru implements Country, Mediator {
         double salaryEnd = salaryComponent.getProjections().get(idxEnd).getAmount().doubleValue();
         return (salaryEnd / salaryFirst) - 1;
     }
-
     private double calculateValueRev(PaymentComponentDTO salaryComponent, ParametersDTO revSalParameters) {
         int idxRev = Shared.getIndex(salaryComponent.getProjections().stream()
                 .map(MonthProjection::getMonth).collect(Collectors.toList()), revSalParameters.getPeriod());

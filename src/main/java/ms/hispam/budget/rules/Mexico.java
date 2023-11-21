@@ -329,11 +329,11 @@ public class Mexico {
     private List<RangeBuDetailDTO> getDaysVacationList() {
         // Puedes inicializar tu lista aquí con los valores proporcionados
         return Arrays.asList(
-                new RangeBuDetailDTO(1, "1", 10, 12),
-                new RangeBuDetailDTO(1, "2",11, 14),
-                new RangeBuDetailDTO(1, "3", 12,16),
-                new RangeBuDetailDTO(1, "4", 13,19),
-                new RangeBuDetailDTO(1, "5 a 9",14, 22)
+                new RangeBuDetailDTO(1, "1", 10, 12.0),
+                new RangeBuDetailDTO(1, "2",11, 14.0),
+                new RangeBuDetailDTO(1, "3", 12,16.0),
+                new RangeBuDetailDTO(1, "4", 13,19.0),
+                new RangeBuDetailDTO(1, "5 a 9",14, 22.0)
         );
     }
     private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetailDTO> daysVacationsMap) {
@@ -341,7 +341,7 @@ public class Mexico {
         return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
             RangeBuDetailDTO daysVacation = daysVacationsMap.get(key);
             if (daysVacation != null) {
-                return daysVacation.getValue();
+                return daysVacation.getValue().intValue();
             }
             return 0;
         });

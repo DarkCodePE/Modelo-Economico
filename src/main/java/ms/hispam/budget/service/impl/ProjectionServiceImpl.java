@@ -9,6 +9,7 @@ import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.*;
+import ms.hispam.budget.rules.operations.salary.FoodBenefitsOperation;
 import ms.hispam.budget.rules.operations.Operation;
 import ms.hispam.budget.rules.operations.salary.*;
 import ms.hispam.budget.service.BuService;
@@ -25,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -99,14 +99,18 @@ public class ProjectionServiceImpl implements ProjectionService {
         operations.add(new BaseSalaryOperation());
         operations.add(new VacationProvisionOperation());
         operations.add(new GratificationOperation());
+        operations.add(new FoodBenefitsOperation());
+        operations.add(new CTSOperation());
+        operations.add(new LifeInsuranceOperation());
     }
 
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+            List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
             //log.info("headcount {}",headcount);
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
+            //log.info("headcount {}",headcount);
           /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO10007788")).collect(Collectors.toList());*/
 
             //.info("headcount {}",headcount);
@@ -165,7 +169,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
             }
             //log.info("headcountData {}",headcountData.getPo());
-            methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+            methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getPoName(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac());
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
     }
