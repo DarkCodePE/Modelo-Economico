@@ -27,4 +27,7 @@ public class HeadcountProjection {
     private String classEmp;
     private LocalDate fNac;
     private LocalDate fContra;
+    private String areaFuncional;
+    private String divisionName;
+    private String cCostos;
 }

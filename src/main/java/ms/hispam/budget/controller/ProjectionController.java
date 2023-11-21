@@ -95,4 +95,12 @@ public class ProjectionController {
         return service.saveMoneyOdin(po,id);
     }
 
+    @PostMapping("/download-type")
+    public ResponseEntity<byte[]> downloadFile(@RequestBody List<ProjectionDTO> projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", "datos.xlsx");
+        return new ResponseEntity<>(service.downloadFileType(projection,type,idBu), headers, 200);
+    }
+
 }

@@ -22,4 +22,5 @@ public class Bu {
     private String flag;
     @Column(name = "v_view_po")
     private Boolean vViewPo;
+    private String current;
 }
