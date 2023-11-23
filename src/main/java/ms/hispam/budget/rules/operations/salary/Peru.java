@@ -255,6 +255,7 @@ public class Peru implements Country, Mediator {
        //(AC15/30)*$Z$7*$V4*AC$8
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
+        PaymentComponentDTO enjoymentComponent = componentMap.get("goce");
         //TODO: DEFAULT VACATION DAYS 30
         //TODO: DEFAULT VACATION SEASONALITY 8.33
         if (salaryComponent != null){
@@ -264,6 +265,7 @@ public class Peru implements Country, Mediator {
             if (vacationDays != null) vacationDaysValue = vacationDays.getValue();
             double vacationSeasonalityValue = 8.33/100;
             if (vacationSeasonality != null) vacationSeasonalityValue = vacationSeasonality.getValue() / 100;
+            double enjoymentValue = enjoymentComponent != null ? enjoymentComponent.getAmount().doubleValue() : 0.7;
             // Crear el PaymentComponentDTO para vacationEnjoyment
             PaymentComponentDTO vacationEnjoymentComponent = new PaymentComponentDTO();
             vacationEnjoymentComponent.setPaymentComponent(VACATION_ENJOYMENT);
@@ -273,7 +275,8 @@ public class Peru implements Country, Mediator {
             // Iterar sobre las proyecciones de THEORETICAL_SALARY
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amount = projection.getAmount().doubleValue();
-                double value = (amount / 30) * vacationDaysValue * vacationSeasonalityValue;
+                //(AC15/30)*$Z$7*$V4*AC$8
+                double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
                 // Crear una nueva proyección para vacationEnjoyment
                 MonthProjection vacationEnjoymentProjection = new MonthProjection();
                 vacationEnjoymentProjection.setMonth(projection.getMonth());

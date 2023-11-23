@@ -107,11 +107,14 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-            List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
+            //List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
             //log.info("headcount {}",headcount);
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
             //log.info("headcount {}",headcount);
-          /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO10007788")).collect(Collectors.toList());*/
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+                    .stream()
+                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO10038706") || projectionDTO.getPo().equals("1054215") )
+                    .collect(Collectors.toList());
 
             //.info("headcount {}",headcount);
 
@@ -173,17 +176,23 @@ public class ProjectionServiceImpl implements ProjectionService {
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
     }
+
+    private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
+        return parameters.stream()
+                .filter(p -> Objects.equals(p.getParameter().getName(), name))
+                .collect(Collectors.toList());
+    }
     private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
         Mexico methodsMexico = new Mexico(mexicoService);
         //Genera las proyecciones del rango
+        List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
+        List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
+        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial");
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
-                    //log.info("headcountData {}",headcountData.getPo());
-                    //log.info("headcountData {}",  i.getAndIncrement());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsMexico.revisionSalary(component, projection.getParameters());
+                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), projection.getTemporalParameters(), projection.getIdBu());
 
