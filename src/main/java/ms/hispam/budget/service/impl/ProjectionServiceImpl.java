@@ -104,6 +104,8 @@ public class ProjectionServiceImpl implements ProjectionService {
         operations.add(new FoodBenefitsOperation());
         operations.add(new CTSOperation());
         operations.add(new LifeInsuranceOperation());
+        operations.add(new MovingOperation());
+        operations.add(new HousingOperation());
     }
 
     @Override
@@ -112,9 +114,13 @@ public class ProjectionServiceImpl implements ProjectionService {
 
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
+
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
             //log.info("headcount {}",headcount);
-          /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().filter(projectionDTO -> projectionDTO.getPo().equals("PO10007788")).collect(Collectors.toList());*/
+           /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+                    .stream()
+                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO10038566") || projectionDTO.getPo().equals("PO10038706") )
+                    .collect(Collectors.toList());*/
 
             //.info("headcount {}",headcount);
 
@@ -208,20 +214,30 @@ public class ProjectionServiceImpl implements ProjectionService {
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
     }
+
+    private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
+        return parameters.stream()
+                .filter(p -> Objects.equals(p.getParameter().getName(), name))
+                .collect(Collectors.toList());
+    }
     private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
+        RangeBuDTO rangeBuByBU = projection.getTemporalParameters().stream()
+                .filter(r -> r.getIdBu().equals(projection.getIdBu()))
+                .findFirst()
+                .orElse(null);
+        Integer idBu = projection.getIdBu();
         Mexico methodsMexico = new Mexico(mexicoService);
         //Genera las proyecciones del rango
+        List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
+        List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
+        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial");
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
-                    //log.info("headcountData {}",headcountData.getPo());
-                    //log.info("headcountData {}",  i.getAndIncrement());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsMexico.revisionSalary(component, projection.getParameters());
+                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
-                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), projection.getTemporalParameters(), projection.getIdBu());
-
+                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
@@ -868,6 +884,35 @@ public class ProjectionServiceImpl implements ProjectionService {
                     type(16).
                     paymentComponent("HHEE").amount(BigDecimal.valueOf(hhee))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(hhee))).build());
+        }else if (projection.getBu().equalsIgnoreCase("T. PERU")){
+            String nominalCodeMoving="1247";
+            String nominalCodeHousing="1212";
+            String nominalCodeExpatriates="1213";
+            String [] nominaAFP= {"1503", "1513", "1523"};
+            for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
+                    .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalCodeMoving)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("MOVING").amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else if (h.getCodeNomina().equalsIgnoreCase(nominalCodeHousing)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("HOUSING").amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else if (h.getCodeNomina().equalsIgnoreCase(nominalCodeExpatriates)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("EXPATRIATES").amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else if (Arrays.stream(nominaAFP).anyMatch(p -> p.equalsIgnoreCase(h.getCodeNomina()))) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AFP").amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    }
+            }
         }
     }
 }
