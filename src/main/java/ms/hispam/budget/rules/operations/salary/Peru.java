@@ -31,6 +31,8 @@ public class Peru implements Country, Mediator {
     private static final String GRATIFICATIONS = "GRATIFICATIONS";
     private static final String FOOD_BENEFITS = "FOOD-BENEFITS";
     private static final String LIFE_INSURANCE = "LIFE-INSURANCE";
+    private static final String MOVING = "MOVING";
+    private static final String HOUSING = "HOUSING";
     private static final String FOOD_TEMPORAL_LIST = "V. Alimentación";
     private static final String LIFE_INSURANCE_LIST = "SV Ley";
     private static final String PC960400 = "PC960400";
@@ -67,7 +69,54 @@ public class Peru implements Country, Mediator {
             processCTSOperation(component);
         }else if(operation instanceof LifeInsuranceOperation) {
             processLifeInsuranceOperation(component, temporalParameters,parameters, birthDate);
+        }else if(operation instanceof MovingOperation){
+            processMovingOperation(component);
+        }else if(operation instanceof HousingOperation) {
+            processHousingOperation(component);
         }
+    }
+
+    private void processHousingOperation(List<PaymentComponentDTO> component) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO housingComponent = componentMap.get(HOUSING);
+        if (housingComponent != null) {
+            PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
+            housingComponentNew.setPaymentComponent(HOUSING);
+            housingComponentNew.setAmount(BigDecimal.valueOf(housingComponent.getAmount().doubleValue()));
+            housingComponentNew.setProjections(new ArrayList<>());
+            for (MonthProjection housingProjection : housingComponent.getProjections()) {
+                MonthProjection housingProjectionNew = new MonthProjection();
+                housingProjectionNew.setMonth(housingProjection.getMonth());
+                housingProjectionNew.setAmount(BigDecimal.valueOf(housingProjection.getAmount().doubleValue()));
+                housingComponentNew.getProjections().add(housingProjectionNew);
+            }
+            component.add(housingComponentNew);
+        }
+    }
+
+    private void processMovingOperation(List<PaymentComponentDTO> component) {
+        // Obtener el PaymentComponentDTO Moving
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO movingComponent = componentMap.get(MOVING);
+        if (movingComponent != null) {
+            // Crear el PaymentComponentDTO para Moving
+            PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();
+            movingComponentNew.setPaymentComponent(MOVING);
+            movingComponentNew.setAmount(BigDecimal.valueOf(movingComponent.getAmount().doubleValue()));
+            movingComponentNew.setProjections(new ArrayList<>());
+            // Iterar sobre las proyecciones de Moving
+            for (MonthProjection movingProjection : movingComponent.getProjections()) {
+                // Crear una nueva proyección para Moving
+                MonthProjection movingProjectionNew = new MonthProjection();
+                movingProjectionNew.setMonth(movingProjection.getMonth());
+                movingProjectionNew.setAmount(BigDecimal.valueOf(movingProjection.getAmount().doubleValue()));
+                // Agregar la proyección a Moving
+                movingComponentNew.getProjections().add(movingProjectionNew);
+            }
+            // Agregar Moving a la lista de componentes
+            component.add(movingComponentNew);
+        }
+
     }
 
     private void processLifeInsuranceOperation(List<PaymentComponentDTO> component, List<RangeBuDTO> temporalParameters,List<ParametersDTO> parameters, LocalDate birthDate) {

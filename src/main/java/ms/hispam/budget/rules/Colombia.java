@@ -305,7 +305,7 @@ public class Colombia {
                              .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMin.get());
                      if (idx != -1){
                          for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
-                             double v=0;
+                             double revisionSalaryAmount=0;
                              double amount = i==0?paymentComponentDTO.getProjections().get(i).getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i-1).getAmount().doubleValue();
                              paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                              if(paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(periodSalaryMin.get())){
@@ -320,12 +320,8 @@ public class Colombia {
                                  }else {
                                      differPercent = percent;
                                  }
-                                 v = amount* (1+(differPercent));
-                                 //log.info("{}", v);
-                                 paymentComponentDTO
-                                         .getProjections()
-                                         .get(i)
-                                         .setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
+                                 revisionSalaryAmount = amount* (1+(differPercent));
+                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
                              }
                          }
                      }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -41,6 +42,8 @@ public class Mexico {
     private static final String VACACIONES = "VACACIONES";
     private static final String  PC320001 = "PC320001";
     private static final String  PC320002 = "PC320002";
+    private List<RangeBuDetailDTO> allDaysVacation;
+    private List<String> sortedSalaryRevisions;
 
     private static final List<DaysVacationInfo> daysVacationList = Arrays.asList(
             new DaysVacationInfo(1, 1, 12),
@@ -125,8 +128,17 @@ public class Mexico {
         }
         return null;
     }
+    public void updateSortedSalaryRevisions() {
+        sortedSalaryRevisions = new ArrayList<>(salaryRevisionMap.keySet());
+        Collections.sort(sortedSalaryRevisions);
+    }
     public Pair<ParametersDTO, Double> findClosestSalaryRevision(PaymentComponentDTO salaryComponent, String projectionMonth) {
-        log.info("salaryRevisionMap: {}", salaryRevisionMap);
+      /*  int index = Collections.binarySearch(sortedSalaryRevisions, projectionMonth);
+        if (index < 0) {
+            index = -index - 2;  // Si no se encuentra una coincidencia exacta, obtén el índice del elemento anterior
+        }
+        String closestPeriod = sortedSalaryRevisions.get(index);
+        ParametersDTO closestSalaryRevision = salaryRevisionMap.get(closestPeriod);*/
         String closestPeriod = salaryRevisionMap.keySet().stream()
                 .min((period1, period2) -> {
                     if (period1.compareTo(projectionMonth) <= 0 && period2.compareTo(projectionMonth) <= 0) {
@@ -142,21 +154,25 @@ public class Mexico {
                 .orElse(null);
         ParametersDTO closestSalaryRevision = closestPeriod != null ? salaryRevisionMap.get(closestPeriod) : null;
         if (closestSalaryRevision != null) {
-            String[] periodRevisionSalary = closestSalaryRevision.getPeriodRetroactive().split("-");
-            int idxStart = Shared.getIndex(salaryComponent.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
-            int idxEnd = Shared.getIndex(salaryComponent.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[1]);
-            double salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
-            double salaryEnd = salaryComponent.getProjections().get(idxEnd).getAmount().doubleValue();
-            double differPercent = (salaryEnd / salaryFirst) - 1;
             double percent = closestSalaryRevision.getValue() / 100;
-            if (differPercent >= 0 && differPercent <= percent) {
-                differPercent = percent - differPercent;
-            } else {
-                differPercent = percent;
+            if (Boolean.TRUE.equals(closestSalaryRevision.getIsRetroactive())){
+                String[] periodRevisionSalary = closestSalaryRevision.getPeriodRetroactive().split("-");
+                int idxStart = Shared.getIndex(salaryComponent.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
+                int idxEnd = Shared.getIndex(salaryComponent.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[1]);
+                double salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
+                double salaryEnd = salaryComponent.getProjections().get(idxEnd).getAmount().doubleValue();
+                double differPercent = (salaryEnd / salaryFirst) - 1;
+                if (differPercent >= 0 && differPercent <= percent) {
+                    differPercent = percent - differPercent;
+                } else {
+                    differPercent = percent;
+                }
+                return Pair.of(closestSalaryRevision, differPercent);
+            }else {
+                return Pair.of(closestSalaryRevision, percent);
             }
-            return Pair.of(closestSalaryRevision, differPercent);
         }
         return null;
     }
@@ -173,112 +189,107 @@ public class Mexico {
        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
            String month = projection.getMonth();
            Pair<Double, Double> salaryAndIncrement = cache.get(month);
+           double incrementPercent = 0.0;
+           boolean isSalaryAndRevisionSameMonth = false;
            if (salaryAndIncrement != null) {
-               double minSalary = salaryAndIncrement.getKey();
-               double incrementPercent = salaryAndIncrement.getValue() / 100.0;
-               if (highestAmountSoFar < minSalary && minSalary != 0.0) {
-                   highestAmountSoFar = highestAmountSoFar * (1 + incrementPercent);
-               }
+               incrementPercent = salaryAndIncrement.getValue() / 100.0;
            }
            if (salaryRevisionMap.containsKey(month)) {
                Pair<ParametersDTO, Double> closestSalaryRevisionAndDifferPercent = findClosestSalaryRevision(paymentComponentDTO, month);
                if (closestSalaryRevisionAndDifferPercent != null && month.equals(closestSalaryRevisionAndDifferPercent.getKey().getPeriod())) {
                    lastDifferPercent = closestSalaryRevisionAndDifferPercent.getValue();
+                   isSalaryAndRevisionSameMonth = true;
                } else {
                    lastDifferPercent = 0.0;
                }
            }else{
                lastDifferPercent = 0.0;
            }
-           log.info("lastDifferPercent: {} , moth {}", lastDifferPercent, month);
-           double revisedAmount = highestAmountSoFar * (1 + lastDifferPercent);
+           double maxPercent = isSalaryAndRevisionSameMonth ? Math.max(incrementPercent, lastDifferPercent) : lastDifferPercent;
+           if (!isSalaryAndRevisionSameMonth && salaryAndIncrement != null) {
+               double minSalary = salaryAndIncrement.getKey();
+               if (highestAmountSoFar < minSalary && minSalary != 0.0) {
+                   highestAmountSoFar = highestAmountSoFar * (1 + incrementPercent);
+               }
+           }
+           double revisedAmount = highestAmountSoFar * (1 + maxPercent);
            highestAmountSoFar = Math.max(highestAmountSoFar, revisedAmount);
            projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
        }
        component.add(paymentComponentDTO);
    }
     public void provAguinaldo(List<PaymentComponentDTO> component, String period, Integer range) {
-        // get salary
-        PaymentComponentDTO paymentComponentDTO = component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("SALARY"))
-                .findFirst()
-                .orElse(null);
-        // create payment component prov aguinaldo
-        if (paymentComponentDTO != null){
-            //PaymentComponentDTO paymentComponentDTOClone = paymentComponentDTO.clone();
-            PaymentComponentDTO paymentComponentProvAguin = new PaymentComponentDTO(
-                    paymentComponentDTO.getPaymentComponent(),
-                    paymentComponentDTO.getAmount(),
-                    paymentComponentDTO.getProjections()
-            ).createWithProjections();
-            paymentComponentProvAguin.setPaymentComponent("AGUINALDO");
-            BigDecimal aguinaldoAmount = BigDecimal.valueOf((paymentComponentDTO.getAmount().doubleValue() / 30) * 1.25);
-            paymentComponentProvAguin.setAmount(aguinaldoAmount);
-            //paymentComponentProvAguin.setProjections(paymentComponentDTOClone.getProjections());
-            // prov aguinaldo
-           /* for (int i = 0; i < paymentComponentProvAguin.getProjections().size(); i++) {
-                double amountProj = paymentComponentProvAguin.getProjections().get(i).getAmount().doubleValue();
-                paymentComponentProvAguin.getProjections().get(i).setAmount(BigDecimal.valueOf((amountProj/30) * 1.25));
-            }*/
-            for (MonthProjection projection : paymentComponentProvAguin.getProjections()) {
+        // Convierte la lista de componentes a un mapa
+        Map<String, PaymentComponentDTO> componentMap = component.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+        // Busca el componente de pago "SALARY" en el mapa
+        PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
+        // Si el componente de pago "SALARY" se encuentra, calcula el aguinaldo
+        if (salaryComponent != null) {
+            // Crea un nuevo objeto PaymentComponentDTO para el aguinaldo
+            PaymentComponentDTO aguinaldoComponent = new PaymentComponentDTO();
+            aguinaldoComponent.setPaymentComponent(AGUINALDO);
+            // Calcula el monto del aguinaldo
+            BigDecimal aguinaldoAmount =BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / 30) * 1.25);
+            aguinaldoComponent.setAmount(aguinaldoAmount);
+            // Aplica la fórmula a cada proyección
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amountProj = projection.getAmount().doubleValue();
                 BigDecimal newAmount = BigDecimal.valueOf((amountProj / 30) * 1.25);
-                projection.setAmount(newAmount);
+                MonthProjection bonusProjection = new MonthProjection();
+                bonusProjection.setMonth(projection.getMonth());
+                bonusProjection.setAmount(newAmount);
+                projections.add(bonusProjection);
             }
-            component.add(paymentComponentProvAguin);
+            aguinaldoComponent.setProjections(projections);
+            // Agrega el componente de aguinaldo a la lista de componentes
+            component.add(aguinaldoComponent);
         }
     }
-    public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth, List<RangeBuDTO> rangeBu, Integer idBu) {
+    public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth, RangeBuDTO rangeBuByBU, Integer idBu) {
         Objects.requireNonNull(dateContract, "La fecha de contrato no puede ser nula");
-
         LocalDate dateActual = LocalDate.now();
         long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
-        //log.info("seniority: {}",seniority);
-        RangeBuDTO rangeBuByBU = rangeBu.stream()
-                .filter(r -> r.getIdBu().equals(idBu))
-                .findFirst()
-                .orElse(null);
-        //log.info("rangeBuByBU: {}",rangeBuByBU);
         List<RangeBuDetailDTO> daysVacations;
-
         if (rangeBuByBU != null) {
-             daysVacations = getAllDaysVacation(rangeBuByBU.getRangeBuDetails(), idBu);
+            daysVacations = rangeBuByBU.getRangeBuDetails();
         }else {
             daysVacations = getDaysVacationList();
         }
         if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
         Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
                 .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
-
         int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
-
         if (vacationsDays == 0) {
             int daysVacationPerMonth = daysVacationList.get(0).getVacationDays() / 12;
             long monthsSeniority = ChronoUnit.MONTHS.between(dateContract, dateActual);
             vacationsDays = (int) (daysVacationPerMonth * monthsSeniority);
         }
-
-        PaymentComponentDTO paymentComponentDTO = component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("SALARY"))
-                .findFirst()
-                .orElse(null);
-
-        if (paymentComponentDTO != null) {
-            PaymentComponentDTO paymentComponentProvVacations = new PaymentComponentDTO(
-                    paymentComponentDTO.getPaymentComponent(),
-                    paymentComponentDTO.getAmount(),
-                    paymentComponentDTO.getProjections()
-            ).createWithProjections();
-            paymentComponentProvVacations.setPaymentComponent("VACACIONES");
-            BigDecimal vacationAmount = BigDecimal.valueOf((paymentComponentDTO.getAmount().doubleValue() / 30) * vacationsDays / 12);
+        // Convierte la lista de componentes a un mapa
+        Map<String, PaymentComponentDTO> componentMap = component.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+        // Busca el componente de pago "SALARY" en el mapa
+        PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
+        if (salaryComponent != null) {
+            // Crea un nuevo objeto PaymentComponentDTO para las vacaciones
+            PaymentComponentDTO paymentComponentProvVacations = new PaymentComponentDTO();
+            paymentComponentProvVacations.setPaymentComponent(VACACIONES);
+            BigDecimal vacationAmount = BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / 30) * vacationsDays / 12);
             paymentComponentProvVacations.setAmount(vacationAmount);
-
-            for (MonthProjection projection : paymentComponentProvVacations.getProjections()) {
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amountProj = projection.getAmount().doubleValue() / 30;
-                BigDecimal newAmount = BigDecimal.valueOf((amountProj * vacationsDays) / 12);
-                projection.setAmount(newAmount);
+                double vacationsDaysPerMonth =  (double) vacationsDays / 12;
+                //log.info("amountProj: {} , vacationsDaysPerMonth {}", amountProj, vacationsDaysPerMonth);
+                BigDecimal newAmount = BigDecimal.valueOf(amountProj *  vacationsDaysPerMonth);
+                MonthProjection vacationProvisionProjection = new MonthProjection();
+                vacationProvisionProjection.setMonth(projection.getMonth());
+                vacationProvisionProjection.setAmount(newAmount);
+                projections.add(vacationProvisionProjection);
             }
-
+            paymentComponentProvVacations.setProjections(projections);
+            // Agrega el componente de vacaciones a la lista de componentes
             component.add(paymentComponentProvVacations);
         }
     }
