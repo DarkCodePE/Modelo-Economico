@@ -268,6 +268,15 @@ public class Colombia {
                 .filter(p -> p.getPaymentComponent().equalsIgnoreCase("SALARY"))
                  .parallel()
                  .forEach(paymentComponentDTO -> {
+                     AtomicReference<Double> salaryMinParam = new AtomicReference<>((double) 0);
+                     AtomicReference<String> periodSalaryMinParam = new AtomicReference<>((String) "");
+                     parameters.stream()
+                             .filter(p -> p.getParameter().getId() == 2)
+                             .findFirst()
+                             .ifPresent(param -> {
+                                 salaryMinParam.set(param.getValue());
+                                 periodSalaryMinParam.set(param.getPeriod());
+                             });
                      double differPercent=0.0;
                      AtomicReference<Double> salaryMin = new AtomicReference<>((double) 0);
                      AtomicReference<String> periodSalaryMin = new AtomicReference<>((String) "");
@@ -307,6 +316,7 @@ public class Colombia {
                          for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
                              double revisionSalaryAmount=0;
                              double amount = i==0?paymentComponentDTO.getProjections().get(i).getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i-1).getAmount().doubleValue();
+                             double minSalaryAmount = salaryMinParam.get();
                              paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                              if(paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(periodSalaryMin.get())){
                                  // R13 * ( 1 +SI(Q13 / P13 - 1 > 0;SI(Q13 / P13 - 1 <= S$8;S$8 - ( Q13 / P13 - 1 );0);S$8 ) ))
@@ -321,7 +331,11 @@ public class Colombia {
                                      differPercent = percent;
                                  }
                                  revisionSalaryAmount = amount* (1+(differPercent));
-                                 paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
+                                 if (minSalaryAmount > revisionSalaryAmount) {
+                                     paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(minSalaryAmount));
+                                 } else {
+                                     paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
+                                 }
                              }
                          }
                      }
