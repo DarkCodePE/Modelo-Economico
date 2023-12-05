@@ -118,12 +118,23 @@ public class ProjectionServiceImpl implements ProjectionService {
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
             //log.info("headcount {}",headcount);
            /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+=======
+           //List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
+            /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+>>>>>>> 78122478fd8ab325672181688f263d4c23d2c9ad
                     .stream()
-                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO10038566") || projectionDTO.getPo().equals("PO10038706") )
+                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO9980332") || projectionDTO.getPo().equals("PO10038565") || projectionDTO.getPo().equals("PO10038219") || projectionDTO.getPo().equals("PO10038229")||  projectionDTO.getPo().equals("PO10037696"))
                     .collect(Collectors.toList());*/
-
+     /*       List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+                    .stream()
+                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038229"))
+                    .collect(Collectors.toList());
+            //PO90006714
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+                    .stream()
+                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO10006059") || projectionDTO.getPo().equals("PO10003435") || projectionDTO.getPo().equals("PO90006714"))
+                    .collect(Collectors.toList());*/
             //.info("headcount {}",headcount);
-
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
@@ -234,8 +245,9 @@ public class ProjectionServiceImpl implements ProjectionService {
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
+                    log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange());
+                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
@@ -629,7 +641,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 )).entrySet().stream()
                 .map(entry -> {
                     HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
-                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),entry.getValue());
+                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),info.getClassemp(),entry.getValue());
                 })
                 .collect(Collectors.toList());
 
@@ -648,7 +660,12 @@ public class ProjectionServiceImpl implements ProjectionService {
            data.setIsComparing(false);
            comparing= getDataBase(data).getData();
        }
- return  DataBaseMainReponse.builder().data(deudasAgrupadas).components(components).nominas(codeNominas).comparing(comparing).build();
+ return  DataBaseMainReponse.builder()
+         .data(deudasAgrupadas)
+         .components(components)
+         .nominas(codeNominas)
+         .comparing(comparing)
+         .build();
     }
 
     @Override
