@@ -117,20 +117,15 @@ public class Colombia {
                 //SI(R13<=S$5;S$5;R13)
                 //verificamos en que periodo(meses) este parámetro afectara a al monto de la proyección
                 int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(d->d.getMonth()).collect(Collectors.toList()),periodSalaryMin.get());
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMin.get());
                 List<MonthProjection> months= paymentComponentDTO.getProjections();
                 if (idx != -1){
                     for (int i = idx; i < months.size(); i++) {
                         double amount = (i == 0) ? paymentComponentDTO.getAmount().doubleValue() : months.get(i-1).getAmount().doubleValue();
-                        //double salaryMinInternal = 0.0;
-                        //double salaryIntegralInternal = 0.0;
-                        //double maxSalary = 0.0;
-                        //log.info("{}", classEmployee);
                         //FORMULA
                         //SI(R13<=S$5;S$5;R13);
                        /* SI($F4<>"";
                         SI(R13<=S$3;S$3;R13);SI(R13<S$4;S$4;R13));*/
-
                         if (amount <= salaryMin.get()){
                             months.get(i).setAmount(BigDecimal.valueOf(salaryMin.get()));
                         }else {
@@ -167,37 +162,9 @@ public class Colombia {
                     }
                 }
                 break;
-            case "T":
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 25)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryMin.set(param.getValue());
-                            periodSalaryMin.set(param.getPeriod());
-                        });
-
-                //FIND MONTH TO APPLY PARAMETER T
-                AtomicReference<Double> salaryT1 = new AtomicReference<>((double) 0);
-                //mes base
-                int idxT1 = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(d->d.getMonth()).collect(Collectors.toList()),periodSalaryMin.get());
-                List<MonthProjection> monthsT1= paymentComponentDTO.getProjections();
-                if (idxT1 != -1){
-                    for (int i = idxT1; i < monthsT1.size(); i++) {
-                        double amount = (i == 0) ? paymentComponentDTO.getAmount().doubleValue() : monthsT1.get(i-1).getAmount().doubleValue();
-                        //FORMULA
-                        //SI(R13 <= S$3;S$3;R13);
-                        if (amount <= salaryMin.get()){
-                            monthsT1.get(i).setAmount(BigDecimal.valueOf( salaryMin.get()));
-                        }else {
-                            monthsT1.get(i).setAmount(BigDecimal.valueOf(amount));
-                        }
-                    }
-                }
-                break;
             case "APR":
                 parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 25)
+                        .filter(p -> p.getParameter().getId() == 43)
                         .findFirst()
                         .ifPresent(param -> {
                             salaryMin.set(param.getValue());
@@ -370,8 +337,9 @@ public class Colombia {
         AtomicReference<BigDecimal> maxCommission = new AtomicReference<>(BigDecimal.ZERO);
         maxCommission.set(getMayor(commision1.get(),commision2.get()));
         BigDecimal totalBase = BigDecimal.valueOf(commissionList.isEmpty()?0:commissionList.get(0).getValue());
+        BigDecimal sumCommissionValue = sumCommission.doubleValue()==0?BigDecimal.ONE:sumCommission;
         paymentComponentDTO.setAmount(BigDecimal.valueOf(totalBase.doubleValue()/12*
-                maxCommission.get().doubleValue()/sumCommission.doubleValue()));
+                maxCommission.get().doubleValue()/sumCommissionValue.doubleValue()));
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
 
         // buscamos el primer valor del parametro de comisiones
@@ -452,7 +420,8 @@ public class Colombia {
         PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
         paymentComponentDTO.setPaymentComponent("PRIMA MENSUAL");
         //SUMA DE LOS COMPONENTES
-        paymentComponentDTO.setAmount(salary.get().add(commission.get()).add(hhee.get()));
+        //paymentComponentDTO.setAmount(salary.get().add(commission.get()).add(hhee.get()));
+        paymentComponentDTO.setAmount(commission.get().add(hhee.get()));
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
         if (!Objects.equals(classEmployee, "PRA") || !Objects.equals(classEmployee, "APR")){
             component.stream()

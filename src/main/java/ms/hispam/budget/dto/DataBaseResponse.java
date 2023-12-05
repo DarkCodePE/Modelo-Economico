@@ -13,5 +13,6 @@ public class DataBaseResponse {
     private String po;
     private String idssff;
     private String poName;
+    private String typeEmployee;
     private List<ComponentAmount> components;
 }

@@ -103,7 +103,21 @@ public class Mexico {
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period, range, paymentComponentDTO.getAmount()));
         return paymentComponentDTO;
     }
-
+    private Map<String, Pair<Double, Double>> createCacheWithRevision(List<ParametersDTO> salaryList, List<ParametersDTO> revisionList) {
+        Map<String, Pair<Double, Double>> cache = new ConcurrentHashMap<>();
+        List<ParametersDTO> sortedSalaryList = new ArrayList<>(salaryList);
+        sortedSalaryList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO revisionParam : revisionList) {
+            ParametersDTO salaryParam = salaryMap.get(revisionParam.getPeriod());
+            if (salaryParam == null) {
+                salaryParam = findLatestSalaryForPeriod(sortedSalaryList, revisionParam.getPeriod());
+            }
+            if (salaryParam != null) {
+                cache.put(revisionParam.getPeriod(), Pair.of(salaryParam.getValue(), revisionParam.getValue()));
+            }
+        }
+        return cache;
+    }
     private Map<String, Pair<Double, Double>> createCache(List<ParametersDTO> salaryList, List<ParametersDTO> incrementList) {
         Map<String, Pair<Double, Double>> cache = new ConcurrentHashMap<>();
         List<ParametersDTO> sortedSalaryList = new ArrayList<>(salaryList);
@@ -132,50 +146,47 @@ public class Mexico {
         sortedSalaryRevisions = new ArrayList<>(salaryRevisionMap.keySet());
         Collections.sort(sortedSalaryRevisions);
     }
-    public Pair<ParametersDTO, Double> findClosestSalaryRevision(PaymentComponentDTO salaryComponent, String projectionMonth) {
-      /*  int index = Collections.binarySearch(sortedSalaryRevisions, projectionMonth);
-        if (index < 0) {
-            index = -index - 2;  // Si no se encuentra una coincidencia exacta, obtén el índice del elemento anterior
-        }
-        String closestPeriod = sortedSalaryRevisions.get(index);
-        ParametersDTO closestSalaryRevision = salaryRevisionMap.get(closestPeriod);*/
-        String closestPeriod = salaryRevisionMap.keySet().stream()
-                .min((period1, period2) -> {
-                    if (period1.compareTo(projectionMonth) <= 0 && period2.compareTo(projectionMonth) <= 0) {
-                        return period2.compareTo(period1);
-                    } else if (period1.compareTo(projectionMonth) <= 0) {
-                        return -1;
-                    } else if (period2.compareTo(projectionMonth) <= 0) {
-                        return 1;
-                    } else {
-                        return period1.compareTo(period2);
-                    }
-                })
-                .orElse(null);
-        ParametersDTO closestSalaryRevision = closestPeriod != null ? salaryRevisionMap.get(closestPeriod) : null;
-        if (closestSalaryRevision != null) {
-            double percent = closestSalaryRevision.getValue() / 100;
+    public Pair<ParametersDTO, Double> findClosestSalaryRevision(PaymentComponentDTO salaryComponent, String projectionMonth, Map<String, Pair<Double, Double>> cacheWithRevision, boolean isCp, double highestAmountSoFar) {
+    String closestPeriod = salaryRevisionMap.keySet().stream()
+            .min((period1, period2) -> {
+                if (period1.compareTo(projectionMonth) <= 0 && period2.compareTo(projectionMonth) <= 0) {
+                    return period2.compareTo(period1);
+                } else if (period1.compareTo(projectionMonth) <= 0) {
+                    return -1;
+                } else if (period2.compareTo(projectionMonth) <= 0) {
+                    return 1;
+                } else {
+                    return period1.compareTo(period2);
+                }
+            })
+            .orElse(null);
+    ParametersDTO closestSalaryRevision = closestPeriod != null ? salaryRevisionMap.get(closestPeriod) : null;
+    if (closestSalaryRevision != null) {
+        double percent = 0.0;
+        if(Boolean.TRUE.equals(isCp) ){
+            Pair<Double, Double> salaryAndRevision = cacheWithRevision.get(projectionMonth);
+            double salaryParam = salaryAndRevision != null ? salaryAndRevision.getKey() : 0.0;
+            double salaryFirst;
             if (Boolean.TRUE.equals(closestSalaryRevision.getIsRetroactive())){
                 String[] periodRevisionSalary = closestSalaryRevision.getPeriodRetroactive().split("-");
                 int idxStart = Shared.getIndex(salaryComponent.getProjections().stream()
                         .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
-                int idxEnd = Shared.getIndex(salaryComponent.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[1]);
-                double salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
-                double salaryEnd = salaryComponent.getProjections().get(idxEnd).getAmount().doubleValue();
-                double differPercent = (salaryEnd / salaryFirst) - 1;
-                if (differPercent >= 0 && differPercent <= percent) {
-                    differPercent = percent - differPercent;
-                } else {
-                    differPercent = percent;
-                }
-                return Pair.of(closestSalaryRevision, differPercent);
+                salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
             }else {
-                return Pair.of(closestSalaryRevision, percent);
+                int idxStart = Shared.getIndex(salaryComponent.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), projectionMonth);
+                salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
             }
+            if (highestAmountSoFar > salaryParam) {
+                percent = closestSalaryRevision.getValue() / 100;
+            }
+        }else {
+            percent = closestSalaryRevision.getValue() / 100;
         }
-        return null;
+        return Pair.of(closestSalaryRevision, percent);
     }
+    return null;
+}
    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, List<ParametersDTO> incrementList, List<ParametersDTO>revisionList, String period, Integer range, String poName) {
        double baseSalary = getValueByComponentName(component, PC320001);
        double baseSalaryIntegral = getValueByComponentName(component, PC320002);
@@ -189,47 +200,37 @@ public class Mexico {
        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
            String month = projection.getMonth();
            Pair<Double, Double> salaryAndIncrement = cache.get(month);
-           double incrementPercent = 0.0;
-           boolean isSalaryAndRevisionSameMonth = false;
-           if (poName != null && poName.contains("CP")) {
-               if (salaryAndIncrement != null) {
-                   incrementPercent = salaryAndIncrement.getValue() / 100.0;
+           double incrementPercent ;
+           double lastSalary = 0.0;
+           boolean isCp = poName != null && poName.contains("CP");
+           //log.info("isCp: {}", isCp);
+           if (salaryAndIncrement != null) {
+               incrementPercent = isCp ? salaryAndIncrement.getValue() / 100.0  :  0.0 ;
+               double minSalary = salaryAndIncrement.getKey();
+               if (highestAmountSoFar < minSalary && minSalary != 0.0) {
+                   lastSalary = highestAmountSoFar * (1 + incrementPercent);
+               }else {
+                   lastSalary =  highestAmountSoFar ;
                }
-               if (salaryRevisionMap.containsKey(month)) {
-                   Pair<ParametersDTO, Double> closestSalaryRevisionAndDifferPercent = findClosestSalaryRevision(paymentComponentDTO, month);
-                   if (closestSalaryRevisionAndDifferPercent != null && month.equals(closestSalaryRevisionAndDifferPercent.getKey().getPeriod())) {
-                       lastDifferPercent = closestSalaryRevisionAndDifferPercent.getValue();
-                       isSalaryAndRevisionSameMonth = true;
-                   } else {
-                       lastDifferPercent = 0.0;
-                   }
-               }else{
-                   lastDifferPercent = 0.0;
-               }
-               double maxPercent = isSalaryAndRevisionSameMonth ? Math.max(incrementPercent, lastDifferPercent) : lastDifferPercent;
-               if (!isSalaryAndRevisionSameMonth && salaryAndIncrement != null) {
-                   double minSalary = salaryAndIncrement.getKey();
-                   if (highestAmountSoFar < minSalary && minSalary != 0.0) {
-                       highestAmountSoFar = highestAmountSoFar * (1 + incrementPercent);
-                   }
-               }
-               double revisedAmount = highestAmountSoFar * (1 + maxPercent);
-               highestAmountSoFar = Math.max(highestAmountSoFar, revisedAmount);
-               projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
            }else {
-               if (salaryRevisionMap.containsKey(month)) {
-                   Pair<ParametersDTO, Double> closestSalaryRevisionAndDifferPercent = findClosestSalaryRevision(paymentComponentDTO, month);
-                   if (closestSalaryRevisionAndDifferPercent != null && month.equals(closestSalaryRevisionAndDifferPercent.getKey().getPeriod())) {
-                       lastDifferPercent = closestSalaryRevisionAndDifferPercent.getValue();
-                   } else {
-                       lastDifferPercent = 0.0;
-                   }
-               }else{
+                lastSalary = highestAmountSoFar;
+           }
+           if (salaryRevisionMap.containsKey(month)) {
+               Map<String, Pair<Double, Double>> cacheWithRevision = createCacheWithRevision(salaryList, revisionList);
+               log.info("cacheWithRevision: {}", lastSalary);
+               Pair<ParametersDTO, Double> closestSalaryRevisionAndDifferPercent = findClosestSalaryRevision(paymentComponentDTO, month, cacheWithRevision, isCp, lastSalary);
+               log.info("closestSalaryRevisionAndDifferPercent: {}", closestSalaryRevisionAndDifferPercent);
+               if (closestSalaryRevisionAndDifferPercent != null && month.equals(closestSalaryRevisionAndDifferPercent.getKey().getPeriod())) {
+                   lastDifferPercent = closestSalaryRevisionAndDifferPercent.getValue();
+               } else {
                    lastDifferPercent = 0.0;
                }
-               double revisedAmount = highestAmountSoFar * (1 + lastDifferPercent);
-               projection.setAmount(BigDecimal.valueOf(revisedAmount));
+           }else{
+               lastDifferPercent = 0.0;
            }
+           double revisedAmount = highestAmountSoFar * (1 + lastDifferPercent);
+           highestAmountSoFar = Math.max(lastSalary, revisedAmount);
+           projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
        }
        component.add(paymentComponentDTO);
    }
