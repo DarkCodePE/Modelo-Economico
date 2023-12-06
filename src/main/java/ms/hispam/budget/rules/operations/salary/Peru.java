@@ -53,7 +53,7 @@ public class Peru implements Country, Mediator {
         if (operation instanceof SalaryOperationPeru) {
             processSalaryOperation(component, parameters, period, range);
         } else if (operation instanceof RevisionSalaryOperationPeru) {
-            ParametersDTO salaryParameters = getParametersById(parameters, classEmployee.equals("emp") ? 34 : 35);
+            ParametersDTO salaryParameters = getParametersById(parameters, classEmployee.equals("EMP") ? 34 : 35);
             if (salaryParameters != null) processRevisionSalaryOperation(component, parameters,salaryParameters);
         }else if (operation instanceof VacationEnjoymentOperation) {
              processVacationEnjoymentOperation(component, parameters);
@@ -377,7 +377,6 @@ public class Peru implements Country, Mediator {
         PaymentComponentDTO promoComponent = componentMap.get("promo");
         PaymentComponentDTO theoreticalSalaryComponent = createTheoreticalSalaryComponent(pc960400Component, pc960401Component, period, range);
         ParametersDTO promotionParameter = getParametersById(parameters, 38);
-        //TODO: DEFAULT PROMOTION 25%
         double percentPromotion = 0.25;
         if (promotionParameter != null) percentPromotion = promotionParameter.getValue() / 100;
         //AA15*(1+SI($M4="emp";AB$2;AB$3)+AB$5)*(1+SI($W4<>"";SI($W4<=AB$11;SI(MES($W4)=MES(AB$11);$Z$6;0);0);0))
@@ -392,6 +391,7 @@ public class Peru implements Country, Mediator {
                             .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
                             .toFormatter();
                     LocalDate promoDate;
+                    //log.info("{}", promoComponent.getAmountString());
                     try {
                         promoDate = LocalDate.parse(promoComponent.getAmountString(), dateFormat);
                     } catch (DateTimeParseException e) {
@@ -403,7 +403,10 @@ public class Peru implements Country, Mediator {
                     // compara fechas SI($W4<=AC$11;SI(MES($W4)=MES(AC$11);$Z$6;0);0)
                     // $W4 = promoDate
                     // AC$11 = date
-                    if (promoDate.isBefore(date) || promoDate.isEqual(date)) {
+                    //log.info("{}", promoDate);
+                    //log.info("{}", date);
+                    promoDate = promoDate.withDayOfMonth(1);
+                    if (promoDate.isEqual(date)) {
                         promoAmount = percentPromotion;
                     }else {
                         promoAmount = 0.0;
@@ -420,13 +423,14 @@ public class Peru implements Country, Mediator {
     private void processRevisionSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, ParametersDTO salaryParameters) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
+        log.info("{}", salaryParameters);
         //log.info("{}", salaryComponent);
         if (salaryComponent != null) {
             ParametersDTO revSalParameters = getParametersById(parameters, 37);
             //log.info("{}", salaryParameters);
-            double differPercent = calculateDifferPercent(salaryComponent, salaryParameters);
+            double differPercent = Boolean.TRUE.equals(salaryParameters.getIsRetroactive()) ? calculateDifferPercent(salaryComponent, salaryParameters) : 0.0;
             //log.info("{}", differPercent);
-            double valueRev = calculateValueRev(salaryComponent, revSalParameters);
+            double valueRev = revSalParameters != null ? calculateValueRev(salaryComponent, revSalParameters) : 0.0;
             //log.info("{}", valueRev);
             updateSalaryComponent(salaryComponent, salaryParameters, differPercent, valueRev);
         }
@@ -472,21 +476,23 @@ public class Peru implements Country, Mediator {
         return (salaryEnd / salaryFirst) - 1;
     }
     private double calculateValueRev(PaymentComponentDTO salaryComponent, ParametersDTO revSalParameters) {
-        int idxRev = Shared.getIndex(salaryComponent.getProjections().stream()
-                .map(MonthProjection::getMonth).collect(Collectors.toList()), revSalParameters.getPeriod());
         double percentRev2 = revSalParameters.getValue() / 100;
-        double amount = salaryComponent.getProjections().get(idxRev).getAmount().doubleValue();
-        return amount * percentRev2;
+        if (Boolean.TRUE.equals(revSalParameters.getIsRetroactive())) {
+            int idxRev = Shared.getIndex(salaryComponent.getProjections().stream()
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()), revSalParameters.getPeriod());
+            double amount = salaryComponent.getProjections().get(idxRev).getAmount().doubleValue();
+            return amount * percentRev2;
+        }else {
+            return percentRev2;
+        }
     }
     private void updateSalaryComponent(PaymentComponentDTO salaryComponent, ParametersDTO salaryParameters, double differPercent, double valueRev) {
         double percent = salaryParameters.getValue() / 100;
-        int idx = Shared.getIndex(salaryComponent.getProjections().stream()
-                .map(MonthProjection::getMonth).collect(Collectors.toList()), salaryParameters.getPeriod());
-        if (idx != -1) {
-            for (int i = idx; i < salaryComponent.getProjections().size(); i++) {
-                double amount = i == 0 ? salaryComponent.getProjections().get(i).getAmount().doubleValue() : salaryComponent.getProjections().get(i - 1).getAmount().doubleValue();
-                salaryComponent.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                if (salaryComponent.getProjections().get(i).getMonth().equalsIgnoreCase(salaryParameters.getPeriod())) {
+       // double revisionSalary = 0.0;
+        if (salaryComponent != null){
+            for (MonthProjection theoreticalSalaryProjection : salaryComponent.getProjections()) {
+                double theoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
+                if (Boolean.TRUE.equals(salaryParameters.getIsRetroactive())){
                     if (differPercent > 0) {
                         if (differPercent <= percent) {
                             differPercent = percent - differPercent;
@@ -496,8 +502,18 @@ public class Peru implements Country, Mediator {
                     } else {
                         differPercent = percent;
                     }
-                    double v = (amount * (1 + differPercent)) + valueRev;
-                    salaryComponent.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
+                }else {
+                    differPercent = percent;
+                }
+                DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
+                        .appendPattern(TYPEMONTH)
+                        .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+                        .toFormatter();
+                LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
+                LocalDate date2 = LocalDate.parse(theoreticalSalaryProjection.getMonth(), dateFormat);
+                if (date1.isBefore(date2) || date1.isEqual(date2)) {
+                    double revisionSalary = theoreticalSalary * (1 + (differPercent + valueRev));
+                    theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round(revisionSalary * 100d) / 100d));
                 }
             }
         }

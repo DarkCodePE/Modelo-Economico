@@ -217,9 +217,7 @@ public class Mexico {
            }
            if (salaryRevisionMap.containsKey(month)) {
                Map<String, Pair<Double, Double>> cacheWithRevision = createCacheWithRevision(salaryList, revisionList);
-               log.info("cacheWithRevision: {}", lastSalary);
                Pair<ParametersDTO, Double> closestSalaryRevisionAndDifferPercent = findClosestSalaryRevision(paymentComponentDTO, month, cacheWithRevision, isCp, lastSalary);
-               log.info("closestSalaryRevisionAndDifferPercent: {}", closestSalaryRevisionAndDifferPercent);
                if (closestSalaryRevisionAndDifferPercent != null && month.equals(closestSalaryRevisionAndDifferPercent.getKey().getPeriod())) {
                    lastDifferPercent = closestSalaryRevisionAndDifferPercent.getValue();
                } else {
