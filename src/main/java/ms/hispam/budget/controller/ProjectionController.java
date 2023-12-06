@@ -27,7 +27,7 @@ public class ProjectionController {
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
-        log.info("Projection: {}", projection);
+        //log.info("Projection: {}", projection);
         return service.getProjection(projection);
     }
 

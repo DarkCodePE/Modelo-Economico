@@ -367,7 +367,7 @@ public class Colombia {
                             double v = vc * vd;
                             paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(v));
                         }catch (Exception e){
-                            log.error("error -> {}", e.getMessage());
+                            //log.error("error -> {}", e.getMessage());
                         }
                     }
                 });
