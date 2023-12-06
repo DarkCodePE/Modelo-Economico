@@ -37,4 +37,6 @@ public interface ProjectionService {
 
     Boolean saveMoneyOdin(String po,Integer requirement);
 
+    byte[] downloadFileType( List<ProjectionDTO> projection , Integer type,Integer idBu);
+
 }

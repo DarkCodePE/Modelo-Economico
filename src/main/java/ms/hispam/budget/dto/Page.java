@@ -20,12 +20,14 @@ public class Page<T> {
     private List<ComponentProjection> components;
     private List<DisabledPoDTO> disabledPo;
     private List<ParametersDTO> parameters;
+    private Double tEuro;
 
-    public Page(Integer pageNumber, Integer totalPages, Integer totalResults, List<T> items, List<ComponentAmount> resume) {
+    public Page(Integer pageNumber, Integer totalPages, Integer totalResults, List<T> items, List<ComponentAmount> resume,Double tCambio) {
         this.pageNumber = pageNumber;
         this.totalPages = totalPages;
         this.totalResults = totalResults;
         this.items = items;
         this.resume = resume;
+        this.tEuro=tCambio;
     }
 }

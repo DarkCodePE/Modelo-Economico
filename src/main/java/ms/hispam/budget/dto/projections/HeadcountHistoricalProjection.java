@@ -24,6 +24,10 @@ public interface HeadcountHistoricalProjection {
     public String getClassemp();
     public Date getFnac();
     public Date getFcontra();
+    public String getAf();
+    public String getDivisionname();
+    public String getCc();
+
     default Optional<LocalDate> getFnacAsLocalDate() {
         return Optional.ofNullable(getFnac()).map(Date::toLocalDate);
     }

@@ -36,6 +36,10 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
     @Query(nativeQuery = true,value = "EXEC get_cost_po @password = :password, @po = :po")
     Optional<CostPoProjection> getCostPo(@Param("password") String password, @Param("po")String po );
 
+    @Query(nativeQuery = true,value = "select tasa_eur from [cc].T_CC_TasaCambio  where periodo=?1 and divisa=?2")
+    Optional<Double> getTypeChange(String period,String divisa);
+
+
 
 
 

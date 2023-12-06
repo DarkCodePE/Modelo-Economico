@@ -35,4 +35,6 @@ public class ParametersByProjection {
     private String nominaTo;
     private BaseExternResponse baseExtern;
     private BaseExternResponse bc;
+    private String current;
+
 }

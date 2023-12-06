@@ -23,4 +23,5 @@ public class Config {
     private String money;
     private String icon;
     private Boolean vViewPo;
+    private String current;
 }

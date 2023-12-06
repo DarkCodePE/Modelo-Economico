@@ -20,8 +20,10 @@ import ms.hispam.budget.util.ExcelService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -109,20 +111,29 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-            List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
+
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+            List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
+
+            //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
+            //log.info("headcount {}",headcount);
+           /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+=======
+           //List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
             /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+>>>>>>> 78122478fd8ab325672181688f263d4c23d2c9ad
                     .stream()
                     .filter(projectionDTO -> projectionDTO.getPo().equals("PO9980332") || projectionDTO.getPo().equals("PO10038565") || projectionDTO.getPo().equals("PO10038219") || projectionDTO.getPo().equals("PO10038229")||  projectionDTO.getPo().equals("PO10037696"))
                     .collect(Collectors.toList());*/
      /*       List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038229"))
-                    .collect(Collectors.toList());*/
+                    .collect(Collectors.toList());
             //PO90006714
-           /*    List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO -> projectionDTO.getPo().equals("PO10006059") || projectionDTO.getPo().equals("PO10003435") || projectionDTO.getPo().equals("PO90006714"))
-                    .collect(Collectors.toList()); */
+                    .collect(Collectors.toList());*/
             //.info("headcount {}",headcount);
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
@@ -158,13 +169,45 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .map(entry -> new ComponentAmount(entry.getKey(), BigDecimal.valueOf(entry.getValue())))
                     .collect(Collectors.toList());
 
+            //ocultando los payment que no son mostrados
+            Map<String, ComponentProjection> mapaComponentesValidos = components.stream().filter(ComponentProjection::getShow)
+                    .collect(Collectors.toMap(ComponentProjection::getComponent, componente -> componente));
 
-            Page<ProjectionDTO> page = new Page<>(0,0, headcount.size(),
-                    headcount,groupedData);
-            return  page;
+            // Filtra las proyecciones y agrega el nombre al PaymentComponentDTO si es válido
+            List<ProjectionDTO> proyeccionesValidas = headcount.stream()
+                    .map(proyeccion -> {
+                        List<PaymentComponentDTO> componentesValidosEnProyeccion = proyeccion.getComponents().stream()
+                                .filter(componente -> mapaComponentesValidos.containsKey(componente.getPaymentComponent()))
+                                .peek(componente -> {
+                                    // Agrega el nombre al PaymentComponentDTO
+                                    ComponentProjection componenteValido = mapaComponentesValidos.get(componente.getPaymentComponent());
+                                    componente.setName(componenteValido.getName());
+                                })
+                                .collect(Collectors.toList());
+
+                        // Crea una nueva proyección con los componentes válidos
+                        return new ProjectionDTO(
+                                proyeccion.getIdssff(),
+                                proyeccion.getPo(),
+                                proyeccion.getPoName(),
+                                componentesValidosEnProyeccion,
+                                proyeccion.getClassEmployee(),
+                                proyeccion.getFNac(),
+                                proyeccion.getFContra(),
+                                proyeccion.getAreaFuncional(),
+                                proyeccion.getDivision(),
+                                proyeccion.getCCostos()
+                        );
+                    })
+                    .collect(Collectors.toList());
+            Double tCambio  =repository.getTypeChange(projection.getPeriod(),
+                    projection.getCurrent()).orElseThrow(()-> new BadRequestException("No se el tipo de cambio"));
+            return new Page<>(0,0, headcount.size(),
+                    proyeccionesValidas
+                    ,groupedData,
+                    tCambio);
         }catch (Exception ex){
             log.error("Error al generar la proyección",ex);
-            ex.printStackTrace();
             return new Page<>();
         }
     }
@@ -332,6 +375,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
                             .builder().code(c.getCode()).name(c.getName())
                             .build()).collect(Collectors.toList()))
+                    .current(vbu.getCurrent())
                     .build();
         }
         return null;
@@ -692,6 +736,12 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     }
 
+    @Override
+    public byte[] downloadFileType(List<ProjectionDTO> projection,Integer type,Integer idBu) {
+        Bu bu = buRepository.findById(idBu).orElseThrow(()-> new BadRequestException("No se encuentra la Bu"));
+        return ExcelService.generateExcelType(projection,type,bu,sharedRepo.getAccount(idBu));
+    }
+
 
     private List<PaymentComponentDTO> validate(Ecuador methods, List<PaymentComponentDTO> componentDTO,ParametersDTO dto ,
                                                List<ParametersDTO> parameters ){
@@ -729,6 +779,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                         .fContra(e.getFcontraAsLocalDate().isPresent()?e.getFcontraAsLocalDate().get():null)
                         .fNac(e.getFnacAsLocalDate().isPresent()?e.getFnacAsLocalDate().get():null)
                         .classEmp(e.getClassemp())
+                        .divisionName(e.getDivisionname())
+                        .areaFuncional(e.getAf())
+                        .cCostos(e.getCc())
                             .build()).collect(Collectors.toList());
         //log.info("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
@@ -800,7 +853,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                                             projectionsComponent,
                                             list.get(0).getClassEmp(),
                                             list.get(0).getFNac(),
-                                            list.get(0).getFContra()
+                                            list.get(0).getFContra(),
+                                            list.get(0).getAreaFuncional(),
+                                            list.get(0).getDivisionName(),
+                                            list.get(0).getCCostos()
+
                                     );
                                 }
                         )

@@ -15,3 +15,4 @@ public class RangeBuDetailDTO {
     private Integer idPivot;
     private Double value;
 }
+
