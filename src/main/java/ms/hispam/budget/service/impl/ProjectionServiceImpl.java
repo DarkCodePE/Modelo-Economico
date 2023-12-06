@@ -111,11 +111,11 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+          /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99012453"))
-                    .collect(Collectors.toList());
-            //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+                    .collect(Collectors.toList());*/
+            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
 
             //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
