@@ -1,6 +1,7 @@
 package ms.hispam.budget.dto;
 
 import lombok.*;
+import ms.hispam.budget.entity.mysql.ParameterDefault;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
@@ -27,6 +28,7 @@ public class ParametersByProjection {
     private List<ParametersDTO> parameters;
     private List<PaymentComponentType> paymentComponent;
     private List<RangeBuDTO> temporalParameters;
+    private List<ParameterDefault> defaultParameters;
     @NotEmpty(message="Se requiere nomina From")
     private String nominaFrom;
     @NotEmpty(message="Se requiere nomina to")

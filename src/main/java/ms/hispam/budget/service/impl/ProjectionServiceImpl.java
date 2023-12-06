@@ -109,7 +109,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-           //List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
+            List<ProjectionDTO> headcount = getHeadcountByAccount(projection);
             /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO -> projectionDTO.getPo().equals("PO9980332") || projectionDTO.getPo().equals("PO10038565") || projectionDTO.getPo().equals("PO10038219") || projectionDTO.getPo().equals("PO10038229")||  projectionDTO.getPo().equals("PO10037696"))
@@ -119,10 +119,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038229"))
                     .collect(Collectors.toList());*/
             //PO90006714
-            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+           /*    List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO -> projectionDTO.getPo().equals("PO10006059") || projectionDTO.getPo().equals("PO10003435") || projectionDTO.getPo().equals("PO90006714"))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()); */
             //.info("headcount {}",headcount);
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
