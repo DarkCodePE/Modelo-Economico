@@ -8,10 +8,12 @@ import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
-import ms.hispam.budget.rules.*;
-import ms.hispam.budget.rules.operations.salary.FoodBenefitsOperation;
-import ms.hispam.budget.rules.operations.Operation;
+import ms.hispam.budget.rules.Colombia;
+import ms.hispam.budget.rules.Ecuador;
+import ms.hispam.budget.rules.Mexico;
+import ms.hispam.budget.rules.Uruguay;
 import ms.hispam.budget.rules.operations.salary.*;
+import ms.hispam.budget.rules.operations.Operation;
 import ms.hispam.budget.service.BuService;
 import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
@@ -207,7 +209,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     ,groupedData,
                     tCambio);
         }catch (Exception ex){
-            log.error("Error al generar la proyección",ex);
+            //log.error("Error al generar la proyección",ex);
             return new Page<>();
         }
     }
@@ -245,7 +247,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
-                    log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
+                  //  log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());

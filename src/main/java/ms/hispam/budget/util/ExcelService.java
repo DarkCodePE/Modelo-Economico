@@ -55,11 +55,12 @@ public class ExcelService {
     }
 
     public static byte[] generateExcelType(List<ProjectionDTO> vdata,Integer type, Bu bu,List<AccountProjection> accountProjections) {
-     if(type==1){
+     if(type==2){
          return generatePlanner(vdata,accountProjections);
-     }else{
+     }else if (type==3){
          return generateCdg(vdata,bu,accountProjections);
      }
+     return null;
     }
 
     private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections){
