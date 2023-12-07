@@ -53,8 +53,9 @@ public class Peru implements Country, Mediator {
         if (operation instanceof SalaryOperationPeru) {
             processSalaryOperation(component, parameters, period, range);
         } else if (operation instanceof RevisionSalaryOperationPeru) {
-            ParametersDTO salaryParameters = getParametersById(parameters, classEmployee.equals("EMP") ? 34 : 35);
-            if (salaryParameters != null) processRevisionSalaryOperation(component, parameters,salaryParameters);
+            List<ParametersDTO> salaryParametersList = getListParametersById(parameters, classEmployee.equals("EMP") ? 34 : 35);
+            List<ParametersDTO> revSalParametersList = getListParametersById(parameters, 37);
+            processRevisionSalaryOperation(component, salaryParametersList, revSalParametersList);
         }else if (operation instanceof VacationEnjoymentOperation) {
              processVacationEnjoymentOperation(component, parameters);
         }else if (operation instanceof BaseSalaryOperation) {
@@ -420,19 +421,36 @@ public class Peru implements Country, Mediator {
         }
         component.add(theoreticalSalaryComponent);
     }
-    private void processRevisionSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, ParametersDTO salaryParameters) {
+    private void processRevisionSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> salaryParametersList, List<ParametersDTO> revSalParametersList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
-        log.info("{}", salaryParameters);
-        //log.info("{}", salaryComponent);
-        if (salaryComponent != null) {
-            ParametersDTO revSalParameters = getParametersById(parameters, 37);
-            //log.info("{}", salaryParameters);
-            double differPercent = Boolean.TRUE.equals(salaryParameters.getIsRetroactive()) ? calculateDifferPercent(salaryComponent, salaryParameters) : 0.0;
-            //log.info("{}", differPercent);
-            double valueRev = revSalParameters != null ? calculateValueRev(salaryComponent, revSalParameters) : 0.0;
-            //log.info("{}", valueRev);
-            updateSalaryComponent(salaryComponent, salaryParameters, differPercent, valueRev);
+        if (salaryComponent != null){
+            for (MonthProjection theoreticalSalaryProjection : salaryComponent.getProjections()) {
+                double theoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
+                DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
+                        .appendPattern(TYPEMONTH)
+                        .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+                        .toFormatter();
+                LocalDate date2 = LocalDate.parse(theoreticalSalaryProjection.getMonth(), dateFormat);
+                double revisionSalaryEMP = 0.0;
+                double revisionSalary2 = 0.0;
+                for (ParametersDTO salaryParameters : salaryParametersList) {
+                    double percentRevEMP = salaryParameters.getValue() / 100;
+                    LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
+                    if (date1.isBefore(date2) || date1.isEqual(date2)) {
+                        revisionSalaryEMP += percentRevEMP;
+                    }
+                }
+                for (ParametersDTO revSalParameters : revSalParametersList) {
+                    LocalDate date3 = LocalDate.parse(revSalParameters.getPeriod(), dateFormat);
+                    double percentRev2 = revSalParameters.getValue() / 100;
+                    if (date3.isBefore(date2) || date3.equals(date2)){
+                        revisionSalary2 += percentRev2;
+                    }
+                }
+                double percent = revisionSalaryEMP + revisionSalary2;
+                theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round((theoreticalSalary * (1 + percent)) * 100d) / 100d));
+            }
         }
     }
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
@@ -454,67 +472,46 @@ public class Peru implements Country, Mediator {
         }
         return theoreticalSalaryComponent;
     }
+    private List<ParametersDTO> getListParametersById(List<ParametersDTO> parameters, int id) {
+        return parameters.stream()
+                .filter(p -> p.getParameter().getId() == id)
+                .collect(Collectors.toList());
+    }
     private ParametersDTO getParametersById(List<ParametersDTO> parameters, int id) {
         return parameters.stream()
                 .filter(p -> p.getParameter().getId() == id)
                 .findFirst()
                 .orElse(null);
     }
-    private double calculateDifferPercent(PaymentComponentDTO salaryComponent, ParametersDTO salaryParameters) {
-        if (salaryParameters == null) {
-            return 0.0;
-        }
-        int idxStart;
-        int idxEnd;
-        String[] periodRevisionSalary = salaryParameters.getPeriodRetroactive().split("-");
-        idxStart = Shared.getIndex(salaryComponent.getProjections().stream()
-                .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
-        idxEnd = Shared.getIndex(salaryComponent.getProjections().stream()
-                .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary.length == 1 ? periodRevisionSalary[0] : periodRevisionSalary[1]);
-        double salaryFirst = salaryComponent.getProjections().get(idxStart).getAmount().doubleValue();
-        double salaryEnd = salaryComponent.getProjections().get(idxEnd).getAmount().doubleValue();
-        return (salaryEnd / salaryFirst) - 1;
-    }
-    private double calculateValueRev(PaymentComponentDTO salaryComponent, ParametersDTO revSalParameters) {
-        double percentRev2 = revSalParameters.getValue() / 100;
-        if (Boolean.TRUE.equals(revSalParameters.getIsRetroactive())) {
-            int idxRev = Shared.getIndex(salaryComponent.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()), revSalParameters.getPeriod());
-            double amount = salaryComponent.getProjections().get(idxRev).getAmount().doubleValue();
-            return amount * percentRev2;
-        }else {
-            return percentRev2;
-        }
-    }
-    private void updateSalaryComponent(PaymentComponentDTO salaryComponent, ParametersDTO salaryParameters, double differPercent, double valueRev) {
-        double percent = salaryParameters.getValue() / 100;
+    private void updateSalaryComponent(PaymentComponentDTO salaryComponent, ParametersDTO salaryParameters, ParametersDTO revSalParameters) {
        // double revisionSalary = 0.0;
         if (salaryComponent != null){
             for (MonthProjection theoreticalSalaryProjection : salaryComponent.getProjections()) {
                 double theoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
-                if (Boolean.TRUE.equals(salaryParameters.getIsRetroactive())){
-                    if (differPercent > 0) {
-                        if (differPercent <= percent) {
-                            differPercent = percent - differPercent;
-                        } else {
-                            differPercent = 0;
-                        }
-                    } else {
-                        differPercent = percent;
-                    }
-                }else {
-                    differPercent = percent;
-                }
                 DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
                         .appendPattern(TYPEMONTH)
                         .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
                         .toFormatter();
-                LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
                 LocalDate date2 = LocalDate.parse(theoreticalSalaryProjection.getMonth(), dateFormat);
-                if (date1.isBefore(date2) || date1.isEqual(date2)) {
-                    double revisionSalary = theoreticalSalary * (1 + (differPercent + valueRev));
-                    theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round(revisionSalary * 100d) / 100d));
+                double revisionSalaryEMP = 0.0;
+                double revisionSalary2 = 0.0;
+                if (salaryParameters != null) {
+                    double percentRevEMP = salaryParameters.getValue() / 100;
+                    LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
+                    if (date1.isBefore(date2) || date1.isEqual(date2)) {
+                        revisionSalaryEMP = percentRevEMP;
+                    }
                 }
+                log.info("{}", revSalParameters);
+                if (revSalParameters != null) {
+                    LocalDate date3 = LocalDate.parse(revSalParameters.getPeriod(), dateFormat);
+                    double percentRev2 = revSalParameters.getValue() / 100;
+                    if (date3.isBefore(date2) || date3.equals(date2)){
+                        revisionSalary2 = percentRev2;
+                    }
+                }
+                double percent = revisionSalaryEMP + revisionSalary2;
+                theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round((theoreticalSalary * (1 + percent)) * 100d) / 100d));
             }
         }
     }
