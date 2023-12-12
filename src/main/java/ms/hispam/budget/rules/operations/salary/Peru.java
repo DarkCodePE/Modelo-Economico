@@ -14,10 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 @Slf4j(topic = "Peru")
@@ -489,38 +486,39 @@ public class Peru implements Country, Mediator {
         }
         component.add(theoreticalSalaryComponent);
     }
-    private void processRevisionSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> salaryParametersList, List<ParametersDTO> revSalParametersList) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
-        if (salaryComponent != null){
-            for (MonthProjection theoreticalSalaryProjection : salaryComponent.getProjections()) {
-                double theoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
-                DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
-                        .appendPattern(TYPEMONTH)
-                        .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-                        .toFormatter();
-                LocalDate date2 = LocalDate.parse(theoreticalSalaryProjection.getMonth(), dateFormat);
-                double revisionSalaryEMP = 0.0;
-                double revisionSalary2 = 0.0;
-                for (ParametersDTO salaryParameters : salaryParametersList) {
-                    double percentRevEMP = salaryParameters.getValue() / 100;
-                    LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
-                    if (date1.isBefore(date2) || date1.isEqual(date2)) {
-                        revisionSalaryEMP += percentRevEMP;
-                    }
-                }
-                for (ParametersDTO revSalParameters : revSalParametersList) {
-                    LocalDate date3 = LocalDate.parse(revSalParameters.getPeriod(), dateFormat);
-                    double percentRev2 = revSalParameters.getValue() / 100;
-                    if (date3.isBefore(date2) || date3.equals(date2)){
-                        revisionSalary2 += percentRev2;
-                    }
-                }
-                double percent = revisionSalaryEMP + revisionSalary2;
-                theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round((theoreticalSalary * (1 + percent)) * 100d) / 100d));
-            }
+   private void processRevisionSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> salaryParametersList, List<ParametersDTO> revSalParametersList) {
+    Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+    PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
+    if (salaryComponent != null){
+        DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
+                .appendPattern(TYPEMONTH)
+                .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+                .toFormatter();
+
+        Map<String, Double> salaryParametersMap = new HashMap<>();
+        for (ParametersDTO salaryParameters : salaryParametersList) {
+            LocalDate date1 = LocalDate.parse(salaryParameters.getPeriod(), dateFormat);
+            double percentRevEMP = salaryParameters.getValue() / 100;
+            salaryParametersMap.merge(date1.toString(), percentRevEMP, Double::sum);
+        }
+
+        Map<String, Double> revSalParametersMap = new HashMap<>();
+        for (ParametersDTO revSalParameters : revSalParametersList) {
+            LocalDate date3 = LocalDate.parse(revSalParameters.getPeriod(), dateFormat);
+            double percentRev2 = revSalParameters.getValue() / 100;
+            revSalParametersMap.merge(date3.toString(), percentRev2, Double::sum);
+        }
+
+        for (MonthProjection theoreticalSalaryProjection : salaryComponent.getProjections()) {
+            double theoreticalSalary = theoreticalSalaryProjection.getAmount().doubleValue();
+            LocalDate date2 = LocalDate.parse(theoreticalSalaryProjection.getMonth(), dateFormat);
+            double revisionSalaryEMP = salaryParametersMap.getOrDefault(date2.toString(), 0.0);
+            double revisionSalary2 = revSalParametersMap.getOrDefault(date2.toString(), 0.0);
+            double percent = revisionSalaryEMP + revisionSalary2;
+            theoreticalSalaryProjection.setAmount(BigDecimal.valueOf(Math.round((theoreticalSalary * (1 + percent)) * 100d) / 100d));
         }
     }
+}
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
         return component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
