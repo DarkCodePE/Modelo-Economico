@@ -346,7 +346,6 @@ public class Peru implements Country, Mediator {
         // Obtener el parámetro Días vacaciones
         ParametersDTO vacationDaysParameter = getParametersById(parameters, 39);
         if (theoreticalSalaryComponent != null) {
-            //TODO: ADD VACATION DAYS PARAMETER DEFAULT 30
             double vacationDays = vacationDaysParameter != null ? vacationDaysParameter.getValue() : 30;
             // Crear el PaymentComponentDTO para VACATION-PROVISION
             PaymentComponentDTO vacationProvisionComponent = new PaymentComponentDTO();

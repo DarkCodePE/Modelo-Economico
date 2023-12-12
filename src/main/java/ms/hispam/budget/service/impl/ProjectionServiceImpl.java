@@ -117,19 +117,6 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .collect(Collectors.toList());*/
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
-
-            //List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection).stream().limit(10).collect(Collectors.toList());
-            //log.info("headcount {}",headcount);
-           /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
-                    .stream()
-                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO9980332") || projectionDTO.getPo().equals("PO10038565") || projectionDTO.getPo().equals("PO10038219") || projectionDTO.getPo().equals("PO10038229")||  projectionDTO.getPo().equals("PO10037696"))
-                    .collect(Collectors.toList());*/
-            //PO90006714
-            /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
-                    .stream()
-                    .filter(projectionDTO -> projectionDTO.getPo().equals("PO10006059") || projectionDTO.getPo().equals("PO10003435") || projectionDTO.getPo().equals("PO90006714"))
-                    .collect(Collectors.toList());*/
-            //.info("headcount {}",headcount);
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
@@ -201,7 +188,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                     proyeccionesValidas
                     ,groupedData,
                     tCambio);
-        }catch (Exception ex){
+        }catch (BadRequestException ex){
+            throw ex;
+        } catch (Exception ex){
             log.error("Error al generar la proyección",ex);
             return new Page<>();
         }
