@@ -33,6 +33,8 @@ public class Peru implements Country, Mediator {
     private static final String LIFE_INSURANCE = "LIFE-INSURANCE";
     private static final String MOVING = "MOVING";
     private static final String HOUSING = "HOUSING";
+    private static final String EXPATRIATES= "EXPATRIATES";
+    private static final String AFP = "AFP";
     private static final String FOOD_TEMPORAL_LIST = "V. Alimentación";
     private static final String LIFE_INSURANCE_LIST = "SV Ley";
     private static final String PC960400 = "PC960400";
@@ -74,12 +76,66 @@ public class Peru implements Country, Mediator {
             processMovingOperation(component);
         }else if(operation instanceof HousingOperation) {
             processHousingOperation(component);
+        }else if(operation instanceof ExpatriateseOperation) {
+            processExpatriateseOperation(component);
+        }else if(operation instanceof AFPOperation) {
+            processAFPOperation(component, parameters);
+        }
+    }
+
+    private void processAFPOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO AFPComponent = componentMap.get(AFP);
+        if (AFPComponent != null) {
+            PaymentComponentDTO AFPComponentNew = new PaymentComponentDTO();
+            AFPComponentNew.setPaymentComponent(AFP);
+            AFPComponentNew.setAmount(BigDecimal.valueOf(AFPComponent.getAmount().doubleValue()));
+            AFPComponentNew.setProjections(new ArrayList<>());
+            for (MonthProjection AFPProjection : AFPComponent.getProjections()) {
+                MonthProjection AFPProjectionNew = new MonthProjection();
+                AFPProjectionNew.setMonth(AFPProjection.getMonth());
+                AFPProjectionNew.setAmount(BigDecimal.valueOf(AFPProjection.getAmount().doubleValue()));
+                AFPComponentNew.getProjections().add(AFPProjectionNew);
+            }
+            component.add(AFPComponentNew);
+        }else {
+            PaymentComponentDTO AFPComponentNew = new PaymentComponentDTO();
+            AFPComponentNew.setPaymentComponent(AFP);
+            AFPComponentNew.setAmount(BigDecimal.valueOf(0.0));
+            AFPComponentNew.setProjections(new ArrayList<>());
+            component.add(AFPComponentNew);
+        }
+    }
+
+    private void processExpatriateseOperation(List<PaymentComponentDTO> component) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO expatriateseComponent = componentMap.get(EXPATRIATES);
+        log.info("{}", expatriateseComponent);
+        if (expatriateseComponent != null) {
+            PaymentComponentDTO expatriateseComponentNew = new PaymentComponentDTO();
+            expatriateseComponentNew.setPaymentComponent(EXPATRIATES);
+            expatriateseComponentNew.setAmount(BigDecimal.valueOf(expatriateseComponent.getAmount().doubleValue()));
+            expatriateseComponentNew.setProjections(new ArrayList<>());
+            for (MonthProjection expatriateseProjection : expatriateseComponent.getProjections()) {
+                MonthProjection expatriateseProjectionNew = new MonthProjection();
+                expatriateseProjectionNew.setMonth(expatriateseProjection.getMonth());
+                expatriateseProjectionNew.setAmount(BigDecimal.valueOf(expatriateseProjection.getAmount().doubleValue()));
+                expatriateseComponentNew.getProjections().add(expatriateseProjectionNew);
+            }
+            component.add(expatriateseComponentNew);
+        }else {
+            PaymentComponentDTO expatriateseComponentNew = new PaymentComponentDTO();
+            expatriateseComponentNew.setPaymentComponent(EXPATRIATES);
+            expatriateseComponentNew.setAmount(BigDecimal.valueOf(0.0));
+            expatriateseComponentNew.setProjections(new ArrayList<>());
+            component.add(expatriateseComponentNew);
         }
     }
 
     private void processHousingOperation(List<PaymentComponentDTO> component) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO housingComponent = componentMap.get(HOUSING);
+        log.info("{}", housingComponent);
         if (housingComponent != null) {
             PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
             housingComponentNew.setPaymentComponent(HOUSING);
@@ -92,6 +148,12 @@ public class Peru implements Country, Mediator {
                 housingComponentNew.getProjections().add(housingProjectionNew);
             }
             component.add(housingComponentNew);
+        }else {
+            PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
+            housingComponentNew.setPaymentComponent(HOUSING);
+            housingComponentNew.setAmount(BigDecimal.valueOf(0.0));
+            housingComponentNew.setProjections(new ArrayList<>());
+            component.add(housingComponentNew);
         }
     }
 
@@ -99,6 +161,7 @@ public class Peru implements Country, Mediator {
         // Obtener el PaymentComponentDTO Moving
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO movingComponent = componentMap.get(MOVING);
+        log.info("{}", movingComponent);
         if (movingComponent != null) {
             // Crear el PaymentComponentDTO para Moving
             PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();
@@ -115,6 +178,12 @@ public class Peru implements Country, Mediator {
                 movingComponentNew.getProjections().add(movingProjectionNew);
             }
             // Agregar Moving a la lista de componentes
+            component.add(movingComponentNew);
+        }else {
+            PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();
+            movingComponentNew.setPaymentComponent(MOVING);
+            movingComponentNew.setAmount(BigDecimal.valueOf(0.0));
+            movingComponentNew.setProjections(new ArrayList<>());
             component.add(movingComponentNew);
         }
 

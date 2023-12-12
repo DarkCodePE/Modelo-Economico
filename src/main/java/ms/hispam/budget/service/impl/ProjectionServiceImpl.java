@@ -204,7 +204,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             if (hasBaseExtern) {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
             }
-            //log.info("headcountData {}",headcountData);
+            //log.info("headcountData {}",headcountData.getComponents());
             methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac());
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
@@ -897,21 +897,44 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 type(16).
                                 paymentComponent("MOVING").amount(BigDecimal.valueOf(h.getImporte()))
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
-                    } else if (h.getCodeNomina().equalsIgnoreCase(nominalCodeHousing)) {
+                    }else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("MOVING").amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalCodeHousing)) {
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
                                 paymentComponent("HOUSING").amount(BigDecimal.valueOf(h.getImporte()))
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
-                    } else if (h.getCodeNomina().equalsIgnoreCase(nominalCodeExpatriates)) {
+                    }else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("HOUSING").amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalCodeExpatriates)) {
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
                                 paymentComponent("EXPATRIATES").amount(BigDecimal.valueOf(h.getImporte()))
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
-                    } else if (Arrays.stream(nominaAFP).anyMatch(p -> p.equalsIgnoreCase(h.getCodeNomina()))) {
+                    }else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("EXPATRIATES").amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
+                    if (Arrays.stream(nominaAFP).anyMatch(p -> p.equalsIgnoreCase(h.getCodeNomina()))) {
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
                                 paymentComponent("AFP").amount(BigDecimal.valueOf(h.getImporte()))
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    }else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AFP").amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
                     }
             }
         }
