@@ -892,10 +892,12 @@ public class ProjectionServiceImpl implements ProjectionService {
             String [] nominaAFP= {"1503", "1513", "1523"};
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
+
                     if (h.getCodeNomina().equalsIgnoreCase(nominalCodeMoving)) {
+                        BigDecimal importe = h.getImporte() != null ? BigDecimal.valueOf(h.getImporte()) : BigDecimal.ZERO;
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
-                                paymentComponent("MOVING").amount(BigDecimal.valueOf(h.getImporte()))
+                                paymentComponent("MOVING").amount(importe)
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
                     }else {
                         projectionsComponent.add(PaymentComponentDTO.builder().
@@ -904,9 +906,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
                     }
                     if (h.getCodeNomina().equalsIgnoreCase(nominalCodeHousing)) {
+                        BigDecimal importe = h.getImporte() != null ? BigDecimal.valueOf(h.getImporte()) : BigDecimal.ZERO;
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
-                                paymentComponent("HOUSING").amount(BigDecimal.valueOf(h.getImporte()))
+                                paymentComponent("HOUSING").amount(importe)
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
                     }else {
                         projectionsComponent.add(PaymentComponentDTO.builder().
@@ -915,9 +918,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
                     }
                     if (h.getCodeNomina().equalsIgnoreCase(nominalCodeExpatriates)) {
+                        BigDecimal importe = h.getImporte() != null ? BigDecimal.valueOf(h.getImporte()) : BigDecimal.ZERO;
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
-                                paymentComponent("EXPATRIATES").amount(BigDecimal.valueOf(h.getImporte()))
+                                paymentComponent("EXPATRIATES").amount(importe)
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
                     }else {
                         projectionsComponent.add(PaymentComponentDTO.builder().
@@ -926,9 +930,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
                     }
                     if (Arrays.stream(nominaAFP).anyMatch(p -> p.equalsIgnoreCase(h.getCodeNomina()))) {
+                        BigDecimal importe = h.getImporte() != null ? BigDecimal.valueOf(h.getImporte()) : BigDecimal.ZERO;
                         projectionsComponent.add(PaymentComponentDTO.builder().
                                 type(16).
-                                paymentComponent("AFP").amount(BigDecimal.valueOf(h.getImporte()))
+                                paymentComponent("AFP").amount(importe)
                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
                     }else {
                         projectionsComponent.add(PaymentComponentDTO.builder().
