@@ -102,12 +102,12 @@
 				<configuration>
 					<schemaVersion>v2</schemaVersion>
 					<subscriptionId>87a1d13f-c4f7-4bd2-8fd7-a6f3ca8e57c7</subscriptionId>
-					<resourceGroup>DESARROLLO-SD</resourceGroup>
-					<appName>ms-planing-budget-dev</appName>
+					<resourceGroup>PRODUCCION</resourceGroup>
+					<appName>ms-hispam-budget</appName>
 					<pricingTier>P1v2</pricingTier>
 					<region>Eastus</region>
-					<appServicePlanName>hispam-dev</appServicePlanName>
-					<appServicePlanResourceGroup>DESARROLLO-SD</appServicePlanResourceGroup>
+					<appServicePlanName>hispam-prod</appServicePlanName>
+					<appServicePlanResourceGroup>PRODUCCION</appServicePlanResourceGroup>
 					<runtime>
 						<os>Linux</os>
 						<javaVersion>Java 11</javaVersion>
