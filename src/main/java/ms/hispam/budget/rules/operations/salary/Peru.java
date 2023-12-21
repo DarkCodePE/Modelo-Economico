@@ -367,41 +367,61 @@ public class Peru implements Country, Mediator {
             component.add(gratificationsComponent);
         }
     }
+    private Map<String, List<Double>> calculateVacationSeasonality(List<ParametersDTO> vacationSeasonalityList) {
+        // Ordenar la lista de ParametersDTO por período en orden ascendente
+        vacationSeasonalityList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+
+        Map<String, List<Double>> vacationSeasonality = new HashMap<>();
+
+        for (ParametersDTO vacationSeasonalityParam : vacationSeasonalityList) {
+            String year = vacationSeasonalityParam.getPeriod().substring(0, 4);
+            int changeMonth = Integer.parseInt(vacationSeasonalityParam.getPeriod().substring(4, 6));
+            double newValue = vacationSeasonalityParam.getValue();
+
+            List<Double> yearVacationSeasonality = vacationSeasonality.getOrDefault(year, new ArrayList<>(Collections.nCopies(12, 8.33)));
+            yearVacationSeasonality.set(changeMonth - 1, newValue); // Reemplazar el valor en el mes del cambio
+
+            double sumBeforeChange = yearVacationSeasonality.subList(0, changeMonth - 1).stream().mapToDouble(Double::doubleValue).sum();
+            double sumAfterChange = yearVacationSeasonality.subList(changeMonth, yearVacationSeasonality.size()).stream().mapToDouble(Double::doubleValue).sum();
+            if (sumAfterChange != 100.0 - sumBeforeChange) {
+                for (int i = changeMonth; i < yearVacationSeasonality.size(); i++) {
+                    yearVacationSeasonality.set(i, yearVacationSeasonality.get(i) / sumAfterChange * (100.0 - sumBeforeChange));
+                }
+            }
+
+            vacationSeasonality.put(year, yearVacationSeasonality);
+        }
+
+        return vacationSeasonality;
+    }
     private void processVacationEnjoymentOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters) {
-       //(AC15/30)*$Z$7*$V4*AC$8
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
         PaymentComponentDTO enjoymentComponent = componentMap.get("goce");
-        //TODO: DEFAULT VACATION DAYS 30
-        //TODO: DEFAULT VACATION SEASONALITY 8.33
         if (salaryComponent != null){
             ParametersDTO vacationDays = getParametersById(parameters, 39);
-            ParametersDTO vacationSeasonality = getParametersById(parameters, 40);
+            List<ParametersDTO> vacationSeasonalityList = getListParametersById(parameters, 40);
             double vacationDaysValue = 30;
             if (vacationDays != null) vacationDaysValue = vacationDays.getValue();
-            double vacationSeasonalityValue = 8.33/100;
-            if (vacationSeasonality != null) vacationSeasonalityValue = vacationSeasonality.getValue() / 100;
             double enjoymentValue = enjoymentComponent != null ? enjoymentComponent.getAmount().doubleValue() : 0.7;
-            // Crear el PaymentComponentDTO para vacationEnjoyment
+
+            Map<String, List<Double>> vacationSeasonalityValues = calculateVacationSeasonality(vacationSeasonalityList);
+            log.info("{}", vacationSeasonalityValues);
             PaymentComponentDTO vacationEnjoymentComponent = new PaymentComponentDTO();
             vacationEnjoymentComponent.setPaymentComponent(VACATION_ENJOYMENT);
-            vacationEnjoymentComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / 30) * vacationDaysValue * vacationSeasonalityValue));
-            //log.info("{}", salaryComponent.getProjections());
             List<MonthProjection> projections = new ArrayList<>();
-            // Iterar sobre las proyecciones de THEORETICAL_SALARY
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amount = projection.getAmount().doubleValue();
-                //(AC15/30)*$Z$7*$V4*AC$8
+                String projectionYearMonth = projection.getMonth().substring(0, 6); // Get the year and month of the projection
+                List<Double> vacationSeasonalityForYear = vacationSeasonalityValues.get(projection.getMonth().substring(0, 4)); // Get the vacation seasonality for the year of the projection
+                double vacationSeasonalityValue = vacationSeasonalityForYear.get(Integer.parseInt(projectionYearMonth.substring(4)) - 1) / 100; // Get the vacation seasonality for the month of the projection
                 double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
-                // Crear una nueva proyección para vacationEnjoyment
                 MonthProjection vacationEnjoymentProjection = new MonthProjection();
                 vacationEnjoymentProjection.setMonth(projection.getMonth());
                 vacationEnjoymentProjection.setAmount(BigDecimal.valueOf(value));
-                // Agregar la proyección a vacationEnjoymentComponent
                 projections.add(vacationEnjoymentProjection);
             }
             vacationEnjoymentComponent.setProjections(projections);
-            // Agregar vacationEnjoymentComponent a la lista de componentes
             component.add(vacationEnjoymentComponent);
         }
     }
