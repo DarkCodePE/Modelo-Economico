@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
 public class RevisionSalaryOperationPeru implements Operation {
 
     @Override
-    public void execute(Mediator mediator, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
-        mediator.executeOperation(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate);
+    public void execute(Mediator mediator, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate, Map<String, List<Double>> vacationSeasonalityValues) {
+        mediator.executeOperation(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate, vacationSeasonalityValues);
     }
 }
 

@@ -8,10 +8,11 @@ import ms.hispam.budget.rules.operations.Operation;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public class VacationEnjoymentOperation implements Operation {
     @Override
-    public void execute(Mediator mediator, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
-        mediator.executeOperation(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate);
+    public void execute(Mediator mediator, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate, Map<String, List<Double>> vacationSeasonalityValues) {
+        mediator.executeOperation(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate, vacationSeasonalityValues);
     }
 }

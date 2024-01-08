@@ -23,58 +23,6 @@ public class Colombia {
     private static final Integer SALARY_MIN_INC_PLA_DIR = (SALARY_MIN*112)/100;
     private static final Integer SALARY_MIN_PRA_INC_PLA_DIR = (SALARY_MIN_PRA*112)/100;
     static final String TYPEMONTH="yyyyMM";
-    public List<PaymentComponentDTO> revisionSalary(List<PaymentComponentDTO> componentDTO, ParametersDTO dto  ){
-        double differPercent=0.0;
-        if(Boolean.TRUE.equals(dto.getIsRetroactive())){
-            int idxStart;
-            int idxEnd;
-            String[]   period;
-            period = dto.getPeriodRetroactive().split("-");
-            idxStart=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()),period[0]);
-            idxEnd=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()),period.length==1? period[0]:period[1]);
-            AtomicReference<Double> salaryFirst= new AtomicReference<>(0.0);
-            AtomicReference<Double> salaryEnd= new AtomicReference<>(0.0);
-            AtomicReference<Double> comisionFirst= new AtomicReference<>(0.0);
-            AtomicReference<Double> comisionEnd= new AtomicReference<>(0.0);
-            componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(l->{
-                salaryFirst.set(l.getProjections().get(idxStart).getAmount().doubleValue());
-                salaryEnd.set(l.getProjections().get(idxEnd).getAmount().doubleValue());
-            });
-            componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(l->{
-                comisionFirst.set(l.getProjections().get(idxStart).getAmount().doubleValue());
-                comisionEnd.set(l.getProjections().get(idxEnd).getAmount().doubleValue());
-            });
-            differPercent=(salaryEnd.get()+comisionEnd.get())/(salaryFirst.get()+comisionFirst.get())-1;
-        }
-        double percent = dto.getValue()/100;
-        for(PaymentComponentDTO o : componentDTO.stream().filter(f->(
-                f.getType()==1|| f.getType()==2 || f.getType()==7)).collect(Collectors.toList())){
-
-            int idx = Shared.getIndex(o.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()),dto.getPeriod());
-            for (int i = idx; i < o.getProjections().size(); i++) {
-                double v=0;
-                double amount = i==0?o.getProjections().get(i).getAmount().doubleValue(): o.getProjections().get(i-1).getAmount().doubleValue();
-                o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
-                    if(o.getType()==1 ||o.getType()==7|| o.getType()==2 ){
-                        if(o.getType()==7){
-                            amount=o.getAmount().doubleValue();
-                        }
-                        v = amount* (1+(differPercent>=percent?0:percent-differPercent));
-                    }
-                    o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
-                }
-            }
-        }
-
-
-
-        return componentDTO;
-    }
-
 
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
         // HEADCOUNT: OBTIENS LAS PROYECCION Y LA PO, AQUI AGREGAMOS LOS PARAMETROS CUSTOM

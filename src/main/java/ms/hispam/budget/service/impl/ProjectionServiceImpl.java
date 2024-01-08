@@ -200,19 +200,57 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .filter(p -> p.getParameter().getId() == id)
                 .collect(Collectors.toList());
     }
+
+    public Map<String, List<Double>> storeAndSortVacationSeasonality(List<ParametersDTO> vacationSeasonalityList, String period, Integer range) {
+    // Ordenar la lista por el período
+    vacationSeasonalityList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+
+    // Crear un nuevo HashMap para almacenar los valores
+    Map<String, List<Double>> vacationSeasonality = new HashMap<>();
+
+    // Calcular el año y mes de inicio
+    int startYear = Integer.parseInt(period.substring(0, 4));
+    int startMonth = Integer.parseInt(period.substring(4, 6));
+
+    // Calcular el año y mes de finalización
+    int endYear = startYear + (startMonth + range - 1) / 12;
+    int endMonth = (startMonth + range - 1) % 12 + 1;
+
+    // Iterar sobre el rango de años
+    for (int year = startYear; year <= endYear; year++) {
+        // Crear la clave del mapa en formato "yyyy"
+        String key = String.format("%04d", year);
+
+        // Buscar en la lista los elementos que coincidan con el año actual
+        List<Double> values = vacationSeasonalityList.stream()
+                .filter(p -> p.getPeriod().startsWith(key))
+                .map(ParametersDTO::getValue)
+                .collect(Collectors.toList());
+
+        // Agregar los valores encontrados al mapa
+        vacationSeasonality.put(key, values);
+    }
+
+    return vacationSeasonality;
+}
+
     private void isPeru(List<ProjectionDTO> headcount, ParametersByProjection projection) {
         BaseExternResponse baseExtern = projection.getBaseExtern();
         boolean hasBaseExtern = baseExtern != null && !baseExtern.getData().isEmpty();
         List<ParametersDTO> vacationSeasonalityList = getListParametersById(projection.getParameters(), 40);
-        vacationSeasonalityList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : storeAndSortVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
+        log.info("vacationSeasonalityList {}", vacationSeasonalityValues);
+        //Map<String, List<Double>> vacationSeasonalityValues = null;
+                //Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : calculateVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
+        //log.info("vacationSeasonalityValues {}", vacationSeasonalityValues);
         headcount
                 .parallelStream()
                 .forEach(headcountData -> {
             if (hasBaseExtern) {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
             }
-            //log.info("headcountData {}",headcountData.getComponents());
-            methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac());
+            log.info("headcountData {}",headcountData.getPo());
+            methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac(), vacationSeasonalityValues);
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
     }

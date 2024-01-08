@@ -42,13 +42,13 @@ public class Peru implements Country, Mediator {
     }
 
     @Override
-    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
+    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate,  Map<String, List<Double>> vacationSeasonalityValues) {
         for (Operation operation : operations) {
-            operation.execute(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate);
+            operation.execute(this, component, parameters, classEmployee, period, range, temporalParameters, birthDate, vacationSeasonalityValues);
         }
     }
     @Override
-    public void executeOperation(Operation operation, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate) {
+    public void executeOperation(Operation operation, List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<RangeBuDTO> temporalParameters, LocalDate birthDate, Map<String, List<Double>> vacationSeasonalityValues) {
         if (operation instanceof SalaryOperationPeru) {
             processSalaryOperation(component, parameters, period, range);
         } else if (operation instanceof RevisionSalaryOperationPeru) {
@@ -56,7 +56,7 @@ public class Peru implements Country, Mediator {
             List<ParametersDTO> revSalParametersList = getListParametersById(parameters, 37);
             processRevisionSalaryOperation(component, salaryParametersList, revSalParametersList);
         }else if (operation instanceof VacationEnjoymentOperation) {
-             processVacationEnjoymentOperation(component, parameters);
+             processVacationEnjoymentOperation(component, parameters, vacationSeasonalityValues);
         }else if (operation instanceof BaseSalaryOperation) {
             processBaseSalaryOperation(component, parameters);
         }else if (operation instanceof VacationProvisionOperation) {
@@ -367,34 +367,7 @@ public class Peru implements Country, Mediator {
             component.add(gratificationsComponent);
         }
     }
-    private Map<String, List<Double>> calculateVacationSeasonality(List<ParametersDTO> vacationSeasonalityList) {
-        // Ordenar la lista de ParametersDTO por período en orden ascendente
-        vacationSeasonalityList.sort(Comparator.comparing(ParametersDTO::getPeriod));
-
-        Map<String, List<Double>> vacationSeasonality = new HashMap<>();
-
-        for (ParametersDTO vacationSeasonalityParam : vacationSeasonalityList) {
-            String year = vacationSeasonalityParam.getPeriod().substring(0, 4);
-            int changeMonth = Integer.parseInt(vacationSeasonalityParam.getPeriod().substring(4, 6));
-            double newValue = vacationSeasonalityParam.getValue();
-
-            List<Double> yearVacationSeasonality = vacationSeasonality.getOrDefault(year, new ArrayList<>(Collections.nCopies(12, 8.33)));
-            yearVacationSeasonality.set(changeMonth - 1, newValue); // Reemplazar el valor en el mes del cambio
-
-            double sumBeforeChange = yearVacationSeasonality.subList(0, changeMonth - 1).stream().mapToDouble(Double::doubleValue).sum();
-            double sumAfterChange = yearVacationSeasonality.subList(changeMonth, yearVacationSeasonality.size()).stream().mapToDouble(Double::doubleValue).sum();
-            if (sumAfterChange != 100.0 - sumBeforeChange) {
-                for (int i = changeMonth; i < yearVacationSeasonality.size(); i++) {
-                    yearVacationSeasonality.set(i, yearVacationSeasonality.get(i) / sumAfterChange * (100.0 - sumBeforeChange));
-                }
-            }
-
-            vacationSeasonality.put(year, yearVacationSeasonality);
-        }
-
-        return vacationSeasonality;
-    }
-    private void processVacationEnjoymentOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters) {
+    private void processVacationEnjoymentOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, Map<String, List<Double>> vacationSeasonalityValues) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get(THEORETICAL_SALARY);
         PaymentComponentDTO enjoymentComponent = componentMap.get("goce");
@@ -404,17 +377,28 @@ public class Peru implements Country, Mediator {
             double vacationDaysValue = 30;
             if (vacationDays != null) vacationDaysValue = vacationDays.getValue();
             double enjoymentValue = enjoymentComponent != null ? enjoymentComponent.getAmount().doubleValue() : 0.7;
-
-            Map<String, List<Double>> vacationSeasonalityValues = calculateVacationSeasonality(vacationSeasonalityList);
-            log.info("{}", vacationSeasonalityValues);
+            //Map<String, List<Double>> vacationSeasonalityValues = calculateVacationSeasonality(vacationSeasonalityList);
+            //log.info("{}", vacationSeasonalityValues);
             PaymentComponentDTO vacationEnjoymentComponent = new PaymentComponentDTO();
             vacationEnjoymentComponent.setPaymentComponent(VACATION_ENJOYMENT);
+            vacationEnjoymentComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue()/30)* vacationDaysValue* enjoymentValue*8.33)) ;
             List<MonthProjection> projections = new ArrayList<>();
+            //log.info("{}", salaryComponent.getProjections());
+            int i = 0;
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amount = projection.getAmount().doubleValue();
                 String projectionYearMonth = projection.getMonth().substring(0, 6); // Get the year and month of the projection
-                List<Double> vacationSeasonalityForYear = vacationSeasonalityValues.get(projection.getMonth().substring(0, 4)); // Get the vacation seasonality for the year of the projection
-                double vacationSeasonalityValue = vacationSeasonalityForYear.get(Integer.parseInt(projectionYearMonth.substring(4)) - 1) / 100; // Get the vacation seasonality for the month of the projection
+                double vacationSeasonalityValue = 8.33;
+                if (vacationSeasonalityValues != null) {
+                    log.info("{}", projection.getMonth());
+                    String year = projection.getMonth().substring(0, 4); // Get the year of the projectio
+                    log.info("{}", year);
+                    List<Double> vacationSeasonalityForYear = vacationSeasonalityValues.get(year); // Get the vacation seasonality for the year of the projection
+                    //log.info("{}", vacationSeasonalityForYear);
+                    int index = Integer.parseInt(projectionYearMonth.substring(4)) - 1;
+                    vacationSeasonalityValue = vacationSeasonalityForYear.get(index) / 100;
+                    log.info("contardor: -> {}", i++);
+                }
                 double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
                 MonthProjection vacationEnjoymentProjection = new MonthProjection();
                 vacationEnjoymentProjection.setMonth(projection.getMonth());
@@ -458,8 +442,8 @@ public class Peru implements Country, Mediator {
     }
     private void processSalaryOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO pc960400Component = componentMap.get(PC960400);
-        PaymentComponentDTO pc960401Component = componentMap.get(PC960401);
+        PaymentComponentDTO pc960400Component = componentMap.get(PC960400); // componente 960400
+        PaymentComponentDTO pc960401Component = componentMap.get(PC960401);// componente 960401
         PaymentComponentDTO promoComponent = componentMap.get("promo");
         PaymentComponentDTO theoreticalSalaryComponent = createTheoreticalSalaryComponent(pc960400Component, pc960401Component, period, range);
         ParametersDTO promotionParameter = getParametersById(parameters, 38);
@@ -588,7 +572,7 @@ public class Peru implements Country, Mediator {
                         revisionSalaryEMP = percentRevEMP;
                     }
                 }
-                log.info("{}", revSalParameters);
+               // log.info("{}", revSalParameters);
                 if (revSalParameters != null) {
                     LocalDate date3 = LocalDate.parse(revSalParameters.getPeriod(), dateFormat);
                     double percentRev2 = revSalParameters.getValue() / 100;
