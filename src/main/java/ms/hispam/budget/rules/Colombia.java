@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 @Slf4j(topic = "Colombia")
@@ -23,162 +24,294 @@ public class Colombia {
     private static final Integer SALARY_MIN_INC_PLA_DIR = (SALARY_MIN*112)/100;
     private static final Integer SALARY_MIN_PRA_INC_PLA_DIR = (SALARY_MIN_PRA*112)/100;
     static final String TYPEMONTH="yyyyMM";
-
+    private Map<String, Object> createSalaryComponent(PaymentComponentDTO pc938001Component, PaymentComponentDTO pc938005Component, String classEmployee, double legalSalaryMinInternal, String period, Integer range, String category, String componentName) {
+        PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+        salaryComponent.setPaymentComponent(componentName);
+        String salaryType = "BASE";
+        // Calcular el valor de THEORETICAL-SALARY a partir de PC960400 y PC960401
+        if (pc938001Component != null && pc938005Component != null) {
+            double baseSalary = pc938001Component.getAmount().doubleValue();
+            double baseSalaryIntegral = pc938005Component.getAmount().doubleValue();
+            if (classEmployee.equals(category)) {
+                if (baseSalary == 0.0) {
+                    salaryType = "INTEGRAL";
+                    salaryComponent.setAmount(BigDecimal.valueOf(baseSalaryIntegral));
+                } else {
+                    salaryComponent.setAmount(BigDecimal.valueOf(baseSalary));
+                }
+            } else {
+                salaryComponent.setAmount(BigDecimal.ZERO);
+            }
+            salaryComponent.setProjections(Shared.generateMonthProjection(period,range,salaryComponent.getAmount()));
+        }else {
+            salaryComponent.setAmount(BigDecimal.ZERO);
+            salaryComponent.setProjections(Shared.generateMonthProjection(period,range,salaryComponent.getAmount()));
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("salaryComponent", salaryComponent);
+        result.put("salaryType", salaryType);
+        return result;
+    }
+    private Map<String, Object> createSalaryComponent(PaymentComponentDTO pc938001Component, PaymentComponentDTO pc938005Component, String classEmployee, double legalSalaryMinInternal, String period, Integer range, List<String> categories, String componentName) {
+        PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+        salaryComponent.setPaymentComponent(componentName);
+        String salaryType = "BASE";
+        // Calcular el valor de THEORETICAL-SALARY a partir de PC960400 y PC960401
+        if (pc938001Component != null && pc938005Component != null) {
+            double baseSalary = pc938001Component.getAmount().doubleValue();
+            double baseSalaryIntegral = pc938005Component.getAmount().doubleValue();
+            if (categories.contains(classEmployee)) {
+                if (baseSalary == 0.0) {
+                    salaryType = "INTEGRAL";
+                    salaryComponent.setAmount(BigDecimal.valueOf(baseSalaryIntegral));
+                } else {
+                    salaryComponent.setAmount(BigDecimal.valueOf(baseSalary));
+                }
+            } else {
+                salaryComponent.setAmount(BigDecimal.ZERO);
+            }
+            salaryComponent.setProjections(Shared.generateMonthProjection(period,range,salaryComponent.getAmount()));
+        }else {
+            salaryComponent.setAmount(BigDecimal.ZERO);
+            salaryComponent.setProjections(Shared.generateMonthProjection(period,range,salaryComponent.getAmount()));
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("salaryComponent", salaryComponent);
+        result.put("salaryType", salaryType);
+        return result;
+    }
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
-        // HEADCOUNT: OBTIENS LAS PROYECCION Y LA PO, AQUI AGREGAMOS LOS PARAMETROS CUSTOM
-        AtomicReference<Double> baseSalary = new AtomicReference<>((double) 0);
-        AtomicReference<Double> baseSalaryIntegral = new AtomicReference<>((double) 0);
-        boolean flagExistSalaryBase = false;
-        //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC938001"))
-                .findFirst()
-                .ifPresent(p -> {
-                   baseSalary.set(p.getAmount().doubleValue());
-                });
-        component.stream()
-                .filter(p -> p.getPaymentComponent().equalsIgnoreCase("PC938005"))
-                .findFirst()
-                .ifPresent(p -> {
-                    baseSalaryIntegral.set(p.getAmount().doubleValue());
-                });
-        PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
-        paymentComponentDTO.setPaymentComponent("SALARY");
-        paymentComponentDTO.setAmount(BigDecimal.valueOf(Stream.of(
-                baseSalary.get(),baseSalaryIntegral.get()
-        ).max(Double::compareTo).orElse(0.0)));
-        paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
-        //SALARIO MIN
-        AtomicReference<Double> salaryMin = new AtomicReference<>((double) 0);
-        AtomicReference<String> periodSalaryMin = new AtomicReference<>((String) "");
-        AtomicReference<Double> salaryIntegral = new AtomicReference<>((double) 0);
-        AtomicReference<String> periodSalaryMinIntegral = new AtomicReference<>((String) "");
-        switch (classEmployee){
-            case "PRA":
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 26)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryMin.set(param.getValue());
-                            periodSalaryMin.set(param.getPeriod());
-                        });
-                //SI(R13<=S$5;S$5;R13)
-                //verificamos en que periodo(meses) este parámetro afectara a al monto de la proyección
-                int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMin.get());
-                List<MonthProjection> months= paymentComponentDTO.getProjections();
-                if (idx != -1){
-                    for (int i = idx; i < months.size(); i++) {
-                        double amount = (i == 0) ? paymentComponentDTO.getAmount().doubleValue() : months.get(i-1).getAmount().doubleValue();
-                        //FORMULA
-                        //SI(R13<=S$5;S$5;R13);
-                       /* SI($F4<>"";
-                        SI(R13<=S$3;S$3;R13);SI(R13<S$4;S$4;R13));*/
-                        if (amount <= salaryMin.get()){
-                            months.get(i).setAmount(BigDecimal.valueOf(salaryMin.get()));
-                        }else {
-                            months.get(i).setAmount(BigDecimal.valueOf(amount));
-                        }
-
-                    }
-                }
-                break;
-            case "JP":
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 27)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryMin.set(param.getValue());
-                            periodSalaryMin.set(param.getPeriod());
-                        });
-                //FIND MONTH TO APPLY PARAMETER T
-                //mes
-                int idxT = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(d->d.getMonth()).collect(Collectors.toList()),periodSalaryMin.get());
-                List<MonthProjection> monthsT= paymentComponentDTO.getProjections();
-                if (idxT != -1){
-                    for (int i = idxT; i < monthsT.size(); i++) {
-                        double amount = (i == 0) ? paymentComponentDTO.getAmount().doubleValue() : monthsT.get(i-1).getAmount().doubleValue();
-                        //FORMULA
-                        //SI(R13 <= S$6;S$6;R13);
-                        if (amount <= salaryMin.get()){
-                            monthsT.get(i).setAmount(BigDecimal.valueOf( salaryMin.get()));
-                        }else {
-                            monthsT.get(i).setAmount(BigDecimal.valueOf(amount));
-                        }
-
-                    }
-                }
-                break;
-            case "APR":
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 43)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryMin.set(param.getValue());
-                            periodSalaryMin.set(param.getPeriod());
-                        });
-                //mes
-                int idxApr = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(d->d.getMonth()).collect(Collectors.toList()),periodSalaryMin.get());
-                List<MonthProjection> monthsApr= paymentComponentDTO.getProjections();
-                if (idxApr != -1){
-                    for (int i = idxApr; i < monthsApr.size(); i++) {
-                        double amount = (i == 0) ? paymentComponentDTO.getAmount().doubleValue() : monthsApr.get(i-1).getAmount().doubleValue();
-                        //FORMULA
-                        //SI(R13 <= S$3/2;S$3/2;MAX(R13;S$3));
-                        if (amount <= salaryMin.get()/2 ){
-                            monthsApr.get(i).setAmount(BigDecimal.valueOf(salaryMin.get()/2));
-                        }else {
-                            monthsApr.get(i).setAmount(BigDecimal.valueOf(Stream.of(
-                                    amount,salaryMin.get()
-                            ).max(Double::compareTo).orElse(0.0)));
-                        }
-                    }
-                }
-                break;
-            default:
-                //revision param
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 2)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryMin.set(param.getValue());
-                            periodSalaryMin.set(param.getPeriod());
-                        });
-                parameters.stream()
-                        .filter(p -> p.getParameter().getId() == 42)
-                        .findFirst()
-                        .ifPresent(param -> {
-                            salaryIntegral.set(param.getValue());
-                            periodSalaryMinIntegral.set(param.getPeriod());
-                        });
-
-                double salaryMinInternal = baseSalary.get() == 0.0?salaryIntegral.get(): salaryMin.get();
-                String periodSalaryMinInternal = baseSalary.get() == 0.0?periodSalaryMinIntegral.get(): periodSalaryMin.get();
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO pc938001Component = componentMap.get("PC938001");
+        PaymentComponentDTO pc938005Component = componentMap.get("PC938005");
+        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 1300000;
+        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, "P", "SALARY").get("salaryComponent");
+        String salaryType = (String) createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, "P","SALARY").get("salaryType");
+        ParametersDTO salaryMinIntegralParam = getParametersById(parameters, 42);
+        if (paymentComponentDTO.getProjections() != null){
+            if (legalSalaryMin != null && salaryMinIntegralParam != null) {
+                //double salaryMin = salaryMinParam.getValue();
+                double salaryMinIntegral = salaryMinIntegralParam.getValue();
                 int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()),periodSalaryMinInternal);
-                if (idxEmp != -1){
-                    for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
-                        double amount = i==0?paymentComponentDTO.getProjections().get(i).getAmount().doubleValue(): paymentComponentDTO.getProjections().get(i-1).getAmount().doubleValue();
-                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                        //ignore month marcth
-                        if(paymentComponentDTO
-                                .getProjections()
-                                .get(i).getMonth().equalsIgnoreCase(periodSalaryMinInternal)){
-                            //SI($F4<>"";SI(R13<=S$3;S$3;R13);SI(R13<S$4;S$4;R13));
-                            if (amount <= salaryMinInternal){
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMin.get()));
-                            }else {
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), legalSalaryMin.getPeriod());
+                int idxEmpIntegral = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), salaryMinIntegralParam.getPeriod());
+                if (salaryType.equals("INTEGRAL")) {
+                    if (idxEmpIntegral != -1) {
+                        for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
+                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                            //ignore month marcth
+                            if (paymentComponentDTO
+                                    .getProjections()
+                                    .get(i).getMonth().equalsIgnoreCase(salaryMinIntegralParam.getPeriod())) {
+                                if (amount <= salaryMinIntegral) {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral));
+                                } else {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (idxEmp != -1) {
+                        for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
+                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                            //ignore month marcth
+                            if (paymentComponentDTO
+                                    .getProjections()
+                                    .get(i).getMonth().equalsIgnoreCase(legalSalaryMin.getPeriod())) {
+                                if (amount <= legalSalaryMinInternal) {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
+                                } else {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                }
                             }
                         }
                     }
                 }
+            }
+        }
+        component.add(paymentComponentDTO);
+    }
+    private ParametersDTO getParametersById(List<ParametersDTO> parameters, int id) {
+        return parameters.stream()
+                .filter(p -> p.getParameter().getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
+    private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
+        return component.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
+                    existing.getProjections().addAll(replacement.getProjections());
+                    return existing;
+                }));
+    }
+    public void temporalSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO pc938001Component = componentMap.get("PC938001");
+        PaymentComponentDTO pc938005Component = componentMap.get("PC938005");
+        //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
+        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 1300000;
+        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, "T", "TEMPORAL_SALARY").get("salaryComponent");
+        String salaryType = (String) createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, "T","TEMPORAL_SALARY").get("salaryType");
+        ParametersDTO salaryMinIntegralParam = getParametersById(parameters, 42);
+        if (paymentComponentDTO.getProjections() != null){
+            if (legalSalaryMin != null && salaryMinIntegralParam != null) {
+                double salaryMin = legalSalaryMin.getValue();
+                double salaryMinIntegral = salaryMinIntegralParam.getValue();
+                int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), legalSalaryMin.getPeriod());
+                int idxEmpIntegral = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), salaryMinIntegralParam.getPeriod());
+                if (salaryType.equals("INTEGRAL")) {
+                    if (idxEmpIntegral != -1) {
+                        for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
+                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                            //ignore month marcth
+                            if (paymentComponentDTO
+                                    .getProjections()
+                                    .get(i).getMonth().equalsIgnoreCase(salaryMinIntegralParam.getPeriod())) {
+                                if (amount <= salaryMinIntegral) {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral));
+                                } else {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (idxEmp != -1) {
+                        for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
+                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                            //ignore month marcth
+                            if (paymentComponentDTO
+                                    .getProjections()
+                                    .get(i).getMonth().equalsIgnoreCase(legalSalaryMin.getPeriod())) {
+                                if (amount <= legalSalaryMinInternal) {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
+                                } else {
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        component.add(paymentComponentDTO);
+    }
+    public void salaryPra(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO pc938001Component = componentMap.get("PC938001");
+        PaymentComponentDTO pc938005Component = componentMap.get("PC938005");
+        //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
+        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 1300000;
+        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, Arrays.asList("PRA", "APR"), "PRA_SALARY").get("salaryComponent");
+        String salaryType = (String) createSalaryComponent(pc938001Component, pc938005Component, classEmployee, legalSalaryMinInternal, period, range, Arrays.asList("PRA", "APR"),"TEMPORAL_SALARY").get("salaryType");
+        //SALARIO MIN
+        //CALCULAR SALARIO MINIMO
+        ParametersDTO salaryMinPraParam = getParametersById(parameters, 26);
+        ParametersDTO salaryMinIntegralParam = getParametersById(parameters, 42);
+        if (paymentComponentDTO.getProjections() != null){
+            if (salaryMinPraParam != null && salaryMinIntegralParam != null) {
+                double salaryMin = salaryMinPraParam.getValue();
+                double salaryMinIntegral = salaryMinIntegralParam.getValue();
+                int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), salaryMinPraParam.getPeriod());
+                int idxEmpIntegral = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                        .map(MonthProjection::getMonth).collect(Collectors.toList()), salaryMinIntegralParam.getPeriod());
+                if (salaryType.equals("INTEGRAL")) {
+                    if (idxEmpIntegral != -1) {
+                        if (classEmployee.equals("PRA")) {
+                            for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
+                                double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                //ignore month marcth
+                                if (paymentComponentDTO
+                                        .getProjections()
+                                        .get(i).getMonth().equalsIgnoreCase(salaryMinIntegralParam.getPeriod())) {
+                                    if (amount <= salaryMinIntegral) {
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral));
+                                    } else {
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                    }
+                                }
+                            }
+                        }
+                          if (classEmployee.equals("APR")) {
+                                for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
+                                    double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                    //ignore month marcth
+                                    if (paymentComponentDTO
+                                            .getProjections()
+                                            .get(i).getMonth().equalsIgnoreCase(salaryMinIntegralParam.getPeriod())) {
+                                        if (amount <= salaryMinIntegral/2) {
+                                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral/2));
+                                        } else {
+                                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                } else {
+                    if (classEmployee.equals("PRA")) {
+                        if (idxEmp != -1) {
+                            for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
+                                double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                //ignore month marcth
+                                if (paymentComponentDTO
+                                        .getProjections()
+                                        .get(i).getMonth().equalsIgnoreCase(salaryMinPraParam.getPeriod())) {
+                                    if (amount <= salaryMin) {
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMin));
+                                    } else {
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (classEmployee.equals("APR") && legalSalaryMin != null) {
+                        if (idxEmp != -1) {
+                            for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
+                                double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                                //ignore month marcth
+                                if (paymentComponentDTO
+                                        .getProjections()
+                                        .get(i).getMonth().equalsIgnoreCase(legalSalaryMin.getPeriod())) {
+                                    if (amount <= legalSalaryMinInternal/2) {
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal/2));
+                                    } else {
+                                        //TODO : PREGUNTAR SI DEBE MANTENER EL SALARIO
+                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         component.add(paymentComponentDTO);
     }
     public void revisionSalary(List<PaymentComponentDTO> component,List<ParametersDTO> parameters,String period, Integer range){
+        //TODO : No implementa la lógica de revisión salarial basada en el %Inc Rev Salarial y el %Inc Rev Salarial (Integral).
+        //Map<String, PaymentComponentDTO> componentMap = component.stream()
+                //.collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+        // Buscar el componente de salario en el mapa
+        //PaymentComponentDTO salaryComponent = componentMap.get(componentName);
+
          component.stream()
                 .filter(p -> p.getPaymentComponent().equalsIgnoreCase("SALARY"))
                  .parallel()
@@ -256,7 +389,6 @@ public class Colombia {
                      }
                 });
     }
-
     public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission) {
         // BUSCAMOS LOS PAYMENT COMPONENTS NECESARIOS PARA EL CALCUL  DE COMISIONES
         AtomicReference<BigDecimal> commision1 = new AtomicReference<>(BigDecimal.ZERO);
@@ -321,7 +453,6 @@ public class Colombia {
                 });
         component.add(paymentComponentDTO);
     }
-
     public static ParamFilterDTO isRefreshCommisionValue(List<ParametersDTO> params, String periodProjection){
         AtomicReference<Double> value = new AtomicReference<>(0.0);
         Boolean status = params.stream()

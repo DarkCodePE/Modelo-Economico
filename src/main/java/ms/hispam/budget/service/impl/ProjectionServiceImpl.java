@@ -106,6 +106,8 @@ public class ProjectionServiceImpl implements ProjectionService {
         operations.add(new LifeInsuranceOperation());
         operations.add(new MovingOperation());
         operations.add(new HousingOperation());
+        operations.add(new ExpatriateseOperation());
+        operations.add(new AFPOperation());
     }
 
     @Override
@@ -182,8 +184,8 @@ public class ProjectionServiceImpl implements ProjectionService {
                         );
                     })
                     .collect(Collectors.toList());
-            Double tCambio  =repository.getTypeChange(projection.getPeriod(),
-                    projection.getCurrent()).orElseThrow(()-> new BadRequestException("No se el tipo de cambio"));
+            Double tCambio  = repository.getTypeChange(projection.getPeriod(),
+                    projection.getCurrent()).orElse(0.0);
             return new Page<>(0,0, headcount.size(),
                     proyeccionesValidas
                     ,groupedData,
@@ -201,7 +203,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .collect(Collectors.toList());
     }
 
-    public Map<String, List<Double>> storeAndSortVacationSeasonality(List<ParametersDTO> vacationSeasonalityList, String period, Integer range) {
+public Map<String, List<Double>> storeAndSortVacationSeasonality(List<ParametersDTO> vacationSeasonalityList, String period, Integer range) {
     // Ordenar la lista por el período
     vacationSeasonalityList.sort(Comparator.comparing(ParametersDTO::getPeriod));
 
@@ -221,11 +223,18 @@ public class ProjectionServiceImpl implements ProjectionService {
         // Crear la clave del mapa en formato "yyyy"
         String key = String.format("%04d", year);
 
+        // Crear una lista de 12 elementos con valor predeterminado 8.33
+        List<Double> values = new ArrayList<>(Collections.nCopies(12, 8.33));
+
         // Buscar en la lista los elementos que coincidan con el año actual
-        List<Double> values = vacationSeasonalityList.stream()
+        vacationSeasonalityList.stream()
                 .filter(p -> p.getPeriod().startsWith(key))
-                .map(ParametersDTO::getValue)
-                .collect(Collectors.toList());
+                .forEach(p -> {
+                    // Obtener el mes del período
+                    int month = Integer.parseInt(p.getPeriod().substring(4, 6));
+                    // Actualizar el valor para el mes correspondiente
+                    values.set(month - 1, p.getValue());
+                });
 
         // Agregar los valores encontrados al mapa
         vacationSeasonality.put(key, values);
@@ -244,7 +253,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 //Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : calculateVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
         //log.info("vacationSeasonalityValues {}", vacationSeasonalityValues);
         headcount
-                .parallelStream()
+                //.parallelStream()
                 .forEach(headcountData -> {
             if (hasBaseExtern) {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
@@ -305,6 +314,8 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -935,6 +946,8 @@ public class ProjectionServiceImpl implements ProjectionService {
             String nominalCodeHousing="1212";
             String nominalCodeExpatriates="1213";
             String [] nominaAFP= {"1503", "1513", "1523"};
+            log.info("nominal {}",nominal);
+            log.info("list {}",list.get(0).getIdssff());
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
 

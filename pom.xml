@@ -78,7 +78,13 @@
 			<artifactId>bcpkix-lts8on</artifactId>
 			<version>2.73.3</version>
 		</dependency>
-
+		<dependency>
+			<groupId>com.newrelic.agent.java</groupId>
+			<artifactId>newrelic-java</artifactId>
+			<version>7.1.0</version>
+			<scope>provided</scope>
+			<type>zip</type>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -143,6 +149,31 @@
 		            </deployment>
 		        </configuration>
 		    </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>unpack-newrelic</id>
+						<phase>package</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+						<configuration>
+							<artifactItems>
+								<artifactItem>
+									<groupId>com.newrelic.agent.java</groupId>
+									<artifactId>newrelic-java</artifactId>
+									<version>7.1.0</version>
+									<type>zip</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>${project.build.directory}/newrelic</outputDirectory>
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 	<repositories>
