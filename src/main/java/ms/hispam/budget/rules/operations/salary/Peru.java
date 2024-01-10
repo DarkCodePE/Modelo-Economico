@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 @Slf4j(topic = "Peru")
@@ -70,101 +71,105 @@ public class Peru implements Country, Mediator {
         }else if(operation instanceof LifeInsuranceOperation) {
             processLifeInsuranceOperation(component, temporalParameters,parameters, birthDate);
         }else if(operation instanceof MovingOperation){
-            processMovingOperation(component);
+            processMovingOperation(component, period, range);
         }else if(operation instanceof HousingOperation) {
-            processHousingOperation(component);
+            processHousingOperation(component, period, range);
         }else if(operation instanceof ExpatriateseOperation) {
-            processExpatriateseOperation(component);
+            processExpatriateseOperation(component, period, range);
         }else if(operation instanceof AFPOperation) {
-            processAFPOperation(component, parameters);
+            processAFPOperation(component, parameters, period, range);
         }
     }
 
-    private void processAFPOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters) {
+    private void processAFPOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO AFPComponent = componentMap.get(AFP);
+        log.info("processAFPOperation -> {}", AFPComponent);
         if (AFPComponent != null) {
             PaymentComponentDTO AFPComponentNew = new PaymentComponentDTO();
             AFPComponentNew.setPaymentComponent(AFP);
             AFPComponentNew.setAmount(BigDecimal.valueOf(AFPComponent.getAmount().doubleValue()));
-            AFPComponentNew.setProjections(new ArrayList<>());
+            List<MonthProjection> AFPProjections = new ArrayList<>();
             for (MonthProjection AFPProjection : AFPComponent.getProjections()) {
                 MonthProjection AFPProjectionNew = new MonthProjection();
                 AFPProjectionNew.setMonth(AFPProjection.getMonth());
                 AFPProjectionNew.setAmount(BigDecimal.valueOf(AFPProjection.getAmount().doubleValue()));
-                AFPComponentNew.getProjections().add(AFPProjectionNew);
+                AFPProjections.add(AFPProjectionNew);
             }
+            AFPComponentNew.setProjections(AFPProjections);
             component.add(AFPComponentNew);
         }else {
             PaymentComponentDTO AFPComponentNew = new PaymentComponentDTO();
             AFPComponentNew.setPaymentComponent(AFP);
             AFPComponentNew.setAmount(BigDecimal.valueOf(0.0));
-            AFPComponentNew.setProjections(new ArrayList<>());
+            AFPComponentNew.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(AFPComponentNew);
         }
     }
 
-    private void processExpatriateseOperation(List<PaymentComponentDTO> component) {
+    private void processExpatriateseOperation(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO expatriateseComponent = componentMap.get(EXPATRIATES);
-        log.info("{}", expatriateseComponent);
+        log.info("processExpatriateseOperation -> {}", expatriateseComponent);
         if (expatriateseComponent != null) {
             PaymentComponentDTO expatriateseComponentNew = new PaymentComponentDTO();
             expatriateseComponentNew.setPaymentComponent(EXPATRIATES);
             expatriateseComponentNew.setAmount(BigDecimal.valueOf(expatriateseComponent.getAmount().doubleValue()));
-            expatriateseComponentNew.setProjections(new ArrayList<>());
+            List<MonthProjection> expatriateseProjections = new ArrayList<>();
             for (MonthProjection expatriateseProjection : expatriateseComponent.getProjections()) {
                 MonthProjection expatriateseProjectionNew = new MonthProjection();
                 expatriateseProjectionNew.setMonth(expatriateseProjection.getMonth());
                 expatriateseProjectionNew.setAmount(BigDecimal.valueOf(expatriateseProjection.getAmount().doubleValue()));
-                expatriateseComponentNew.getProjections().add(expatriateseProjectionNew);
+                expatriateseProjections.add(expatriateseProjectionNew);
             }
+            expatriateseComponentNew.setProjections(expatriateseProjections);
             component.add(expatriateseComponentNew);
         }else {
             PaymentComponentDTO expatriateseComponentNew = new PaymentComponentDTO();
             expatriateseComponentNew.setPaymentComponent(EXPATRIATES);
             expatriateseComponentNew.setAmount(BigDecimal.valueOf(0.0));
-            expatriateseComponentNew.setProjections(new ArrayList<>());
+            expatriateseComponentNew.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(expatriateseComponentNew);
         }
     }
 
-    private void processHousingOperation(List<PaymentComponentDTO> component) {
+    private void processHousingOperation(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO housingComponent = componentMap.get(HOUSING);
-        log.info("{}", housingComponent);
+        log.info("processHousingOperation -> {}", housingComponent);
         if (housingComponent != null) {
             PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
             housingComponentNew.setPaymentComponent(HOUSING);
             housingComponentNew.setAmount(BigDecimal.valueOf(housingComponent.getAmount().doubleValue()));
-            housingComponentNew.setProjections(new ArrayList<>());
+            List<MonthProjection> housingProjections = new ArrayList<>();
             for (MonthProjection housingProjection : housingComponent.getProjections()) {
                 MonthProjection housingProjectionNew = new MonthProjection();
                 housingProjectionNew.setMonth(housingProjection.getMonth());
                 housingProjectionNew.setAmount(BigDecimal.valueOf(housingProjection.getAmount().doubleValue()));
-                housingComponentNew.getProjections().add(housingProjectionNew);
+                housingProjections.add(housingProjectionNew);
             }
+            housingComponentNew.setProjections(housingProjections);
             component.add(housingComponentNew);
         }else {
             PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
             housingComponentNew.setPaymentComponent(HOUSING);
             housingComponentNew.setAmount(BigDecimal.valueOf(0.0));
-            housingComponentNew.setProjections(new ArrayList<>());
+            housingComponentNew.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(housingComponentNew);
         }
     }
 
-    private void processMovingOperation(List<PaymentComponentDTO> component) {
+    private void processMovingOperation(List<PaymentComponentDTO> component, String period, Integer range) {
         // Obtener el PaymentComponentDTO Moving
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO movingComponent = componentMap.get(MOVING);
-        log.info("{}", movingComponent);
+        log.info("processMovingOperation -> {}", movingComponent);
         if (movingComponent != null) {
             // Crear el PaymentComponentDTO para Moving
             PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();
             movingComponentNew.setPaymentComponent(MOVING);
             movingComponentNew.setAmount(BigDecimal.valueOf(movingComponent.getAmount().doubleValue()));
-            movingComponentNew.setProjections(new ArrayList<>());
+            List<MonthProjection> movingProjections = new ArrayList<>();
             // Iterar sobre las proyecciones de Moving
             for (MonthProjection movingProjection : movingComponent.getProjections()) {
                 // Crear una nueva proyección para Moving
@@ -172,15 +177,16 @@ public class Peru implements Country, Mediator {
                 movingProjectionNew.setMonth(movingProjection.getMonth());
                 movingProjectionNew.setAmount(BigDecimal.valueOf(movingProjection.getAmount().doubleValue()));
                 // Agregar la proyección a Moving
-                movingComponentNew.getProjections().add(movingProjectionNew);
+                movingProjections.add(movingProjectionNew);
             }
+            movingComponentNew.setProjections(movingProjections);
             // Agregar Moving a la lista de componentes
             component.add(movingComponentNew);
         }else {
             PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();
             movingComponentNew.setPaymentComponent(MOVING);
             movingComponentNew.setAmount(BigDecimal.valueOf(0.0));
-            movingComponentNew.setProjections(new ArrayList<>());
+            movingComponentNew.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(movingComponentNew);
         }
 
@@ -373,7 +379,7 @@ public class Peru implements Country, Mediator {
         PaymentComponentDTO enjoymentComponent = componentMap.get("goce");
         if (salaryComponent != null){
             ParametersDTO vacationDays = getParametersById(parameters, 39);
-            List<ParametersDTO> vacationSeasonalityList = getListParametersById(parameters, 40);
+            //List<ParametersDTO> vacationSeasonalityList = getListParametersById(parameters, 40);
             double vacationDaysValue = 30;
             if (vacationDays != null) vacationDaysValue = vacationDays.getValue();
             double enjoymentValue = enjoymentComponent != null ? enjoymentComponent.getAmount().doubleValue() : 0.7;
@@ -386,24 +392,27 @@ public class Peru implements Country, Mediator {
             //log.info("{}", salaryComponent.getProjections());
             int i = 0;
             for (MonthProjection projection : salaryComponent.getProjections()) {
-                double amount = projection.getAmount().doubleValue();
-                String projectionYearMonth = projection.getMonth().substring(0, 6); // Get the year and month of the projection
-                double vacationSeasonalityValue = 8.33;
-                if (vacationSeasonalityValues != null) {
-                    log.info("{}", projection.getMonth());
-                    String year = projection.getMonth().substring(0, 4); // Get the year of the projectio
-                    log.info("{}", year);
-                    List<Double> vacationSeasonalityForYear = vacationSeasonalityValues.get(year); // Get the vacation seasonality for the year of the projection
-                    //log.info("{}", vacationSeasonalityForYear);
-                    int index = Integer.parseInt(projectionYearMonth.substring(4)) - 1;
-                    vacationSeasonalityValue = vacationSeasonalityForYear.get(index) / 100;
-                    log.info("contardor: -> {}", i++);
+                //log.info("projection.getMonth() -> {}", projection.getMonth());
+                if (projection.getMonth() != null) {
+                    double amount = projection.getAmount().doubleValue();
+                    String projectionYearMonth = projection.getMonth().substring(0, 6); // Get the year and month of the projection
+                    double vacationSeasonalityValue = 8.33;
+                    if (vacationSeasonalityValues != null) {
+                        //log.info("{}", projection.getMonth());
+                        String year = projection.getMonth().substring(0, 4); // Get the year of the projectio
+                        //log.info("{}", year);
+                        List<Double> vacationSeasonalityForYear = vacationSeasonalityValues.get(year); // Get the vacation seasonality for the year of the projection
+                        //log.info("{}", vacationSeasonalityForYear);
+                        int index = Integer.parseInt(projectionYearMonth.substring(4)) - 1;
+                        vacationSeasonalityValue = vacationSeasonalityForYear.get(index) / 100;
+                        log.info("contardor: -> {}", i++);
+                    }
+                    double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
+                    MonthProjection vacationEnjoymentProjection = new MonthProjection();
+                    vacationEnjoymentProjection.setMonth(projection.getMonth());
+                    vacationEnjoymentProjection.setAmount(BigDecimal.valueOf(value));
+                    projections.add(vacationEnjoymentProjection);
                 }
-                double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
-                MonthProjection vacationEnjoymentProjection = new MonthProjection();
-                vacationEnjoymentProjection.setMonth(projection.getMonth());
-                vacationEnjoymentProjection.setAmount(BigDecimal.valueOf(value));
-                projections.add(vacationEnjoymentProjection);
             }
             vacationEnjoymentComponent.setProjections(projections);
             component.add(vacationEnjoymentComponent);
