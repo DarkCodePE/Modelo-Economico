@@ -591,7 +591,7 @@ public class Colombia {
 
                 // Calcular el costo del Consolidado de Vacaciones
                 BigDecimal vacationCost = BigDecimal.valueOf(totalAmount.doubleValue() / 24);
-                log.info("vacationCost -> {}", vacationCost);
+                //log.info("vacationCost -> {}", vacationCost);
                 // Crear una proyección para este mes
                 MonthProjection projection = new MonthProjection();
                 projection.setMonth(primeProjection.getMonth());
@@ -839,7 +839,7 @@ public class Colombia {
         PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
         healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA");
         double totalAmountBase = salary + overtime + surcharges + commission;
-        log.info("totalAmountBase -> {}", totalAmountBase);
+       // log.info("totalAmountBase -> {}", totalAmountBase);
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
         healthContributionComponent.setAmount(BigDecimal.valueOf(salaryType.equals("BASE") ? totalAmountBase * 0.085 : totalAmountBase * 0.70 * 0.085));
         if (!category.equals("T")) {

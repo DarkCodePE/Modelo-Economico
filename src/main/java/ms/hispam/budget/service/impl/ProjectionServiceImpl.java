@@ -960,8 +960,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             String nominalCodeHousing="1212";
             String nominalCodeExpatriates="1213";
             String [] nominaAFP= {"1503", "1513", "1523"};
-            log.info("nominal {}",nominal);
-            log.info("list {}",list.get(0).getIdssff());
+            //log.info("nominal {}",nominal);
+            //log.info("list {}",list.get(0).getIdssff());
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
 
