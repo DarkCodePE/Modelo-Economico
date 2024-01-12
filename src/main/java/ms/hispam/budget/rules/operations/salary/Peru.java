@@ -163,7 +163,7 @@ public class Peru implements Country, Mediator {
         // Obtener el PaymentComponentDTO Moving
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO movingComponent = componentMap.get(MOVING);
-        log.info("processMovingOperation -> {}", movingComponent);
+        //log.info("processMovingOperation -> {}", movingComponent);
         if (movingComponent != null) {
             // Crear el PaymentComponentDTO para Moving
             PaymentComponentDTO movingComponentNew = new PaymentComponentDTO();

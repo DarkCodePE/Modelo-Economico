@@ -113,9 +113,10 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
-          /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+            /* BECARIO TEST */
+           /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
-                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99012453"))
+                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90006575"))
                     .collect(Collectors.toList());*/
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
@@ -248,17 +249,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         boolean hasBaseExtern = baseExtern != null && !baseExtern.getData().isEmpty();
         List<ParametersDTO> vacationSeasonalityList = getListParametersById(projection.getParameters(), 40);
         Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : storeAndSortVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
-        log.info("vacationSeasonalityList {}", vacationSeasonalityValues);
+        //log.info("vacationSeasonalityList {}", vacationSeasonalityValues);
         //Map<String, List<Double>> vacationSeasonalityValues = null;
                 //Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : calculateVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
         //log.info("vacationSeasonalityValues {}", vacationSeasonalityValues);
         headcount
-                //.parallelStream()
+                .parallelStream()
                 .forEach(headcountData -> {
             if (hasBaseExtern) {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
             }
-            log.info("headcountData {}",headcountData.getPo());
+            //log.info("headcountData {}",headcountData.getPo());
             methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac(), vacationSeasonalityValues);
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
@@ -319,6 +320,19 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedSeveranceInterest(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.contributionBox(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.transportSubsidy(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyHealthContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContribution(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContributionTrainee(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContributionTemporaries(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.icbfContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.senaContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyPensionContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.sodexo(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                             projection.getPeriod(),projection.getRange());
