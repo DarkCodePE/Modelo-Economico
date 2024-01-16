@@ -84,7 +84,7 @@ public class Peru implements Country, Mediator {
     private void processAFPOperation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO AFPComponent = componentMap.get(AFP);
-        log.info("processAFPOperation -> {}", AFPComponent);
+        //log.info("processAFPOperation -> {}", AFPComponent);
         if (AFPComponent != null) {
             PaymentComponentDTO AFPComponentNew = new PaymentComponentDTO();
             AFPComponentNew.setPaymentComponent(AFP);
@@ -110,7 +110,7 @@ public class Peru implements Country, Mediator {
     private void processExpatriateseOperation(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO expatriateseComponent = componentMap.get(EXPATRIATES);
-        log.info("processExpatriateseOperation -> {}", expatriateseComponent);
+        //log.info("processExpatriateseOperation -> {}", expatriateseComponent);
         if (expatriateseComponent != null) {
             PaymentComponentDTO expatriateseComponentNew = new PaymentComponentDTO();
             expatriateseComponentNew.setPaymentComponent(EXPATRIATES);
@@ -136,7 +136,7 @@ public class Peru implements Country, Mediator {
     private void processHousingOperation(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO housingComponent = componentMap.get(HOUSING);
-        log.info("processHousingOperation -> {}", housingComponent);
+        //log.info("processHousingOperation -> {}", housingComponent);
         if (housingComponent != null) {
             PaymentComponentDTO housingComponentNew = new PaymentComponentDTO();
             housingComponentNew.setPaymentComponent(HOUSING);
@@ -405,7 +405,7 @@ public class Peru implements Country, Mediator {
                         //log.info("{}", vacationSeasonalityForYear);
                         int index = Integer.parseInt(projectionYearMonth.substring(4)) - 1;
                         vacationSeasonalityValue = vacationSeasonalityForYear.get(index) / 100;
-                        log.info("contardor: -> {}", i++);
+                        //log.info("contardor: -> {}", i++);
                     }
                     double value = (amount / 30) * vacationDaysValue * enjoymentValue * vacationSeasonalityValue;
                     MonthProjection vacationEnjoymentProjection = new MonthProjection();
