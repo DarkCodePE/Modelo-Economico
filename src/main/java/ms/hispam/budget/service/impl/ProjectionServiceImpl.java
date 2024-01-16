@@ -114,12 +114,19 @@ public class ProjectionServiceImpl implements ProjectionService {
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection) {
         try {
             /* BECARIO TEST */
-           /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+            /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90006575"))
                     .collect(Collectors.toList());*/
+            /* EMP TEST */
+           /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+                    .stream()
+                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90000643"))
+                    .collect(Collectors.toList()); */
             List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+            //log.info("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
+            //log.info("components {}",components.size());
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
@@ -267,7 +274,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
         return parameters.stream()
-                .filter(p -> Objects.equals(p.getParameter().getName(), name))
+                .filter(p -> Objects.equals(p.getParameter().getDescription(), name))
                 .collect(Collectors.toList());
     }
     private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
@@ -308,15 +315,22 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble();
                     sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
                 });
-
+        List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario mínimo legal");
+        List<ParametersDTO> salaryIntegralsList = filterParametersByName(projection.getParameters(), "Salario mínimo Integral");
+        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "%Inc Rev Salarial");
+        List<ParametersDTO> revisionEttList = filterParametersByName(projection.getParameters(), "%Inc Plantilla ETT");
+        List<ParametersDTO> salaryPraList = filterParametersByName(projection.getParameters(), "Salario PRA");
+        //log.info("revisionEttList {}",revisionEttList);
+        //log.info("revisionList {}",revisionList);
+        //log.info("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
+                    methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
+                    methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -686,7 +700,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
        List<ComponentNominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,data.getBu(),
                data.getNominaFrom(),data.getNominaTo(),
                codeNominas.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")));
-
+        //log.info("nominal {}",nominal);
 
         List<DataBaseResponse> deudasAgrupadas = headcount.stream()
                 .collect(Collectors.groupingBy(
@@ -814,10 +828,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
-
+        //log.info("entities {}",entities);
+        //log.info("typeEmployee {}",typeEmployee);
         List<HeadcountProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
                         String.join(",", entities),projection.getPeriod(),String.join(",",
-                        projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent).collect(Collectors.joining(","))),String.join(",", typeEmployee))
+                        projection.getPaymentComponent()
+                                .stream()
+                                .map(PaymentComponentType::getComponent)
+                                .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                             .stream().map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
@@ -944,16 +962,39 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     paymentComponent("260").amount(BigDecimal.valueOf(guarderia))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(guarderia))).build());
         }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY") || projection.getBu().equalsIgnoreCase("T. COLOMBIA")){
+            // Define the nominal codes for "recargar"
+            List<String> recargarCodes = Arrays.asList("1005", "1118", "1119");
+            // Sum the amounts of the "recargar" codes
+            // Find the nominal entries that match the "recargar" codes
+            List<NominaProjection> recargarNominal = nominal.stream()
+                    .filter(n -> recargarCodes.contains(n.getCodeNomina()))
+                    .collect(Collectors.toList());
+            // Sum the amounts of the "recargar" codes
+            double totalRecargarAmount = recargarNominal.stream()
+                    .mapToDouble(NominaProjection::getImporte)
+                    .sum();
+            // Create a new PaymentComponentDTO for "SURCHARGES"
+            PaymentComponentDTO surchargesComponent = new PaymentComponentDTO();
+            surchargesComponent.setPaymentComponent("SURCHARGES");
+            surchargesComponent.setAmount(BigDecimal.valueOf(totalRecargarAmount));
+            // Generate the projections for the "SURCHARGES" component
+            surchargesComponent.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), surchargesComponent.getAmount()));
+            //log.info("surchargesComponent {}",surchargesComponent);
+            // Add the "SURCHARGES" component to the projection components
+            projectionsComponent.add(surchargesComponent);
+
             double hhee = 0.0;
-            for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
+            for(NominaProjection h : nominal.stream()
+                    .filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
-                if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
-                    hhee = hhee +h.getImporte();
-                }
+                        if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
+                            hhee = hhee +h.getImporte();
+                        }
             }
             projectionsComponent.add(PaymentComponentDTO.builder().
                     type(16).
-                    paymentComponent("HHEE").amount(BigDecimal.valueOf(hhee))
+                    paymentComponent("HHEE")
+                    .amount(BigDecimal.valueOf(hhee))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(hhee))).build());
         }else if (projection.getBu().equalsIgnoreCase("T. PERU")){
             String nominalCodeMoving="1247";

@@ -6,6 +6,7 @@ import ms.hispam.budget.dto.ParametersDTO;
 import ms.hispam.budget.dto.PaymentComponentDTO;
 import ms.hispam.budget.dto.projections.ParamFilterDTO;
 import ms.hispam.budget.util.Shared;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +14,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -88,68 +91,161 @@ public class Colombia {
             return currentCategory;
         }
     }
-    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
-        PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
-        String category = findCategory(classEmployee);
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        String periodSalaryMin = legalSalaryMin == null ? period : legalSalaryMin.getPeriod();
-        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, category, period, range, "P", SALARY).get("salaryComponent");
-        if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
-            String salaryType = paymentComponentDTO.getSalaryType();
-            ParametersDTO salaryMinIntegralParam = getParametersById(parameters, 42);
-            double salaryMinIntegral = salaryMinIntegralParam == null ? 0.0 : salaryMinIntegralParam.getValue();
-            String periodSalaryMinIntegral = salaryMinIntegralParam== null ? period : salaryMinIntegralParam.getPeriod();
-            int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryMin);
-            int idxEmpIntegral = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryMinIntegral);
-            if (salaryType.equals("INTEGRAL")) {
-                if (idxEmpIntegral != -1) {
-                    for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
-                        double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                        //ignore month marcth
-                        if (paymentComponentDTO
-                                .getProjections()
-                                .get(i).getMonth().equalsIgnoreCase(periodSalaryMinIntegral)) {
-                            if (amount <= salaryMinIntegral) {
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral));
-                            } else {
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                            }
-                        }
-                    }
-                }
-            } else {
-                if (idxEmp != -1) {
-                    for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
-                        double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                        //ignore month marcth
-                        if (paymentComponentDTO
-                                .getProjections()
-                                .get(i).getMonth().equalsIgnoreCase(periodSalaryMin)) {
-                            if (amount <= legalSalaryMinInternal) {
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
-                            } else {
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        component.add(paymentComponentDTO);
-    }
     private ParametersDTO getParametersById(List<ParametersDTO> parameters, int id) {
         return parameters.stream()
                 .filter(p -> p.getParameter().getId() == id)
                 .findFirst()
                 .orElse(null);
     }
+    private void createCache(List<ParametersDTO> parameterList, Map<String, ParametersDTO> parameterMap, Map<String, Double> cache, BiConsumer<ParametersDTO, ParametersDTO> updateMaps) {
+        List<ParametersDTO> sortedParameterList = new ArrayList<>(parameterList);
+        sortedParameterList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO parameter : parameterList) {
+            ParametersDTO mapParameter = parameterMap.get(parameter.getPeriod());
+            if (mapParameter == null) {
+                mapParameter = findLatestSalaryForPeriod(sortedParameterList, parameter.getPeriod());
+                if (mapParameter != null) {
+                    parameterMap.put(parameter.getPeriod(), mapParameter);
+                }
+            }
+            if (mapParameter != null) {
+                updateMaps.accept(parameter, mapParameter);
+                cache.put(parameter.getPeriod(), mapParameter.getValue());
+            }
+        }
+    }
+    private void
+    createCacheWithRevision(List<ParametersDTO> revisionSalaryMinList, Map<String, ParametersDTO> revisionSalaryMap, Map<String, Double> cache) {
+        List<ParametersDTO> sortedRevisionSalaryMinList = new ArrayList<>(revisionSalaryMinList);
+        sortedRevisionSalaryMinList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO revisionSalaryMin : revisionSalaryMinList) {
+            ParametersDTO revisionSalaryParam = revisionSalaryMap.get(revisionSalaryMin.getPeriod());
+            if (revisionSalaryParam == null) {
+                revisionSalaryParam = findLatestSalaryForPeriod(sortedRevisionSalaryMinList, revisionSalaryMin.getPeriod());
+                if (revisionSalaryParam != null) {
+                    revisionSalaryMap.put(revisionSalaryMin.getPeriod(), revisionSalaryParam);
+                }
+            }
+            if (revisionSalaryParam != null) {
+                cache.put(revisionSalaryMin.getPeriod(), revisionSalaryParam.getValue());
+            }
+        }
+    }
+    private void createCacheWithSalaryMin(List<ParametersDTO> legalSalaryMinList, Map<String, ParametersDTO> salaryMap, Map<String, Double> cache) {
+        List<ParametersDTO> sortedLegalSalaryMinList = new ArrayList<>(legalSalaryMinList);
+        sortedLegalSalaryMinList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO revisionSalaryMin : legalSalaryMinList) {
+            ParametersDTO salaryParam = salaryMap.get(revisionSalaryMin.getPeriod());
+            if (salaryParam == null) {
+                salaryParam = findLatestSalaryForPeriod(sortedLegalSalaryMinList, revisionSalaryMin.getPeriod());
+                if (salaryParam != null) {
+                    salaryMap.put(revisionSalaryMin.getPeriod(), salaryParam);
+                }
+            }
+
+            if (salaryParam != null) {
+                cache.put(revisionSalaryMin.getPeriod(), salaryParam.getValue());
+            }
+        }
+    }
+    private void createCacheWithSalaryIntegralMin(List<ParametersDTO> legalSalaryIntegralMinList, Map<String, ParametersDTO> salaryMap, Map<String, Double> cache) {
+        List<ParametersDTO> sortedLegalSalaryMinList = new ArrayList<>(legalSalaryIntegralMinList);
+        sortedLegalSalaryMinList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO revisionSalaryMin : legalSalaryIntegralMinList) {
+            ParametersDTO salaryParam = salaryMap.get(revisionSalaryMin.getPeriod());
+            if (salaryParam == null) {
+                salaryParam = findLatestSalaryForPeriod(sortedLegalSalaryMinList, revisionSalaryMin.getPeriod());
+                if (salaryParam != null) {
+                    salaryMap.put(revisionSalaryMin.getPeriod(), salaryParam);
+                }
+            }
+
+            if (salaryParam != null) {
+                cache.put(revisionSalaryMin.getPeriod(), salaryParam.getValue());
+            }
+        }
+    }
+    private void createCacheWithRevisionEtt(List<ParametersDTO> revisionSalaryMinEttList, Map<String, ParametersDTO> revisionSalaryMapEtt, Map<String, Double> cache) {
+        List<ParametersDTO> sortedRevisionSalaryMinEttList = new ArrayList<>(revisionSalaryMinEttList);
+        sortedRevisionSalaryMinEttList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+        for (ParametersDTO revisionSalaryMin : revisionSalaryMinEttList) {
+            ParametersDTO revisionSalaryMinEttParam = revisionSalaryMapEtt.get(revisionSalaryMin.getPeriod());
+            if (revisionSalaryMinEttParam == null) {
+                revisionSalaryMinEttParam = findLatestSalaryForPeriod(sortedRevisionSalaryMinEttList, revisionSalaryMin.getPeriod());
+                if (revisionSalaryMinEttParam != null) {
+                    revisionSalaryMapEtt.put(revisionSalaryMin.getPeriod(), revisionSalaryMinEttParam);
+                }
+            }
+            if (revisionSalaryMinEttParam != null) {
+                cache.put(revisionSalaryMin.getPeriod(), revisionSalaryMinEttParam.getValue());
+            }
+        }
+    }
+    private ParametersDTO findLatestSalaryForPeriod(List<ParametersDTO> salaryList, String period) {
+        for (int i = salaryList.size() - 1; i >= 0; i--) {
+            if (salaryList.get(i).getPeriod().compareTo(period) <= 0) {
+                return salaryList.get(i);
+            }
+        }
+        return null;
+    }
+    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> legalSalaryMinList, List<ParametersDTO> revisionSalaryMinList, List<ParametersDTO> revisionSalaryMinEttList, List<ParametersDTO> legalSalaryIntegralMinList) {
+        // Crear los mapas como variables locales
+        Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
+        Map<String, ParametersDTO> salaryIntegralMap = new ConcurrentHashMap<>();
+        Map<String, ParametersDTO> revisionSalaryMap = new ConcurrentHashMap<>();
+        Map<String, ParametersDTO> revisionSalaryMapEtt = new ConcurrentHashMap<>();
+        Map<String, Double> cacheRevision = new ConcurrentHashMap<>();
+        Map<String, Double> cacheEtt = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryIntegralMin = new ConcurrentHashMap<>();
+        createCache(legalSalaryIntegralMinList, salaryIntegralMap, cacheSalaryIntegralMin, (parameter, mapParameter) -> {});
+        createCache(revisionSalaryMinList, revisionSalaryMap, cacheRevision, (parameter, mapParameter) -> {});
+        createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {});
+        createCache(revisionSalaryMinEttList, revisionSalaryMapEtt, cacheEtt, (parameter, mapParameter) -> {});
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
+        PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
+        double highestAmountSoFar = Math.max(pc938001Component == null ? 0.0 : pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
+        String category = findCategory(classEmployee);
+        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, category, period, range, "P", SALARY).get("salaryComponent");
+        if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
+            String salaryType = paymentComponentDTO.getSalaryType();
+            if (salaryType.equals("INTEGRAL")) {
+                for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                    double salaryIntegralMin = cacheSalaryIntegralMin.get(projection.getMonth()) == null ? 0.0 : cacheSalaryMin.get(projection.getMonth());
+                   //("salaryIntegralMin -> {}", salaryIntegralMin);
+                    if (salaryIntegralMin != 0.0){
+                        if (projection.getAmount().doubleValue() <= salaryIntegralMin) {
+                            highestAmountSoFar = Math.max(highestAmountSoFar, salaryIntegralMin);
+                            projection.setAmount(BigDecimal.valueOf(salaryIntegralMin));
+                        } else {
+                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
+                        }
+                    }else{
+                        projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
+                    }
+                }
+            } else {
+                for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                    double salaryMin = cacheSalaryMin.get(projection.getMonth()) == null ? 0.0 : cacheSalaryMin.get(projection.getMonth());
+                   //("salaryMin -> {}", salaryMin);
+                    if (salaryMin != 0.0){
+                        if (projection.getAmount().doubleValue() <= salaryMin) {
+                            highestAmountSoFar = Math.max(highestAmountSoFar, salaryMin);
+                            projection.setAmount(BigDecimal.valueOf(salaryMin));
+                        } else {
+                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
+                        }
+                    }else{
+                        projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
+                    }
+                }
+            }
+        }
+        component.add(paymentComponentDTO);
+    }
+
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
         return component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
@@ -157,119 +253,81 @@ public class Colombia {
                     return existing;
                 }));
     }
-    public void temporalSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
+    public void temporalSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> legalSalaryMinList, List<ParametersDTO> revisionSalaryMinList, List<ParametersDTO> revisionSalaryMinEttList, List<ParametersDTO> legalSalaryIntegralMinList){
+        // Crear los mapas como variables locales
+        Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
+        createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
         PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
         String category = findCategory(classEmployee);
         PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, category, period, range, "T", TEMPORAL_SALARY).get("salaryComponent");
         if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
-            ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-            double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-            String salaryType = paymentComponentDTO.getSalaryType();
-            ParametersDTO salaryMinIntegralParam = getParametersById(parameters, 42);
-            String periodSalaryMin = legalSalaryMin == null ? period : legalSalaryMin.getPeriod();
+            double highestAmountSoFar = Math.max(pc938001Component == null ? 0.0 : pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
             if (paymentComponentDTO.getProjections() != null){
-                double salaryMinIntegral = salaryMinIntegralParam == null ? 0.0 : salaryMinIntegralParam.getValue();
-                String periodSalaryMinIntegral = salaryMinIntegralParam== null ? period : salaryMinIntegralParam.getPeriod();
-                int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryMin);
-                int idxEmpIntegral = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryMinIntegral);
-                if (salaryType.equals("INTEGRAL")) {
-                    if (idxEmpIntegral != -1) {
-                        for (int i = idxEmpIntegral; i < paymentComponentDTO.getProjections().size(); i++) {
-                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                            //ignore month marcth
-                            if (paymentComponentDTO
-                                    .getProjections()
-                                    .get(i).getMonth().equalsIgnoreCase(periodSalaryMinIntegral)) {
-                                if (amount <= salaryMinIntegral) {
-                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryMinIntegral));
-                                } else {
-                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                                }
-                            }
+                for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                    double salaryMin = cacheSalaryMin.get(projection.getMonth()) == null ? 0.0 : cacheSalaryMin.get(projection.getMonth());
+                    if (salaryMin != 0.0){
+                        if (projection.getAmount().doubleValue() <= salaryMin) {
+                            highestAmountSoFar = Math.max(highestAmountSoFar, salaryMin);
+                            projection.setAmount(BigDecimal.valueOf(salaryMin));
+                        } else {
+                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
                         }
-                    }
-                } else {
-                    if (idxEmp != -1) {
-                        for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
-                            double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                            if (paymentComponentDTO
-                                    .getProjections()
-                                    .get(i).getMonth().equalsIgnoreCase(periodSalaryMin)) {
-                                if (amount <= legalSalaryMinInternal) {
-                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
-                                } else {
-                                    paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                                }
-                            }
-                        }
+                    }else{
+                        projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
                     }
                 }
             }
         }
         component.add(paymentComponentDTO);
     }
-    public void salaryPra(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range){
+    public void salaryPra(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> legalSalaryMinList, List<ParametersDTO> salaryPraList){
+        Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
+        Map<String, ParametersDTO> salaryPraMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryPra = new ConcurrentHashMap<>();
+        createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {});
+        createCache(salaryPraList, salaryPraMap, cacheSalaryPra, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
         PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
-        //TRAER COMPONENTES DE PAGO PARA CALCULAR EL SALARIO BASE PC938001 - PC938005
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
+        double highestAmountSoFarPra = Math.max(pc938001Component == null ? 0.0 : pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
+        double highestAmountSoFarApr = Math.max(pc938001Component == null ? 0.0 : pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
         String category = findCategory(classEmployee);
         PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, category, period, range, Arrays.asList("PRA", "APR"), SALARY_PRA).get("salaryComponent");
         if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
             String salaryType = paymentComponentDTO.getSalaryType();
-            ParametersDTO salaryMinPraParam = getParametersById(parameters, 26);
-            double salaryPra = salaryMinPraParam == null ? 0.0 : salaryMinPraParam.getValue();
-            String periodSalaryMin = legalSalaryMin == null ? period : legalSalaryMin.getPeriod();
-            String periodSalaryPra = salaryMinPraParam == null ? period : salaryMinPraParam.getPeriod();
-            if (paymentComponentDTO.getProjections() != null){
-                int idxEmp = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryMin);
-                int idxEmpPra = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), periodSalaryPra);
-                if (salaryType.equals("BASE")) {
-                    if (classEmployee.equals("PRA")) {
-                        if (idxEmpPra != -1) {
-                            for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
-                                double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                                //ignore month marcth
-                                if (paymentComponentDTO
-                                        .getProjections()
-                                        .get(i).getMonth().equalsIgnoreCase(periodSalaryPra)) {
-                                    if (amount <= salaryPra) {
-                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(salaryPra));
-                                    } else {
-                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                                    }
-                                }
+            if (salaryType.equals("BASE")) {
+                if (classEmployee.equals("PRA")) {
+                    for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                        double salaryPraMin = cacheSalaryPra.get(projection.getMonth()) == null ? 0.0 : cacheSalaryMin.get(projection.getMonth());
+                        if (salaryPraMin != 0.0){
+                            if (projection.getAmount().doubleValue() <= salaryPraMin) {
+                                highestAmountSoFarPra = Math.max(highestAmountSoFarPra, salaryPraMin);
+                                projection.setAmount(BigDecimal.valueOf(salaryPraMin));
+                            } else {
+                                projection.setAmount(BigDecimal.valueOf(highestAmountSoFarPra));
                             }
+                        }else{
+                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFarPra));
                         }
                     }
-                    if (classEmployee.equals("APR") && legalSalaryMin != null) {
-                        if (idxEmp != -1) {
-                            for (int i = idxEmp; i < paymentComponentDTO.getProjections().size(); i++) {
-                                double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                                //ignore month marcth
-                                if (paymentComponentDTO
-                                        .getProjections()
-                                        .get(i).getMonth().equalsIgnoreCase(periodSalaryMin)) {
-                                    if (amount <= legalSalaryMinInternal/2) {
-                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal/2));
-                                    } else {
-                                        //TODO : PREGUNTAR SI DEBE MANTENER EL SALARIO
-                                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(legalSalaryMinInternal));
-                                    }
-                                }
+                }
+                if (classEmployee.equals("APR")) {
+                    for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                        double salaryMin = cacheSalaryMin.get(projection.getMonth()) == null ? 0.0 : cacheSalaryMin.get(projection.getMonth());
+                        if (salaryMin != 0.0){
+                            if (projection.getAmount().doubleValue() <= salaryMin/2) {
+                                highestAmountSoFarApr = Math.max(highestAmountSoFarApr, salaryMin/2);
+                                projection.setAmount(BigDecimal.valueOf(salaryMin/2));
+                            } else {
+                                highestAmountSoFarApr = Math.max(highestAmountSoFarApr, salaryMin);
+                                projection.setAmount(BigDecimal.valueOf(salaryMin));
                             }
+                        }else{
+                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFarApr));
                         }
                     }
                 }
@@ -509,6 +567,7 @@ public class Colombia {
         double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
         double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
         double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+        //log.info("surcharges -> {}", surcharges);
         double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
         // Calcular la suma de los componentes
         double totalbase = salary + overtime + surcharges + commission;
@@ -839,7 +898,7 @@ public class Colombia {
         PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
         healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA");
         double totalAmountBase = salary + overtime + surcharges + commission;
-       // log.info("totalAmountBase -> {}", totalAmountBase);
+        //log.info("totalAmountBase -> {}", totalAmountBase);
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
         healthContributionComponent.setAmount(BigDecimal.valueOf(salaryType.equals("BASE") ? totalAmountBase * 0.085 : totalAmountBase * 0.70 * 0.085));
         if (!category.equals("T")) {
