@@ -33,12 +33,12 @@
 		<dependency>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>
-			   <version>12.2.0.jre11</version>
-			</dependency>
+			<version>12.2.0.jre11</version>
+		</dependency>
 		<dependency>
-    <groupId>com.mysql</groupId>
-    <artifactId>mysql-connector-j</artifactId>
-    </dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -59,11 +59,11 @@
 			<artifactId>poi-ooxml</artifactId>
 			<version>5.2.3</version>
 		</dependency>
-<dependency>
-    <groupId>com.azure</groupId>
-    <artifactId>azure-identity</artifactId>
-    <version>1.9.2</version>
-</dependency>
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-identity</artifactId>
+			<version>1.9.2</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
@@ -78,13 +78,7 @@
 			<artifactId>bcpkix-lts8on</artifactId>
 			<version>2.73.3</version>
 		</dependency>
-		<dependency>
-			<groupId>com.newrelic.agent.java</groupId>
-			<artifactId>newrelic-java</artifactId>
-			<version>7.1.0</version>
-			<scope>provided</scope>
-			<type>zip</type>
-		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -108,12 +102,12 @@
 				<configuration>
 					<schemaVersion>v2</schemaVersion>
 					<subscriptionId>87a1d13f-c4f7-4bd2-8fd7-a6f3ca8e57c7</subscriptionId>
-					<resourceGroup>PRODUCCION</resourceGroup>
-					<appName>ms-hispam-budget</appName>
+					<resourceGroup>DESARROLLO-SD</resourceGroup>
+					<appName>ms-planing-budget-dev</appName>
 					<pricingTier>P1v2</pricingTier>
 					<region>Eastus</region>
-					<appServicePlanName>hispam-prod</appServicePlanName>
-					<appServicePlanResourceGroup>PRODUCCION</appServicePlanResourceGroup>
+					<appServicePlanName>hispam-dev</appServicePlanName>
+					<appServicePlanResourceGroup>DESARROLLO-SD</appServicePlanResourceGroup>
 					<runtime>
 						<os>Linux</os>
 						<javaVersion>Java 11</javaVersion>
@@ -131,48 +125,23 @@
 					</deployment>
 				</configuration>
 			</plugin>
-		    <plugin>
-		        <groupId>com.microsoft.azure</groupId>
-		        <artifactId>azure-webapp-maven-plugin</artifactId>
-		        <version>2.9.0</version>
-		        <configuration>
-		            <runtime/>
-		            <deployment>
-		                <resources>
-		                    <resource>
-		                        <directory>/Users/ghersonperez/Documents/ms-hispam-budget/target</directory>
-		                        <includes>
-		                            <include>*.jar</include>
-		                        </includes>
-		                    </resource>
-		                </resources>
-		            </deployment>
-		        </configuration>
-		    </plugin>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>unpack-newrelic</id>
-						<phase>package</phase>
-						<goals>
-							<goal>unpack</goal>
-						</goals>
-						<configuration>
-							<artifactItems>
-								<artifactItem>
-									<groupId>com.newrelic.agent.java</groupId>
-									<artifactId>newrelic-java</artifactId>
-									<version>7.1.0</version>
-									<type>zip</type>
-									<overWrite>true</overWrite>
-									<outputDirectory>${project.build.directory}/newrelic</outputDirectory>
-								</artifactItem>
-							</artifactItems>
-						</configuration>
-					</execution>
-				</executions>
+				<groupId>com.microsoft.azure</groupId>
+				<artifactId>azure-webapp-maven-plugin</artifactId>
+				<version>2.9.0</version>
+				<configuration>
+					<runtime/>
+					<deployment>
+						<resources>
+							<resource>
+								<directory>/Users/ghersonperez/Documents/ms-hispam-budget/target</directory>
+								<includes>
+									<include>*.jar</include>
+								</includes>
+							</resource>
+						</resources>
+					</deployment>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
