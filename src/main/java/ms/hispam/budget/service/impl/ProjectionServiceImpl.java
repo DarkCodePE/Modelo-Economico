@@ -6,6 +6,7 @@ import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.exception.BadRequestException;
+import ms.hispam.budget.exception.FormatAmountException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.*;
@@ -20,6 +21,7 @@ import ms.hispam.budget.util.ExcelService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -119,11 +121,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90006575"))
                     .collect(Collectors.toList());*/
             /* EMP TEST */
-           /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+          /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
-                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90000643"))
-                    .collect(Collectors.toList()); */
-            List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection);
+                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99900456"))
+                    .collect(Collectors.toList());*/
+            List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
             //log.info("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
             //log.info("components {}",components.size());
@@ -198,11 +200,17 @@ public class ProjectionServiceImpl implements ProjectionService {
                     proyeccionesValidas
                     ,groupedData,
                     tCambio);
-        }catch (BadRequestException ex){
+        }catch (ConversionFailedException ex) {
+            log.info("El valor proporcionado no es un número decimal válido: ", ex);
+            throw new FormatAmountException("El valor proporcionado no es un número decimal válido");
+        }catch (NumberFormatException ex){
+            throw ex;
+        } catch (BadRequestException ex){
             throw ex;
         } catch (Exception ex){
             log.error("Error al generar la proyección",ex);
-            return new Page<>();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección", ex);
+            //return new Page<>();
         }
     }
     private List<ParametersDTO> getListParametersById(List<ParametersDTO> parameters, int id) {
@@ -315,11 +323,15 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble();
                     sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
                 });
+        //log.info("Sunm -> {}",sum.get());
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario mínimo legal");
         List<ParametersDTO> salaryIntegralsList = filterParametersByName(projection.getParameters(), "Salario mínimo Integral");
         List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "%Inc Rev Salarial");
         List<ParametersDTO> revisionEttList = filterParametersByName(projection.getParameters(), "%Inc Plantilla ETT");
         List<ParametersDTO> salaryPraList = filterParametersByName(projection.getParameters(), "Salario PRA");
+        //comisiones
+        List<ParametersDTO> commissionList = filterParametersByName(projection.getParameters(), "Comisiones (anual)");
+        //log.info("commissionList {}",commissionList);
         //log.info("revisionEttList {}",revisionEttList);
         //log.info("revisionList {}",revisionList);
         //log.info("salaryList {}",salaryList);
@@ -332,7 +344,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get());
+                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get(), commissionList);
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -347,6 +359,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.senaContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.companyPensionContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.sodexo(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.sena(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.senaTemporales(component, projection.getParameters(),headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.uniqueBonus(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.AuxilioDeTransporteAprendizSena(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.AuxilioConectividadDigital(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                             projection.getPeriod(),projection.getRange());
@@ -828,15 +845,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
-        //log.info("entities {}",entities);
-        //log.info("typeEmployee {}",typeEmployee);
-        List<HeadcountProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
+        List<HeadcountProjection> headcount =  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
                         String.join(",", entities),projection.getPeriod(),String.join(",",
-                        projection.getPaymentComponent()
-                                .stream()
-                                .map(PaymentComponentType::getComponent)
-                                .collect(Collectors.joining(","))),String.join(",", typeEmployee))
-                            .stream().map(e->HeadcountProjection.builder()
+                                projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent).collect(Collectors.joining(","))),String.join(",", typeEmployee))
+                .stream().map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
                         .idssff(e.getIdssff())
@@ -854,7 +866,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .divisionName(e.getDivisionname())
                         .areaFuncional(e.getAf())
                         .cCostos(e.getCc())
-                            .build()).collect(Collectors.toList());
+                        .build()).collect(Collectors.toList());
         //log.info("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
@@ -908,10 +920,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                                                                 .build();
                                                         list.stream().filter(t->t.getComponent().equalsIgnoreCase(p.getComponent())).findFirst().ifPresent(u->{
+                                                                if (u.getAmount() != null) {
                                                                     r.setPaymentComponent(p.getComponent());
                                                                     r.setType(p.getType());
                                                                     r.setAmount(BigDecimal.valueOf(u.getAmount()));
                                                                     r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
+                                                                } else {
+                                                                    throw new BadRequestException("No se encuentra información para el mes base " + projection.getPeriod());
+                                                                }
                                                                 });
                                                       return r;
                                                     }
@@ -936,6 +952,33 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 )).values());
     }
 
+    private HeadcountProjection convertToHeadcountProjection(HeadcountHistoricalProjection e) {
+        try {
+            return HeadcountProjection.builder()
+                    .position(e.getPosition())
+                    .poname(e.getPoname())
+                    .idssff(e.getIdssff())
+                    .entitylegal(e.getEntitylegal())
+                    .gender(e.getGender())
+                    .bu(e.getBu())
+                    .wk(e.getWk())
+                    .division(e.getDivision())
+                    .department(e.getDepartment())
+                    .component(e.getComponent())
+                    .amount(e.getAmount())
+                    .fContra(e.getFcontraAsLocalDate().isPresent()?e.getFcontraAsLocalDate().get():null)
+                    .fNac(e.getFnacAsLocalDate().isPresent()?e.getFnacAsLocalDate().get():null)
+                    .classEmp(e.getClassemp())
+                    .divisionName(e.getDivisionname())
+                    .areaFuncional(e.getAf())
+                    .cCostos(e.getCc())
+                    .build();
+        } catch (NumberFormatException ex) {
+            log.info("Error al convertir la proyección para la posición: {}", e.getPosition());
+            //throw new BadRequestException(String.format("Error al convertir la proyección para la posición, por que el valor no es valido: %s, %s", e.getPosition(), e.getAmount()));
+            throw ex;
+        }
+    }
     private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
                             List<NominaProjection> nominal , List<CodeNomina> codeNominas ,
                             List<HeadcountProjection> list ){
@@ -1060,5 +1103,26 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 }
             }
         }
+    }
+    public HeadcountHistoricalProjectionDTO convertToDTO(HeadcountHistoricalProjection projection) {
+        HeadcountHistoricalProjectionDTO dto = new HeadcountHistoricalProjectionDTO();
+        dto.setPosition(projection.getPosition());
+        dto.setPoname(projection.getPoname());
+        dto.setIdssff(projection.getIdssff());
+        dto.setEntitylegal(projection.getEntitylegal());
+        dto.setGender(projection.getGender());
+        dto.setBu(projection.getBu());
+        dto.setWk(projection.getWk());
+        dto.setDivision(projection.getDivision());
+        dto.setDepartment(projection.getDepartment());
+        dto.setComponent(projection.getComponent());
+        dto.setAmount(projection.getAmount());
+        dto.setClassemp(projection.getClassemp());
+        dto.setFnac(projection.getFnac());
+        dto.setFcontra(projection.getFcontra());
+        dto.setAf(projection.getAf());
+        dto.setDivisionname(projection.getDivisionname());
+        dto.setCc(projection.getCc());
+        return dto;
     }
 }
