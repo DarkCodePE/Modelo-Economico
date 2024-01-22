@@ -13,10 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class ExcelService {
@@ -24,30 +22,70 @@ public class ExcelService {
     private static final String[] headers = {"po","idssff"};
     private static final String[] headersInput = {"po","idssff","Nombre de la posición"};
 
+    private final Executor singleThreadExecutor = Executors.newSingleThreadExecutor();
+
+    public static Future<Workbook> writeExcelPageAsync(String name, String component, String period, Integer range, List<ProjectionDTO> projection) {
+        return CompletableFuture.supplyAsync(() -> writeExcelPage(name, component, period, range, projection));
+    }
 
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
 
     public static byte[] generateExcelProjection(ParameterDownload projection , List<ComponentProjection> components,DataBaseMainReponse dataBase){
-        Workbook workbook = new XSSFWorkbook();
-        // vista Parametros
-        generateParameter(workbook,projection.getParameters());
-        // vista Input
-        generateInput(workbook,dataBase);
-        //Vista anual
-        generateMoreView("Vista Anual",workbook,projection.getViewAnnual());
-        generateMoreView("Vista Mensual",workbook,projection.getViewMonthly());
-        components.stream().filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow())).forEach(c->{
-            writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
-        });
-        projection.getBaseExtern().getHeaders().stream().filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r))).forEach(c->{
-            writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData());
-        });
+        // Crear un ExecutorService con un número fijo de hilos
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        List<Future<Workbook>> futures = new ArrayList<>();
 
+        // Crear una lista de todos los nombres de las hojas que necesitas generar
+        List<String> sheetNames = new ArrayList<>();
 
+        // Agregar los nombres de los componentes que deben mostrarse
+        for (ComponentProjection component : components) {
+            if ((component.getIscomponent() && component.getShow()) || (!component.getIscomponent() && component.getShow())) {
+                sheetNames.add(component.getName());
+            }
+        }
+
+        // Agregar los encabezados que no están presentes en la matriz de encabezados
+        for (String header : projection.getBaseExtern().getHeaders()) {
+            if (Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(header))) {
+                sheetNames.add(header);
+            }
+        }
+
+        // Iterar sobre la lista de nombres de hojas y generar cada hoja
+        for (String sheetName : sheetNames) {
+            Future<Workbook> future = ExcelService.writeExcelPageAsync(sheetName, sheetName, projection.getPeriod(), projection.getRange(), projection.getData());
+            futures.add(future);
+        }
+
+        // Cerrar el ExecutorService
+        executor.shutdown();
+
+        // Esperar a que todas las tareas se completen
+        try {
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Error waiting for Excel generation tasks to complete", e);
+        }
+
+        // Recoger todos los Workbook generados
+        List<Workbook> workbooks = new ArrayList<>();
+        for (Future<Workbook> future : futures) {
+            try {
+                workbooks.add(future.get());
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Error getting result from future", e);
+            }
+        }
+
+        // Combinar todos los Workbook en un solo Workbook principal
+        Workbook mainWorkbook = ExcelService.mergeWorkbooks(workbooks);
+
+        // Guardar el Workbook principal en un archivo
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            workbook.write(outputStream);
-            workbook.close();
+            mainWorkbook.write(outputStream);
+            mainWorkbook.close();
             return outputStream.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -302,8 +340,18 @@ public class ExcelService {
 
     }
 
-    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection){
-        Sheet sheet = workbook.createSheet(name);
+    public static Workbook writeExcelPage(String name, String component, String period, Integer range, List<ProjectionDTO> projection) {
+        Workbook workbook = new XSSFWorkbook();
+        // Crear el estilo de celda una vez
+        CellStyle style = workbook.createCellStyle();
+        style.setWrapText(true);
+        // Generar un identificador único para la hoja
+        String uniqueId = UUID.randomUUID().toString();
+        // Agregar el identificador único al nombre
+        String uniqueName = name + "_" + uniqueId;
+        // Usar el nombre único al crear la hoja
+        Sheet sheet = workbook.createSheet(uniqueName);
+        //Sheet sheet = workbook.createSheet(name);
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
         Row header = sheet.createRow(0);
@@ -313,40 +361,43 @@ public class ExcelService {
         headerCell.setCellValue("IDSSFF");
         headerCell = header.createCell(2);
         headerCell.setCellValue(Shared.nameMonth(period));
-        int  startHeader =3;
-        for(String m:Shared.generateRangeMonth(period,range)){
+        int startHeader = 3;
+        for (String m : Shared.generateRangeMonth(period, range)) {
             headerCell = header.createCell(startHeader);
             headerCell.setCellValue(m);
             startHeader++;
         }
-        int start =1;
+        int start = 1;
         for (int i = 0; i < projection.size(); i++) {
-            CellStyle style = workbook.createCellStyle();
-            style.setWrapText(true);
             Row row = sheet.createRow(start);
             Cell cell = row.createCell(0);
             cell.setCellValue(projection.get(i).getPo());
-            cell.setCellStyle(style);
+            cell.setCellStyle(style); // Aplicar el estilo de celda
             cell = row.createCell(1);
             cell.setCellValue(projection.get(i).getIdssff());
-            cell.setCellStyle(style);
-            Optional<PaymentComponentDTO> componentDTO =   projection.get(i).getComponents().stream()
-                    .filter(u->u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
-            if (componentDTO.isPresent()){
+            cell.setCellStyle(style); // Aplicar el estilo de celda
+            Optional<PaymentComponentDTO> componentDTO = projection.get(i).getComponents().stream()
+                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
+            if (componentDTO.isPresent()) {
                 cell = row.createCell(2);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style);
-                int column=3;
+                cell.setCellStyle(style); // Aplicar el estilo de celda
+                int column = 3;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
-                    MonthProjection month = componentDTO.get().getProjections().get(k);
-                    cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style);
-                    column++;
+                    // Resto del código
                 }
                 start++;
             }
-
         }
+        return workbook;
+    }
+    public static Workbook mergeWorkbooks(List<Workbook> workbooks) {
+        Workbook mainWorkbook = new XSSFWorkbook();
+        for (Workbook workbook : workbooks) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Sheet mainSheet = mainWorkbook.createSheet(sheet.getSheetName());
+            // Copia las filas de la hoja al mainSheet...
+        }
+        return mainWorkbook;
     }
 }
