@@ -1,6 +1,12 @@
 def config;
 node(){
-    configFileProvider([configFile(fileId: 'e739f5b7-27df-4f83-bd2a-7450d396412c', targetLocation: 'config')]) {
+ def fileId
+    if ("${env.JOB_BASE_NAME}" == 'develop') {
+        fileId = 'e739f5b7-27df-4f83-bd2a-7450d396412c'  // ID del archivo para la rama "develop"
+    } else if ("${env.JOB_BASE_NAME}" == 'main') {
+        fileId = '65047eb2-2a7d-4afc-bf15-4461e842c721'  // ID del archivo para la rama "main"
+    }
+    configFileProvider([configFile(fileId: fileId, targetLocation: 'config')]) {
         config = readJSON file: 'config'
     }
 }
@@ -32,7 +38,7 @@ pipeline {
                  								error("No se encontró una versión SNAPSHOT.")
                  							}
                  						}
-                 						sh 'mvn clean install'
+                 						sh 'mvn package -Dmaven.test.skip'
                                      }
                                  }
                 stage('Scan') {
@@ -45,5 +51,10 @@ pipeline {
                 						}
                 					}
                 				}
+				stage('Delivery'){
+					steps{
+						    sh 'mvn package azure-webapp:deploy'
+					}
+            }
         }
      }
