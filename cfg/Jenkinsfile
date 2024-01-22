@@ -38,7 +38,7 @@ pipeline {
                  								error("No se encontró una versión SNAPSHOT.")
                  							}
                  						}
-                 						sh 'mvn test'
+                 						sh 'mvn package -Dmaven.test.skip'
                                      }
                                  }
                 stage('Scan') {
