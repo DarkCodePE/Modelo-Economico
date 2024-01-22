@@ -3,18 +3,28 @@ package ms.hispam.budget.service.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import ms.hispam.budget.dto.BaseExternResponse;
+
 import ms.hispam.budget.dto.Config;
 import ms.hispam.budget.dto.OperationResponse;
+import ms.hispam.budget.dto.ParameterHistorial;
 import ms.hispam.budget.dto.RangeBuDTO;
 import ms.hispam.budget.entity.mysql.BaseExtern;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.DisabledPoHistorical;
+import ms.hispam.budget.entity.mysql.HistorialProjection;
+import ms.hispam.budget.entity.mysql.ParameterProjection;
 import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.repository.mysql.BaseExternRepository;
 import ms.hispam.budget.repository.mysql.BuRepository;
@@ -37,14 +47,17 @@ import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.service.BuService;
 import ms.hispam.budget.service.MexicoService;
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+@ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = {ProjectionServiceImpl.class})
 @RunWith(SpringJUnit4ClassRunner.class)
 public class ProjectionServiceImplDiffblueTest {
@@ -327,5 +340,174 @@ public class ProjectionServiceImplDiffblueTest {
         // Act and Assert
         assertThrows(ResponseStatusException.class, () -> projectionServiceImpl.getComponentByBu("Bu"));
         verify(buRepository).findByBu(Mockito.<String>any());
+    }
+
+    /**
+     * Method under test:
+     * {@link ProjectionServiceImpl#saveProjection(ParameterHistorial, String)}
+     */
+    @org.junit.jupiter.api.Test
+    void testSaveProjection() {
+        // Arrange
+        when(disabledPoHistorialRepository.saveAll(Mockito.<Iterable<DisabledPoHistorical>>any()))
+                .thenReturn(new ArrayList<>());
+
+        HistorialProjection historialProjection = new HistorialProjection();
+        historialProjection.setBu("Bu");
+        historialProjection
+                .setCreatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setCreatedBy("Jan 1, 2020 8:00am GMT+0100");
+        historialProjection.setId(1);
+        historialProjection.setIdBu(1);
+        historialProjection.setIsTop(true);
+        historialProjection.setName("Name");
+        historialProjection.setNominaFrom("jane.doe@example.org");
+        historialProjection.setNominaTo("alice.liddell@example.org");
+        historialProjection
+                .setUpdatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setUpdatedBy("2020-03-01");
+        historialProjection.setVDate(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setVPeriod("V Period");
+        historialProjection.setVRange(1);
+        when(historialProjectionRepository.save(Mockito.<HistorialProjection>any())).thenReturn(historialProjection);
+        when(parameterProjectionRepository.saveAll(Mockito.<Iterable<ParameterProjection>>any()))
+                .thenReturn(new ArrayList<>());
+        ParameterHistorial.ParameterHistorialBuilder builderResult = ParameterHistorial.builder();
+        BaseExternResponse.BaseExternResponseBuilder builderResult2 = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult = builderResult2.data(new ArrayList<>());
+        BaseExternResponse baseExtern = dataResult.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder baseExternResult = builderResult.baseExtern(baseExtern);
+        BaseExternResponse.BaseExternResponseBuilder builderResult3 = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult2 = builderResult3.data(new ArrayList<>());
+        BaseExternResponse bc = dataResult2.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder buResult = baseExternResult.bc(bc).bu("Bu");
+        ParameterHistorial.ParameterHistorialBuilder nominaToResult = buResult.disabledPo(new ArrayList<>())
+                .idBu(1)
+                .name("Name")
+                .nominaFrom("jane.doe@example.org")
+                .nominaTo("alice.liddell@example.org");
+        ParameterHistorial projection = nominaToResult.parameters(new ArrayList<>()).period("Period").range(1).build();
+
+        // Act
+        Boolean actualSaveProjectionResult = projectionServiceImpl.saveProjection(projection, "jane.doe@example.org");
+
+        // Assert
+        verify(disabledPoHistorialRepository).saveAll(Mockito.<Iterable<DisabledPoHistorical>>any());
+        verify(parameterProjectionRepository).saveAll(Mockito.<Iterable<ParameterProjection>>any());
+        verify(historialProjectionRepository).save(Mockito.<HistorialProjection>any());
+        org.junit.jupiter.api.Assertions.assertTrue(actualSaveProjectionResult);
+    }
+
+    /**
+     * Method under test:
+     * {@link ProjectionServiceImpl#saveProjection(ParameterHistorial, String)}
+     */
+    @org.junit.jupiter.api.Test
+    void testSaveProjection2() {
+        // Arrange
+        when(disabledPoHistorialRepository.saveAll(Mockito.<Iterable<DisabledPoHistorical>>any()))
+                .thenReturn(new ArrayList<>());
+
+        HistorialProjection historialProjection = new HistorialProjection();
+        historialProjection.setBu("Bu");
+        historialProjection
+                .setCreatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setCreatedBy("Jan 1, 2020 8:00am GMT+0100");
+        historialProjection.setId(1);
+        historialProjection.setIdBu(1);
+        historialProjection.setIsTop(true);
+        historialProjection.setName("Name");
+        historialProjection.setNominaFrom("jane.doe@example.org");
+        historialProjection.setNominaTo("alice.liddell@example.org");
+        historialProjection
+                .setUpdatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setUpdatedBy("2020-03-01");
+        historialProjection.setVDate(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setVPeriod("V Period");
+        historialProjection.setVRange(1);
+        when(historialProjectionRepository.save(Mockito.<HistorialProjection>any())).thenReturn(historialProjection);
+        when(parameterProjectionRepository.saveAll(Mockito.<Iterable<ParameterProjection>>any()))
+                .thenThrow(new BadRequestException("/"));
+        ParameterHistorial.ParameterHistorialBuilder builderResult = ParameterHistorial.builder();
+        BaseExternResponse.BaseExternResponseBuilder builderResult2 = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult = builderResult2.data(new ArrayList<>());
+        BaseExternResponse baseExtern = dataResult.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder baseExternResult = builderResult.baseExtern(baseExtern);
+        BaseExternResponse.BaseExternResponseBuilder builderResult3 = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult2 = builderResult3.data(new ArrayList<>());
+        BaseExternResponse bc = dataResult2.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder buResult = baseExternResult.bc(bc).bu("Bu");
+        ParameterHistorial.ParameterHistorialBuilder nominaToResult = buResult.disabledPo(new ArrayList<>())
+                .idBu(1)
+                .name("Name")
+                .nominaFrom("jane.doe@example.org")
+                .nominaTo("alice.liddell@example.org");
+        ParameterHistorial projection = nominaToResult.parameters(new ArrayList<>()).period("Period").range(1).build();
+
+        // Act and Assert
+        org.junit.jupiter.api.Assertions.assertThrows(BadRequestException.class,
+                () -> projectionServiceImpl.saveProjection(projection, "jane.doe@example.org"));
+        verify(parameterProjectionRepository).saveAll(Mockito.<Iterable<ParameterProjection>>any());
+        verify(historialProjectionRepository).save(Mockito.<HistorialProjection>any());
+    }
+
+    /**
+     * Method under test:
+     * {@link ProjectionServiceImpl#saveProjection(ParameterHistorial, String)}
+     */
+    @org.junit.jupiter.api.Test
+    void testSaveProjection3() {
+        // Arrange
+        when(disabledPoHistorialRepository.saveAll(Mockito.<Iterable<DisabledPoHistorical>>any()))
+                .thenReturn(new ArrayList<>());
+
+        HistorialProjection historialProjection = new HistorialProjection();
+        historialProjection.setBu("Bu");
+        historialProjection
+                .setCreatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setCreatedBy("Jan 1, 2020 8:00am GMT+0100");
+        historialProjection.setId(1);
+        historialProjection.setIdBu(1);
+        historialProjection.setIsTop(true);
+        historialProjection.setName("Name");
+        historialProjection.setNominaFrom("jane.doe@example.org");
+        historialProjection.setNominaTo("alice.liddell@example.org");
+        historialProjection
+                .setUpdatedAt(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setUpdatedBy("2020-03-01");
+        historialProjection.setVDate(Date.from(LocalDate.of(1970, 1, 1).atStartOfDay().atZone(ZoneOffset.UTC).toInstant()));
+        historialProjection.setVPeriod("V Period");
+        historialProjection.setVRange(1);
+        when(historialProjectionRepository.save(Mockito.<HistorialProjection>any())).thenReturn(historialProjection);
+        when(parameterProjectionRepository.saveAll(Mockito.<Iterable<ParameterProjection>>any()))
+                .thenReturn(new ArrayList<>());
+        ParameterHistorial.ParameterHistorialBuilder parameterHistorialBuilder = mock(
+                ParameterHistorial.ParameterHistorialBuilder.class);
+        when(parameterHistorialBuilder.baseExtern(Mockito.<BaseExternResponse>any()))
+                .thenReturn(ParameterHistorial.builder());
+        BaseExternResponse.BaseExternResponseBuilder builderResult = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult = builderResult.data(new ArrayList<>());
+        BaseExternResponse baseExtern = dataResult.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder baseExternResult = parameterHistorialBuilder.baseExtern(baseExtern);
+        BaseExternResponse.BaseExternResponseBuilder builderResult2 = BaseExternResponse.builder();
+        BaseExternResponse.BaseExternResponseBuilder dataResult2 = builderResult2.data(new ArrayList<>());
+        BaseExternResponse bc = dataResult2.headers(new ArrayList<>()).build();
+        ParameterHistorial.ParameterHistorialBuilder buResult = baseExternResult.bc(bc).bu("Bu");
+        ParameterHistorial.ParameterHistorialBuilder nominaToResult = buResult.disabledPo(new ArrayList<>())
+                .idBu(1)
+                .name("Name")
+                .nominaFrom("jane.doe@example.org")
+                .nominaTo("alice.liddell@example.org");
+        ParameterHistorial projection = nominaToResult.parameters(new ArrayList<>()).period("Period").range(1).build();
+
+        // Act
+        Boolean actualSaveProjectionResult = projectionServiceImpl.saveProjection(projection, "jane.doe@example.org");
+
+        // Assert
+        verify(parameterHistorialBuilder).baseExtern(Mockito.<BaseExternResponse>any());
+        verify(disabledPoHistorialRepository).saveAll(Mockito.<Iterable<DisabledPoHistorical>>any());
+        verify(parameterProjectionRepository).saveAll(Mockito.<Iterable<ParameterProjection>>any());
+        verify(historialProjectionRepository).save(Mockito.<HistorialProjection>any());
+        org.junit.jupiter.api.Assertions.assertTrue(actualSaveProjectionResult);
     }
 }
