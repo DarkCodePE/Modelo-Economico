@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
     }
 
     //controla los errores de logica o de los catch en general 400
-    @ExceptionHandler(BadRequestException.class)
+    @ExceptionHandler({BadRequestException.class, FormatAmountException.class})
     public ResponseEntity<ApiResponse> handlerBadRequestException(BadRequestException exception,
                                                                   WebRequest webRequest) {
         ApiResponse apiResponse = new ApiResponse(exception.getMessage(), webRequest.getDescription(false));
