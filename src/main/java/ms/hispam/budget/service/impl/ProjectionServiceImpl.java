@@ -18,6 +18,7 @@ import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.util.Constant;
 import ms.hispam.budget.util.ExcelService;
+import ms.hispam.budget.util.ReportService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,6 +31,8 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -641,14 +644,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             return true;
     }
 
-    @Override
-    public byte[] downloadProjection(  ParameterDownload projection) {
-        projection.setPeriod(projection.getPeriod().replace("/",""));
-        projection.setNominaFrom(projection.getNominaFrom().replace("/",""));
-        projection.setNominaTo(projection.getNominaTo().replace("/",""));
 
-        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
-        DataRequest dataBase = DataRequest.builder()
+    @Override
+    public byte[] downloadProjection(ParameterDownload projection) {
+        // Reemplaza los "/" en los períodos con ""
+        projection.setPeriod(projection.getPeriod().replace("/", ""));
+        projection.setNominaFrom(projection.getNominaFrom().replace("/", ""));
+        projection.setNominaTo(projection.getNominaTo().replace("/", ""));
+
+        // Obtiene la lista de componentes de proyección
+        List<ComponentProjection> components = sharedRepo.getComponentByBu(projection.getBu());
+
+        DataRequest dataInit = DataRequest.builder()
                 .idBu(projection.getIdBu())
                 .bu(projection.getBu())
                 .period(projection.getPeriod())
@@ -656,8 +663,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .nominaTo(projection.getNominaTo())
                 .isComparing(false)
                 .build();
+        // Obtiene la base de datos principal
+        DataBaseMainReponse dataBase = getDataBase(dataInit);
 
-       return  ExcelService.generateExcelProjection(projection,componentProjections,getDataBase(dataBase));
+        // Crea una lista para almacenar los futuros de las proyecciones de Excel
+        List<CompletableFuture<byte[]>> futures = new ArrayList<>();
+
+        // Para cada componente de proyección, genera una proyección de Excel de manera asíncrona
+        for (ComponentProjection component : components) {
+            futures.add(ReportService.generateExcelProjectionAsync(projection, Arrays.asList(component), dataBase));
+        }
+
+        // Espera a que todas las tareas futuras se completen y fusiona los resultados
+        byte[] mergedData;
+        try {
+            mergedData = ReportService.mergeExcelProjections(futures);
+        } catch (RuntimeException e) {
+            log.error("Error al generar la proyección de Excel", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección de Excel", e);
+        }
+
+        // Devuelve los datos fusionados
+        return mergedData;
     }
 
     @Override
