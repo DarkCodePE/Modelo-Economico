@@ -449,25 +449,22 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Override
     public Config getComponentByBu(String bu) {
-        Bu vbu = buRepository.findByBu(bu).orElse(null);
-        if(vbu!=null){
-            return Config.builder()
-                    .components(sharedRepo.getComponentByBu(bu))
-                    .parameters(parameterRepository.getParameterBu(bu))
-                    .icon(vbu.getIcon())
-                    .money(vbu.getMoney())
-                    .vViewPo(vbu.getVViewPo())
-                    .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
-                    .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
-                    .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
-                    .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
-                            .builder().code(c.getCode()).name(c.getName())
-                            .build()).collect(Collectors.toList()))
-                    .current(vbu.getCurrent())
-                    .build();
-        }
-        return null;
-
+        Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        log.info("vbu {}",vbu);
+        return Config.builder()
+                .components(sharedRepo.getComponentByBu(bu))
+                .parameters(parameterRepository.getParameterBu(bu))
+                .icon(vbu.getIcon())
+                .money(vbu.getMoney())
+                .vViewPo(vbu.getVViewPo())
+                .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
+                .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
+                .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
+                .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
+                        .builder().code(c.getCode()).name(c.getName())
+                        .build()).collect(Collectors.toList()))
+                .current(vbu.getCurrent())
+                .build();
     }
 
     @Override
