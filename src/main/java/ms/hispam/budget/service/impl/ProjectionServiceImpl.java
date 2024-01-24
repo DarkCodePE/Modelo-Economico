@@ -16,10 +16,7 @@ import ms.hispam.budget.rules.operations.salary.*;
 import ms.hispam.budget.service.BuService;
 import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
-import ms.hispam.budget.util.Constant;
-import ms.hispam.budget.util.ExcelService;
-import ms.hispam.budget.util.ReportService;
-import ms.hispam.budget.util.Shared;
+import ms.hispam.budget.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.convert.ConversionFailedException;
@@ -80,6 +77,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private RangeBuPivotRepository rangeBuPivotRepository;
     @Autowired
     private BuService buService;
+    //@Autowired
+    //private XlsReportService xlsReportService;
     private final MexicoService mexicoService;
 
     private List<Operation> operations;
@@ -643,9 +642,26 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             historialProjectionRepository.deleteById(id);
             return true;
     }
-
-
     @Override
+    public byte[] downloadProjection(  ParameterDownload projection) {
+        projection.setPeriod(projection.getPeriod().replace("/",""));
+        projection.setNominaFrom(projection.getNominaFrom().replace("/",""));
+        projection.setNominaTo(projection.getNominaTo().replace("/",""));
+
+        List<ComponentProjection>  componentProjections=  sharedRepo.getComponentByBu(projection.getBu());
+        DataRequest dataBase = DataRequest.builder()
+                .idBu(projection.getIdBu())
+                .bu(projection.getBu())
+                .period(projection.getPeriod())
+                .nominaFrom(projection.getNominaFrom())
+                .nominaTo(projection.getNominaTo())
+                .isComparing(false)
+                .build();
+
+        return  ExcelService.generateExcelProjection(projection,componentProjections,getDataBase(dataBase));
+    }
+
+    /*@Override
     public byte[] downloadProjection(ParameterDownload projection) {
         // Reemplaza los "/" en los períodos con ""
         projection.setPeriod(projection.getPeriod().replace("/", ""));
@@ -685,7 +701,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
         // Devuelve los datos fusionados
         return mergedData;
-    }
+    } */
 
     @Override
     public byte[] downloadProjectionHistorical(Integer id) {
@@ -1034,9 +1050,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY") || projection.getBu().equalsIgnoreCase("T. COLOMBIA")){
             // Define the nominal codes for "recargar"
             List<String> recargarCodes = Arrays.asList("1005", "1118", "1119");
-            // Sum the amounts of the "recargar" codes
+            /*// Sum the amounts of the "recargar" codes
             // Find the nominal entries that match the "recargar" codes
             List<NominaProjection> recargarNominal = nominal.stream()
+                    .filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
                     .filter(n -> recargarCodes.contains(n.getCodeNomina()))
                     .collect(Collectors.toList());
             // Sum the amounts of the "recargar" codes
@@ -1051,16 +1068,69 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             surchargesComponent.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), surchargesComponent.getAmount()));
             //log.info("surchargesComponent {}",surchargesComponent);
             // Add the "SURCHARGES" component to the projection components
-            projectionsComponent.add(surchargesComponent);
+            projectionsComponent.add(surchargesComponent);*/
+
+            String nominalAuxilioTraslado="1047";
+            String nominalAuxilioVivienda="1501";
+            //Auxilio de Rodamiento
+            String nominalAuxilioRodamiento="1207";
 
             double hhee = 0.0;
+            double charge = 0.0;
             for(NominaProjection h : nominal.stream()
                     .filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ){
-                        if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
-                            hhee = hhee +h.getImporte();
-                        }
+                    if (recargarCodes.contains(h.getCodeNomina())) {
+                        charge = charge + h.getImporte();
+                    }
+                    if(codeNominas.stream().anyMatch(p->p.getCodeNomina().equalsIgnoreCase(h.getCodeNomina()))) {
+                        hhee = hhee +h.getImporte();
+                    }
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalAuxilioTraslado)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_TRASLADO")
+                                .amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_TRASLADO")
+                                .amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalAuxilioVivienda)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_VIVIENDA")
+                                .amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_VIVIENDA")
+                                .amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
+                    if (h.getCodeNomina().equalsIgnoreCase(nominalAuxilioRodamiento)) {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_RODAMIENTO")
+                                .amount(BigDecimal.valueOf(h.getImporte()))
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                    } else {
+                        projectionsComponent.add(PaymentComponentDTO.builder().
+                                type(16).
+                                paymentComponent("AUXILIO_RODAMIENTO")
+                                .amount(BigDecimal.ZERO)
+                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                    }
             }
+            projectionsComponent.add(PaymentComponentDTO.builder().
+                    type(16).
+                    paymentComponent("SURCHARGES")
+                    .amount(BigDecimal.valueOf(charge))
+                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(charge))).build());
             projectionsComponent.add(PaymentComponentDTO.builder().
                     type(16).
                     paymentComponent("HHEE")
