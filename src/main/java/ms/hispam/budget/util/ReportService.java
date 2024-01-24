@@ -1,32 +1,36 @@
 package ms.hispam.budget.util;
 
-import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-@Slf4j(topic = "ExcelService")
-public class ExcelService {
+
+public class ReportService {
     private static final String[] headers = {"po","idssff"};
     private static final String[] headersInput = {"po","idssff","Nombre de la posición"};
 
 
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
 
-    public static byte[] generateExcelProjection(ParameterDownload projection , List<ComponentProjection> components,DataBaseMainReponse dataBase){
-        Workbook workbook = new XSSFWorkbook();
+    public static byte[] generateExcelProjection(ParameterDownload projection , List<ComponentProjection> components, DataBaseMainReponse dataBase){
+        SXSSFWorkbook workbook = new SXSSFWorkbook();
+
         // vista Parametros
         generateParameter(workbook,projection.getParameters());
         // vista Input
@@ -45,14 +49,15 @@ public class ExcelService {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             workbook.write(outputStream);
-            workbook.close();
+            // Es importante liberar los recursos del libro de trabajo para evitar fugas de memoria
+            workbook.dispose();
             return outputStream.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static byte[] generateExcelType(List<ProjectionDTO> vdata,Integer type, Bu bu,List<AccountProjection> accountProjections) {
+    public static byte[] generateExcelType(List<ProjectionDTO> vdata, Integer type, Bu bu, List<AccountProjection> accountProjections) {
         if(type==2){
             return generatePlanner(vdata,accountProjections);
         }else if (type==3){
@@ -345,6 +350,34 @@ public class ExcelService {
                 start++;
             }
 
+        }
+    }
+
+    public static CompletableFuture<byte[]> generateExcelProjectionAsync(ParameterDownload projection , List<ComponentProjection> components, DataBaseMainReponse dataBase) {
+        return CompletableFuture.supplyAsync(() -> generateExcelProjection(projection, components, dataBase));
+    }
+
+    public static byte[] mergeExcelProjections(List<CompletableFuture<byte[]>> futures) {
+        Workbook mainWorkbook = new XSSFWorkbook();
+        for (CompletableFuture<byte[]> future : futures) {
+            try {
+                byte[] data = future.get(); // Espera a que la tarea futura se complete
+                // Crea un nuevo Workbook a partir de los datos
+                Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(data));
+                // Fusiona este Workbook con el Workbook principal
+                ExcelService.mergeWorkbooks(Arrays.asList(mainWorkbook, workbook));
+            } catch (InterruptedException | ExecutionException | IOException e) {
+                throw new RuntimeException("Error merging Excel projections", e);
+            }
+        }
+        // Convierte el Workbook principal a un array de bytes
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            mainWorkbook.write(outputStream);
+            mainWorkbook.close();
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
