@@ -4,17 +4,27 @@ import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ReportJob;
+import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
+import ms.hispam.budget.service.ReportDownloadService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
 
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j(topic = "PROJECTION_CONTROLLER")
 @RestController
@@ -24,6 +34,11 @@ public class ProjectionController {
 
     @Autowired
     private ProjectionService service;
+    @Autowired
+    private ReportDownloadService reportDownloadService;
+    @Autowired
+    private  ReportJobRepository reportJobRepository;
+
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
@@ -66,13 +81,58 @@ public class ProjectionController {
     public Boolean deleteHistorical(@RequestParam Integer id) {
         return service.deleteHistorical(id);
     }
+    /*@PostMapping("/download-projection")
+    public CompletableFuture<ExcelReportDTO> downloadProjection(@RequestBody ParameterDownload projection) {
+        try {
+            log.info("Projection: {}", projection);
+            return service.downloadProjection(projection);
+        } catch (Exception e) {
+            // Aquí puedes manejar la excepción como prefieras. Por ejemplo, puedes registrar el error y luego lanzar una nueva excepción:
+            log.error("Error al descargar la proyección", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al descargar la proyección", e);
+        }
+    }*/
     @PostMapping("/download-projection")
-    public ResponseEntity<byte[]> downloadHistorical(@RequestBody ParameterDownload projection) {
-        //Shared.replaceSLash(projection);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDispositionFormData("attachment", "datos.xlsx");
-        return new ResponseEntity<>(service.downloadProjection(projection), headers, 200);
+    public ExcelReportDTO downloadProjection(@RequestBody ParameterDownload projection, @RequestHeader String user) {
+        try {
+            ReportJob job = new ReportJob();
+            String taskId = UUID.randomUUID().toString();
+            job.setStatus("en progreso");
+            job.setMonthBase(projection.getPeriod());
+            job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
+            job.setCode(taskId);
+            job.setIdSsff(user);
+            ReportJob jobDB =  reportJobRepository.save(job);
+            ExcelReportDTO reportInProgress = ExcelReportDTO.builder()
+                    .id(job.getId())
+                    .code(jobDB.getCode())
+                    .status("en progreso")
+                    .build();
+            service.downloadProjection(projection, user, jobDB);
+            // Retornar la respuesta inmediata con el estado "en progreso"
+            return reportInProgress;
+        } catch (Exception e) {
+            log.error("Error al iniciar la descarga de la proyección", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al iniciar la descarga de la proyección", e);
+        }
+    }
+    // Método para obtener el reporte generado
+    @GetMapping("/report")
+    public List<ReportJob> getReport(@RequestHeader String user) {
+        return reportDownloadService.getReport(user);
+    }
+    @GetMapping("/download-report")
+    public ResponseEntity<byte[]> downloadFile(@RequestParam String path) {
+        try {
+            byte[] file = reportDownloadService.getFile(path);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "report.xlsx");
+            return new ResponseEntity<>(file, headers, HttpStatus.OK);
+        } catch (RestClientException e) {
+            log.error("Error downloading file: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     @GetMapping("/download-historical")
     public ResponseEntity<byte[]> downloadProjectionHistorical(@RequestParam Integer id) {

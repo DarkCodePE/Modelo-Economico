@@ -25,6 +25,6 @@ public class ExcelSheetTask implements Runnable {
 
     @Override
     public void run() {
-        ExcelService.writeExcelPage(sheetName, componentName, period, range, projection);
+        //ExcelService.writeExcelPage(sheetName, componentName, period, range, projection);
     }
 }

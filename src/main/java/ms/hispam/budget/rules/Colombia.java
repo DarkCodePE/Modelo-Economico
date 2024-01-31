@@ -1705,5 +1705,166 @@ public class Colombia {
             return digitalConnectivityAidValue;
         }
     }
+    public void commissionTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
+            createCommissionCache(commissionList, cacheCommission, range);
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
+            PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
+            double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+            double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            double maxCommission = Math.max(pc938003Amount, pc938012Amount);
+            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                projection.setAmount(paymentComponentDTO.getAmount());
+                projections.add(projection);
+            }
+            paymentComponentDTO.setProjections(projections);
+            component.add(paymentComponentDTO);
+        }else {
+            PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
+            paymentComponentDTO.setPaymentComponent("COMMISSION_TEMP");
+            paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
+            component.add(paymentComponentDTO);
+        }
+    }
+    public void prodMonthPrimeTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            double totalbase = salary + overtime + surcharges + commission;
+            BigDecimal monthlyProvisionBase = BigDecimal.valueOf(totalbase / 12);
+            PaymentComponentDTO monthlyPrimeComponent = new PaymentComponentDTO();
+            monthlyPrimeComponent.setPaymentComponent("PRIMA_MENSUAL_TEMPORAL");
+            monthlyPrimeComponent.setAmount(monthlyProvisionBase);
+            if (salaryComponent != null) {
+                monthlyPrimeComponent.setProjections(Shared.generateMonthProjection(period, range, monthlyProvisionBase));
+            }
+            component.add(monthlyPrimeComponent);
+        }else {
+            PaymentComponentDTO monthlyPrimeComponent = new PaymentComponentDTO();
+            monthlyPrimeComponent.setPaymentComponent("PRIMA_MENSUAL_TEMPORAL");
+            monthlyPrimeComponent.setAmount(BigDecimal.valueOf(0));
+            monthlyPrimeComponent.setProjections(Shared.generateMonthProjection(period,range,monthlyPrimeComponent.getAmount()));
+            component.add(monthlyPrimeComponent);
+        }
+    }
+    public void consolidatedVacationTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            List<String> vacationComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            PaymentComponentDTO vacationComponent = new PaymentComponentDTO();
+            vacationComponent.setPaymentComponent("CONSOLIDADO_VACACIONES_TEMPORAL");
+            BigDecimal result = BigDecimal.valueOf(totalAmountBase / 2 / 12);
+            vacationComponent.setAmount(result);
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection primeProjection : componentMap.get("TEMPORAL_SALARY").getProjections()) {
+                MonthProjection projection = new MonthProjection();
+                projection.setMonth(primeProjection.getMonth());
+                projection.setAmount(result);
+                projections.add(projection);
+            }
+            vacationComponent.setProjections(projections);
+            component.add(vacationComponent);
+        }else {
+            PaymentComponentDTO vacationComponent = new PaymentComponentDTO();
+            vacationComponent.setPaymentComponent("CONSOLIDADO_VACACIONES_TEMPORAL");
+            vacationComponent.setAmount(BigDecimal.valueOf(0));
+            vacationComponent.setProjections(Shared.generateMonthProjection(period,range,vacationComponent.getAmount()));
+            component.add(vacationComponent);
+        }
+    }
+    public void consolidatedSeveranceTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    String category = findCategory(classEmployee);
+    // Obtén los componentes necesarios para el cálculo
+    List<String> severanceComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION");
+    Map<String, PaymentComponentDTO> componentMap = component.stream()
+            .filter(c -> severanceComponents.contains(c.getPaymentComponent()))
+            .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+    PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+        if (category.equals("T")) {
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            // Crear un nuevo PaymentComponentDTO para el Consolidado de Cesantías Temporal
+            PaymentComponentDTO severanceComponent = new PaymentComponentDTO();
+            severanceComponent.setPaymentComponent("CONSOLIDADO_CESANTIAS_TEMPORAL");
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            BigDecimal result = BigDecimal.valueOf(totalAmountBase / 12);
+            severanceComponent.setAmount(result);
+            // Calcular el Consolidado de Cesantías Temporal para cada proyección
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                MonthProjection projection = new MonthProjection();
+                projection.setMonth(primeProjection.getMonth());
+                projection.setAmount(result);
+                projections.add(projection);
+            }
+            severanceComponent.setProjections(projections);
+            component.add(severanceComponent);
+        }else {
+            PaymentComponentDTO severanceComponent = new PaymentComponentDTO();
+            severanceComponent.setPaymentComponent("CONSOLIDADO_CESANTIAS_TEMPORAL");
+            severanceComponent.setAmount(BigDecimal.valueOf(0));
+            severanceComponent.setProjections(Shared.generateMonthProjection(period,range,severanceComponent.getAmount()));
+            component.add(severanceComponent);
+        }
+    }
+    public void consolidatedSeveranceInterestTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO severanceComponent = componentMap.get("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
+            if (severanceComponent != null) {
+                double severance = severanceComponent.getAmount().doubleValue();
+                double severanceInterest = severance * 0.12;
+                PaymentComponentDTO severanceInterestComponent = new PaymentComponentDTO();
+                severanceInterestComponent.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
+                severanceInterestComponent.setAmount(BigDecimal.valueOf(severanceInterest));
+                component.add(severanceInterestComponent);
+            }else {
+                PaymentComponentDTO severanceInterestComponent = new PaymentComponentDTO();
+                severanceInterestComponent.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
+                severanceInterestComponent.setAmount(BigDecimal.valueOf(0));
+                severanceInterestComponent.setProjections(Shared.generateMonthProjection(period,range,severanceInterestComponent.getAmount()));
+                component.add(severanceInterestComponent);
+            }
+        }else {
+            PaymentComponentDTO severanceInterestComponent = new PaymentComponentDTO();
+            severanceInterestComponent.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
+            severanceInterestComponent.setAmount(BigDecimal.valueOf(0));
+            severanceInterestComponent.setProjections(Shared.generateMonthProjection(period,range,severanceInterestComponent.getAmount()));
+            component.add(severanceInterestComponent);
+        }
+    }
+
 }
 
