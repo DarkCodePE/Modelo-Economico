@@ -60,7 +60,7 @@ public class XlsReportService {
 
         components.stream()
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
-                //.limit(10)
+                .limit(25)
                 .forEach(c->{
             writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
         });
