@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-@Component
+@Service
 @Slf4j(topic = "REPORT_GENERATION_SERVICE")
 public class ReportGenerationService {
     private final XlsReportService xlsReportService;
