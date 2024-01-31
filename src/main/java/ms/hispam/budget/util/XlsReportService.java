@@ -5,13 +5,18 @@ import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ReportJob;
+import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -19,19 +24,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-@Slf4j(topic = "REPORT_SERVICE")
-public class ReportService {
+@Component
+@Slf4j(topic = "XlsReportService")
+public class XlsReportService {
+
+    private final ReportJobRepository reportJobRepository;
+    private final  ExternalService externalService;
+    // Crear un ReentrantLock
+    private static final ReentrantLock lock = new ReentrantLock();
     private static final String[] headers = {"po","idssff"};
     private static final String[] headersInput = {"po","idssff","Nombre de la posición"};
 
-
+    private final EmailService emailService;
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
+
+    public XlsReportService(ReportJobRepository reportJobRepository, ExternalService externalService, EmailService emailService) {
+        this.reportJobRepository = reportJobRepository;
+        this.externalService = externalService;
+        this.emailService = emailService;
+    }
 
     public static byte[] generateExcelProjection(ParameterDownload projection , List<ComponentProjection> components, DataBaseMainReponse dataBase){
         SXSSFWorkbook workbook = new SXSSFWorkbook();
-
         // vista Parametros
         generateParameter(workbook,projection.getParameters());
         // vista Input
@@ -39,21 +57,24 @@ public class ReportService {
         //Vista anual
         generateMoreView("Vista Anual",workbook,projection.getViewAnnual());
         generateMoreView("Vista Mensual",workbook,projection.getViewMonthly());
-        components.stream().filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow())).forEach(c->{
+
+        components.stream()
+                .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
+                .limit(25)
+                .forEach(c->{
             writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
         });
-        projection.getBaseExtern().getHeaders().stream().filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r))).forEach(c->{
+       /* projection.getBaseExtern().getHeaders().stream().filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r))).forEach(c->{
             writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData());
-        });
-
+        });*/
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             workbook.write(outputStream);
-            // Es importante liberar los recursos del libro de trabajo para evitar fugas de memoria
-            workbook.dispose();
+            workbook.close();
             return outputStream.toByteArray();
         } catch (IOException e) {
+            log.error("Error al generar el reporte", e);
             throw new RuntimeException(e);
         }
     }
@@ -126,7 +147,6 @@ public class ReportService {
             return outputStream.toByteArray();
 
         } catch (Exception e) {
-            log.error("Error al generar el excel",e);
             throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
 
         }
@@ -306,9 +326,24 @@ public class ReportService {
         }
 
     }
+    private static final ReentrantLock sheetCreationLock = new ReentrantLock();
 
-    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection){
-        Sheet sheet = workbook.createSheet(name);
+    private static Sheet  createSheetWithUniqueName(Workbook workbook, String baseName) {
+        sheetCreationLock.lock();
+        try {
+            String uniqueName = baseName;
+            int index = 1;
+            while (workbook.getSheet(uniqueName) != null) {
+                // Si la hoja ya existe, crea un nuevo nombre único
+                uniqueName = baseName + "_" + index++;
+            }
+            return workbook.createSheet(uniqueName);
+        } finally {
+            sheetCreationLock.unlock();
+        }
+    }
+    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection) {
+        Sheet sheet = createSheetWithUniqueName(workbook, name);
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
         Row header = sheet.createRow(0);
@@ -318,68 +353,82 @@ public class ReportService {
         headerCell.setCellValue("IDSSFF");
         headerCell = header.createCell(2);
         headerCell.setCellValue(Shared.nameMonth(period));
-        int  startHeader =3;
-        for(String m:Shared.generateRangeMonth(period,range)){
+        int startHeader = 3;
+        for (String m : Shared.generateRangeMonth(period, range)) {
             headerCell = header.createCell(startHeader);
             headerCell.setCellValue(m);
             startHeader++;
         }
-        int start =1;
-        for (int i = 0; i < projection.size(); i++) {
-            CellStyle style = workbook.createCellStyle();
-            style.setWrapText(true);
+        // Crear el estilo de celda una vez
+        CellStyle style = workbook.createCellStyle();
+        style.setWrapText(true);
+        int start = 1;
+        for (ProjectionDTO projectionDTO : projection) {
             Row row = sheet.createRow(start);
             Cell cell = row.createCell(0);
-            cell.setCellValue(projection.get(i).getPo());
-            cell.setCellStyle(style);
+            cell.setCellValue(projectionDTO.getPo());
+            cell.setCellStyle(style); // Reutilizar el estilo
             cell = row.createCell(1);
-            cell.setCellValue(projection.get(i).getIdssff());
-            cell.setCellStyle(style);
-            Optional<PaymentComponentDTO> componentDTO =   projection.get(i).getComponents().stream()
-                    .filter(u->u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
-            if (componentDTO.isPresent()){
+            cell.setCellValue(projectionDTO.getIdssff());
+            cell.setCellStyle(style); // Reutilizar el estilo
+            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
+                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
+            if (componentDTO.isPresent()) {
                 cell = row.createCell(2);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style);
-                int column=3;
+                cell.setCellStyle(style); // Reutilizar el estilo
+                int column = 3;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
                     MonthProjection month = componentDTO.get().getProjections().get(k);
                     cell = row.createCell(column);
                     cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style);
+                    cell.setCellStyle(style); // Reutilizar el estilo
                     column++;
                 }
                 start++;
             }
-
         }
     }
+    // Añade un ExecutorService para la ejecución de tareas asíncronas
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-    public static CompletableFuture<byte[]> generateExcelProjectionAsync(ParameterDownload projection , List<ComponentProjection> components, DataBaseMainReponse dataBase) {
-        return CompletableFuture.supplyAsync(() -> generateExcelProjection(projection, components, dataBase));
+    // Modifica este método para que sea asíncrono
+    public static CompletableFuture<byte[]> generateExcelProjectionAsync(ParameterDownload projection, List<ComponentProjection> components, DataBaseMainReponse dataBase) {
+        return CompletableFuture.supplyAsync(() -> {
+            // Toda la lógica actual de generación de reportes
+            return generateExcelProjection(projection, components, dataBase);
+        }, executorService);
     }
 
-    public static byte[] mergeExcelProjections(List<CompletableFuture<byte[]>> futures) {
-        Workbook mainWorkbook = new XSSFWorkbook();
-        for (CompletableFuture<byte[]> future : futures) {
-            try {
-                byte[] data = future.get(); // Espera a que la tarea futura se complete
-                // Crea un nuevo Workbook a partir de los datos
-                Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(data));
-                // Fusiona este Workbook con el Workbook principal
-                //ExcelService.mergeWorkbooks(Arrays.asList(mainWorkbook, workbook));
-            } catch (InterruptedException | ExecutionException | IOException e) {
-                throw new RuntimeException("Error merging Excel projections", e);
-            }
-        }
-        // Convierte el Workbook principal a un array de bytes
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try {
-            mainWorkbook.write(outputStream);
-            mainWorkbook.close();
-            return outputStream.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    // Método para notificar al usuario, a ser implementado según tu mecanismo de notificación
+    private void notifyUser(String notificationDetail, String userContact) {
+        // Enviar notificación al usuario (correo electrónico, mensaje de texto, etc.)
+        String subject = "Notificación de generación de reporte";
+        emailService.sendSimpleMessage(userContact, subject, notificationDetail);
+    }
+
+    @Async
+    public void generateAndCompleteReportAsync(ParameterDownload projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user) {
+        generateExcelProjectionAsync(projection, components, dataBase)
+                .thenAccept(reportData -> {
+                    job.setStatus("completado");
+                    // Guarda el reporte en el almacenamiento externo
+                    MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
+                    job.setReportUrl(responseUpload.getPath());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("El reporte está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
+                })
+                .exceptionally(e -> {
+                    job.setStatus("fallido");
+                    job.setIdSsff(userContact);
+                    job.setErrorMessage(e.getMessage());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("Falló la generación del reporte para el usuario con el contacto: " + userContact , userContact);
+                    log.error("Error al generar el reporte", e);
+                    return null;
+                });
     }
 }

@@ -3,10 +3,15 @@ package ms.hispam.budget.service;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ReportJob;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface ProjectionService {
 
@@ -23,9 +28,9 @@ public interface ProjectionService {
 
     Boolean deleteHistorical( Integer id);
 
-    byte[] downloadProjection( ParameterDownload projection);
+    void downloadProjection(ParameterDownload projection, String userContact, ReportJob job);
 
-    byte[] downloadProjectionHistorical( Integer id);
+    byte[] downloadProjectionHistorical(Integer id);
 
     DataBaseMainReponse getDataBase(DataRequest dataRequest);
 
