@@ -365,7 +365,7 @@ public class ReportService {
                 // Crea un nuevo Workbook a partir de los datos
                 Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(data));
                 // Fusiona este Workbook con el Workbook principal
-                ExcelService.mergeWorkbooks(Arrays.asList(mainWorkbook, workbook));
+                //ExcelService.mergeWorkbooks(Arrays.asList(mainWorkbook, workbook));
             } catch (InterruptedException | ExecutionException | IOException e) {
                 throw new RuntimeException("Error merging Excel projections", e);
             }
