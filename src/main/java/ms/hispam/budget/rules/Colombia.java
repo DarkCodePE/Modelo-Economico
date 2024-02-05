@@ -1413,7 +1413,11 @@ public class Colombia {
         String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
         double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
         // Obtén el mes del período sodexo
-        int sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
+        int sodexoMonth = 0;
+        if (periodSodexo.length() >= 6) {
+            // Obtén el mes del período sodexo
+            sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
+        }
         // Obtén los componentes necesarios para el cálculo
         List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -1442,7 +1446,7 @@ public class Colombia {
                             .mapToDouble(projection -> projection.getAmount().doubleValue())
                             .sum();
                     double sodexoContribution;
-                    if (Integer.parseInt(primeProjection.getMonth().substring(4, 6)) >= sodexoMonth) {
+                    if (sodexoMonth != 0 && Integer.parseInt(primeProjection.getMonth().substring(4, 6)) >= sodexoMonth) {
                         if ((category.equals("P") || category.equals("APR") || category.equals("PRA")) && totalAmount < 2 * legalSalaryMinInternal) {
                             sodexoContribution = sodexoValue;
                             lastValidSodexoValue = sodexoValue;
@@ -2135,6 +2139,259 @@ public class Colombia {
             riskContributionComponent.setAmount(BigDecimal.valueOf(0));
             riskContributionComponent.setProjections(Shared.generateMonthProjection(period, range, riskContributionComponent.getAmount()));
             component.add(riskContributionComponent);
+        }
+    }
+   public void contributionBoxTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        // Get the necessary components for the calculation
+       if (category.equals("T")) {
+           List<String> boxComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
+           Map<String, PaymentComponentDTO> componentMap = component.stream()
+                   .filter(c -> boxComponents.contains(c.getPaymentComponent()))
+                   .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+           PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+           PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+           PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+           PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION_TEMP");
+           double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+           double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+           double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+           double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+           // Create a new PaymentComponentDTO for the Box Contribution
+           PaymentComponentDTO boxContributionComponent = new PaymentComponentDTO();
+           boxContributionComponent.setPaymentComponent("APORTE_CAJA_TEMPORALES");
+           double totalAmountBase = salary + overtime + surcharges + commission;
+           boxContributionComponent.setAmount(BigDecimal.valueOf(totalAmountBase * 0.04));
+           // Calculate the Box Contribution for each projection
+           List<MonthProjection> projections = new ArrayList<>();
+           if (salaryComponent != null && salaryComponent.getProjections() != null){
+               for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                   double totalAmount = boxComponents.stream()
+                           .map(componentMap::get)
+                           .filter(Objects::nonNull)
+                           .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                           .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                           .mapToDouble(projection -> projection.getAmount().doubleValue())
+                           .sum();
+                   MonthProjection projection = new MonthProjection();
+                   projection.setMonth(primeProjection.getMonth());
+                   projection.setAmount(BigDecimal.valueOf(totalAmount * 0.04));
+                   projections.add(projection);
+               }
+           }else {
+                boxContributionComponent.setAmount(BigDecimal.valueOf(0));
+                boxContributionComponent.setProjections(Shared.generateMonthProjection(period, range, boxContributionComponent.getAmount()));
+           }
+           boxContributionComponent.setProjections(projections);
+           component.add(boxContributionComponent);
+       }else {
+              PaymentComponentDTO boxContributionComponent = new PaymentComponentDTO();
+              boxContributionComponent.setPaymentComponent("APORTE_CAJA_TEMPORALES");
+              boxContributionComponent.setAmount(BigDecimal.valueOf(0));
+              boxContributionComponent.setProjections(Shared.generateMonthProjection(period, range, boxContributionComponent.getAmount()));
+              component.add(boxContributionComponent);
+       }
+    }
+    public void icbfContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            // Get the necessary components for the calculation
+            List<String> icbfComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> icbfComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION_TEMP");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            // Create a new PaymentComponentDTO for the ICBF Contribution
+            PaymentComponentDTO icbfContributionComponent = new PaymentComponentDTO();
+            icbfContributionComponent.setPaymentComponent("APORTE_ICBF_TEMPORALES");
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+            double legalSalaryMinInternal = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
+            icbfContributionComponent.setAmount(BigDecimal.valueOf(totalAmountBase >= 10 * legalSalaryMinInternal ? totalAmountBase * 0.03 : 0));
+            // Calculate the ICBF Contribution for each projection
+            List<MonthProjection> projections = new ArrayList<>();
+            if (salaryComponent != null && salaryComponent.getProjections() != null){
+                for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                    double totalAmount = icbfComponents.stream()
+                            .map(componentMap::get)
+                            .filter(Objects::nonNull)
+                            .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                            .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                            .mapToDouble(projection -> projection.getAmount().doubleValue())
+                            .sum();
+                    MonthProjection projection = new MonthProjection();
+                    projection.setMonth(primeProjection.getMonth());
+                    projection.setAmount(BigDecimal.valueOf( totalAmount >= 10 * legalSalaryMinInternal ? totalAmount * 0.03 : 0));
+                    projections.add(projection);
+                }
+            }else {
+                icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
+                icbfContributionComponent.setProjections(Shared.generateMonthProjection(period, range, icbfContributionComponent.getAmount()));
+            }
+            icbfContributionComponent.setProjections(projections);
+            component.add(icbfContributionComponent);
+        }else {
+            PaymentComponentDTO icbfContributionComponent = new PaymentComponentDTO();
+            icbfContributionComponent.setPaymentComponent("APORTE_ICBF_TEMPORALES");
+            icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
+            icbfContributionComponent.setProjections(Shared.generateMonthProjection(period, range, icbfContributionComponent.getAmount()));
+            component.add(icbfContributionComponent);
+        }
+    }
+    public void senaContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            // Get the necessary components for the calculation
+            List<String> senaComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> senaComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION_TEMP");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            // Create a new PaymentComponentDTO for the Sena Contribution
+            PaymentComponentDTO senaContributionComponent = new PaymentComponentDTO();
+            senaContributionComponent.setPaymentComponent("APORTE_SENA_TEMPORALES");
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+            double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
+            senaContributionComponent.setAmount(BigDecimal.valueOf( totalAmountBase >= 10 * legalSalaryMinInternal ? totalAmountBase * 0.02 : 0));
+            // Calculate the Sena Contribution for each projection
+            if (salaryComponent != null && salaryComponent.getProjections() != null) {
+                List<MonthProjection> projections = new ArrayList<>();
+                for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                    double totalAmount = senaComponents.stream()
+                            .map(componentMap::get)
+                            .filter(Objects::nonNull)
+                            .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                            .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                            .mapToDouble(projection -> projection.getAmount().doubleValue())
+                            .sum();
+                    MonthProjection projection = new MonthProjection();
+                    projection.setMonth(primeProjection.getMonth());
+                    projection.setAmount(BigDecimal.valueOf(totalAmount >= 10 * legalSalaryMinInternal ? totalAmount * 0.02 : 0));
+                    projections.add(projection);
+                }
+                senaContributionComponent.setProjections(projections);
+            }else {
+                senaContributionComponent.setAmount(BigDecimal.valueOf(0));
+                senaContributionComponent.setProjections(Shared.generateMonthProjection(period,range,senaContributionComponent.getAmount()));
+            }
+            component.add(senaContributionComponent);
+        }else {
+            PaymentComponentDTO senaContributionComponent = new PaymentComponentDTO();
+            senaContributionComponent.setPaymentComponent("APORTE_SENA_TEMPORALES");
+            senaContributionComponent.setAmount(BigDecimal.valueOf(0));
+            senaContributionComponent.setProjections(Shared.generateMonthProjection(period,range,senaContributionComponent.getAmount()));
+            component.add(senaContributionComponent);
+        }
+    }
+    public void companyPensionContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")) {
+            ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+            double legalSalaryMinInternal = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
+            // Get the necessary components for the calculation
+            List<String> pensionComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> pensionComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION_TEMP");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            // Create a new PaymentComponentDTO for the Company Pension Contribution
+            PaymentComponentDTO pensionContributionComponent = new PaymentComponentDTO();
+            pensionContributionComponent.setPaymentComponent("APORTE_PENSION_EMPRESA_TEMPORALES");
+            pensionContributionComponent.setAmount(BigDecimal.valueOf(totalAmountBase > 25 * legalSalaryMinInternal ? 25 * legalSalaryMinInternal * 0.12 : totalAmountBase * 0.12));
+            // Calculate the Company Pension Contribution for each projection
+            List<MonthProjection> projections = new ArrayList<>();
+            if (salaryComponent != null && salaryComponent.getProjections() != null) {
+                for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                    double totalAmount = pensionComponents.stream()
+                            .map(componentMap::get)
+                            .filter(Objects::nonNull)
+                            .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                            .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                            .mapToDouble(projection -> projection.getAmount().doubleValue())
+                            .sum();
+                    MonthProjection projection = new MonthProjection();
+                    projection.setMonth(primeProjection.getMonth());
+                    projection.setAmount(BigDecimal.valueOf(totalAmount > 25 * legalSalaryMinInternal ? 25 * legalSalaryMinInternal * 0.12 : totalAmount * 0.12));
+                    projections.add(projection);
+                }
+                pensionContributionComponent.setProjections(projections);
+            }else {
+                pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
+                pensionContributionComponent.setProjections(Shared.generateMonthProjection(period,range,pensionContributionComponent.getAmount()));
+            }
+            component.add(pensionContributionComponent);
+        }else {
+            PaymentComponentDTO pensionContributionComponent = new PaymentComponentDTO();
+            pensionContributionComponent.setPaymentComponent("APORTE_PENSION_EMPRESA_TEMPORALES");
+            pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
+            pensionContributionComponent.setProjections(Shared.generateMonthProjection(period,range,pensionContributionComponent.getAmount()));
+            component.add(pensionContributionComponent);
+        }
+    }
+    public void feeTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        if (category.equals("T")){
+            // Get the necessary components for the calculation
+            List<String> feeComponents = Arrays.asList("TEMPORAL_SALARY", "COMMISSION_TEMP", "MONTHLY_PRIME_PROVISION_TEMP", "CONSOLIDATED_VACATION_TEMP", "CONSOLIDATED_SEVERANCE_TEMP", "CONSOLIDATED_SEVERANCE_INTEREST_TEMP", "TRANSPORT_SUBSIDY_TEMP", "COMPANY_HEALTH_CONTRIBUTION_TEMP", "COMPANY_RISK_CONTRIBUTION_TEMP", "CONTRIBUTION_BOX_TEMP", "ICBF_CONTRIBUTION_TEMP", "SENA_CONTRIBUTION_TEMP", "COMPANY_PENSION_CONTRIBUTION_TEMP");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> feeComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            // Calculate the total base
+            double totalAmountBase = feeComponents.stream()
+                    .map(componentMap::get)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(paymentComponentDTO -> paymentComponentDTO.getAmount().doubleValue())
+                    .sum();
+            // Create a new PaymentComponentDTO for the Fee
+            PaymentComponentDTO feeComponent = new PaymentComponentDTO();
+            feeComponent.setPaymentComponent("FEE_TEMP");
+            feeComponent.setAmount(BigDecimal.valueOf(totalAmountBase * 0.0735));
+            // Calculate the Fee for each projection
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection primeProjection : componentMap.get("TEMPORAL_SALARY").getProjections()) {
+                double totalAmount = feeComponents.stream()
+                        .map(componentMap::get)
+                        .filter(Objects::nonNull)
+                        .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                        .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                        .mapToDouble(projection -> projection.getAmount().doubleValue())
+                        .sum();
+                MonthProjection projection = new MonthProjection();
+                projection.setMonth(primeProjection.getMonth());
+                projection.setAmount(BigDecimal.valueOf(totalAmount * 0.0735));
+                projections.add(projection);
+            }
+            feeComponent.setProjections(projections);
+            component.add(feeComponent);
+        }else{
+            PaymentComponentDTO feeComponent = new PaymentComponentDTO();
+            feeComponent.setPaymentComponent("FEE_TEMP");
+            feeComponent.setAmount(BigDecimal.valueOf(0));
+            feeComponent.setProjections(Shared.generateMonthProjection(period,range,feeComponent.getAmount()));
+            component.add(feeComponent);
         }
     }
 }
