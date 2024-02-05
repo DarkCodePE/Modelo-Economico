@@ -135,11 +135,12 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90006575"))
                     .collect(Collectors.toList());*/
             /* EMP TEST */
-           /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+            /*  List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                     .stream()
-                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90001348") || projectionDTO.getPo().equals("PO90004437"))
+                    .filter(projectionDTO ->  projectionDTO.getPo().equals("PO90004009"))
                     .collect(Collectors.toList());*/
             List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
+            //log.debug("headcount {}",headcount.size()) ;
             //log.info("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
             //log.info("components {}",components.size());
@@ -319,6 +320,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
                     }
@@ -342,7 +344,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> salaryIntegralsList = filterParametersByName(projection.getParameters(), "Salario mínimo Integral");
         List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "%Inc Rev Salarial");
         List<ParametersDTO> revisionEttList = filterParametersByName(projection.getParameters(), "%Inc Plantilla ETT");
-        List<ParametersDTO> salaryPraList = filterParametersByName(projection.getParameters(), "Salario PRA");
+        List<ParametersDTO> salaryPraList = filterParametersByName(projection.getParameters(), "Salario Estudiante PRA");
         //comisiones
         List<ParametersDTO> commissionList = filterParametersByName(projection.getParameters(), "Comisiones (anual)");
         //log.info("commissionList {}",commissionList);
@@ -383,12 +385,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.consolidatedVacationTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceInterestTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
-                        addBaseExtern(headcountData,projection.getBaseExtern(),
-                            projection.getPeriod(),projection.getRange());
-                    }
+                    methodsColombia.transportSubsidyTemporaries(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyHealthContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                 });
     }
+
     private void isUruguay( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         Uruguay methodsUruguay = new Uruguay();
         //Genera las proyecciones del rango
@@ -947,12 +949,24 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 Map<String,Object> resp = projection.getBc().getData().get(i);
                 for (Map.Entry<String, Object> entry : resp.entrySet()) {
                     int finalI = i;
-                    projection.getPaymentComponent().stream().filter(t-> !entry.getKey().equals(HEADERPO) &&
-                          t.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresentOrElse(t->
+                    projection.getPaymentComponent()
+                            .stream()
+                            .filter(
+                                    t-> {
+                                        //log.info("t.getName() {}",t.getName());
+                                        //log.info("entry.getKey() {}",entry.getKey());
+                                        ///log.info("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                        return  !entry.getKey().equals(HEADERPO) &&
+                                                t.getName().equalsIgnoreCase(entry.getKey());
+                                    }
+                            )
+                            .findFirst()
+                            .ifPresentOrElse(t->
                       headcount.add(HeadcountProjection.builder()
                                       .position(resp.get(HEADERPO).toString())
                                       .idssff(String.valueOf(finalI))
                                       .poname("")
+                                      .classEmp(resp.get("typeEmployee").toString())
                                       .component(t.getComponent())
                                       .amount(Double.parseDouble(resp.get(t.getName()).toString()))
                               .build()),()->

@@ -60,13 +60,17 @@ public class XlsReportService {
 
         components.stream()
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
-                .limit(25)
+                .limit(30)
                 .forEach(c->{
             writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
         });
-       /* projection.getBaseExtern().getHeaders().stream().filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r))).forEach(c->{
+        projection.getBaseExtern()
+                .getHeaders()
+                .stream()
+                .filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r)))
+                .forEach(c->{
             writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData());
-        });*/
+        });
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
