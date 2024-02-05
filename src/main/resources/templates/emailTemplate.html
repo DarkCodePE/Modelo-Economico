@@ -1,7 +1,31 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<body>
-<p th:text="${message}"></p>
-<button th:href="${url}">ver</button>
-</body>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+    <div style="width: 90%;
+                            height: auto;
+                            background-color: #F6F8F9;
+                            border: solid 1px #008edd   ;
+                            margin-top: 20px;
+                            font-size: 14px;
+                            line-height: 20px;">
+        <div style="background-color: #008edd;
+                            padding: 10px;">
+            <p style="text-align: left;  margin: 0px;">
+                <img src="https://hispamstorage.blob.core.windows.net/public/portal/2024_02_01_10_57_36_2434.png"
+                     style="width: 6rem; height: auto;" />
+            </p>
+        </div>
+        <div style="padding: 20px 20px 0px 20px; margin: 10px 0px;">
+            <div style="color: #008edd; font-weight: 700; text-align: center; font-style: italic; font-size: 1.5rem; margin-bottom: 1rem;">Notificación de generación de reporte</div>
+            <div style="color: black;">
+                <p th:text="${message}"></p>
+                <p>Saludos cordiales.</p>
+            </div>
+        </div>
+    </div>
+    </body>
 </html>
