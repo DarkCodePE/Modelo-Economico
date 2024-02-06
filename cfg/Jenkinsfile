@@ -33,7 +33,8 @@ pipeline {
                 stage('UnitTest') {
                                      steps {
 
-                 						sh 'mvn test'
+                 		        sh 'mvn clean test jacoco:prepare-agent jacoco:report'
+
                                      }
                                      post{
                                         always{
@@ -48,6 +49,7 @@ pipeline {
                 						}
                 						withSonarQubeEnv('sonarQube') {
                 						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
+                						    jacoco(execPattern: 'target/jacoco.exec')
                 						}
                 					}
                 				}
