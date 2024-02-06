@@ -203,7 +203,7 @@ public class Mexico {
            double incrementPercent ;
            double lastSalary = 0.0;
            boolean isCp = poName != null && poName.contains("CP");
-           //log.info("isCp: {}", isCp);
+           //log.debug("isCp: {}", isCp);
            if (salaryAndIncrement != null) {
                incrementPercent = isCp ? salaryAndIncrement.getValue() / 100.0  :  0.0 ;
                double minSalary = salaryAndIncrement.getKey();
@@ -295,7 +295,7 @@ public class Mexico {
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 double amountProj = projection.getAmount().doubleValue() / 30;
                 double vacationsDaysPerMonth =  (double) vacationsDays / 12;
-                //log.info("amountProj: {} , vacationsDaysPerMonth {}", amountProj, vacationsDaysPerMonth);
+                //log.debug("amountProj: {} , vacationsDaysPerMonth {}", amountProj, vacationsDaysPerMonth);
                 BigDecimal newAmount = BigDecimal.valueOf(amountProj *  vacationsDaysPerMonth);
                 MonthProjection vacationProvisionProjection = new MonthProjection();
                 vacationProvisionProjection.setMonth(projection.getMonth());

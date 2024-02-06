@@ -141,9 +141,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .collect(Collectors.toList());*/
             List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
             //log.debug("headcount {}",headcount.size()) ;
-            //log.info("headcount {}",headcount.size());
+            //log.debug("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
-            //log.info("components {}",components.size());
+            //log.debug("components {}",components.size());
             if(headcount.isEmpty()){
                throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
             }
@@ -216,7 +216,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     ,groupedData,
                     tCambio);
         }catch (ConversionFailedException ex) {
-            log.info("El valor proporcionado no es un número decimal válido: ", ex);
+            log.debug("El valor proporcionado no es un número decimal válido: ", ex);
             throw new FormatAmountException("El valor proporcionado no es un número decimal válido");
         }catch (NumberFormatException ex){
             throw ex;
@@ -279,17 +279,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         boolean hasBaseExtern = baseExtern != null && !baseExtern.getData().isEmpty();
         List<ParametersDTO> vacationSeasonalityList = getListParametersById(projection.getParameters(), 40);
         Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : storeAndSortVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
-        //log.info("vacationSeasonalityList {}", vacationSeasonalityValues);
+        //log.debug("vacationSeasonalityList {}", vacationSeasonalityValues);
         //Map<String, List<Double>> vacationSeasonalityValues = null;
                 //Map<String, List<Double>> vacationSeasonalityValues = vacationSeasonalityList.isEmpty() ? null : calculateVacationSeasonality(vacationSeasonalityList, projection.getPeriod(), projection.getRange());
-        //log.info("vacationSeasonalityValues {}", vacationSeasonalityValues);
+        //log.debug("vacationSeasonalityValues {}", vacationSeasonalityValues);
         headcount
                 .parallelStream()
                 .forEach(headcountData -> {
             if (hasBaseExtern) {
                 addBaseExternV2(headcountData, baseExtern, projection.getPeriod(), projection.getRange());
             }
-            //log.info("headcountData {}",headcountData.getPo());
+            //log.debug("headcountData {}",headcountData.getPo());
             methodsPeru.salary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), projection.getTemporalParameters(), headcountData.getFNac(), vacationSeasonalityValues);
             //methodsPeru.revisionSalary(headcountData.getComponents(), projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
         });
@@ -314,7 +314,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
-                  /*  log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));*/
+                  /*  log.debug("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));*/
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
@@ -339,7 +339,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble();
                     sum.updateAndGet(v -> v.add(totalPO>0?BigDecimal.valueOf(totalPO):BigDecimal.ZERO));
                 });
-        //log.info("Sunm -> {}",sum.get());
+        //log.debug("Sunm -> {}",sum.get());
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario mínimo legal");
         List<ParametersDTO> salaryIntegralsList = filterParametersByName(projection.getParameters(), "Salario mínimo Integral");
         List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "%Inc Rev Salarial");
@@ -347,10 +347,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> salaryPraList = filterParametersByName(projection.getParameters(), "Salario Estudiante PRA");
         //comisiones
         List<ParametersDTO> commissionList = filterParametersByName(projection.getParameters(), "Comisiones (anual)");
-        //log.info("commissionList {}",commissionList);
-        //log.info("revisionEttList {}",revisionEttList);
-        //log.info("revisionList {}",revisionList);
-        //log.info("salaryList {}",salaryList);
+        //log.debug("commissionList {}",commissionList);
+        //log.debug("revisionEttList {}",revisionEttList);
+        //log.debug("revisionList {}",revisionList);
+        //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
                 .parallel()
@@ -388,6 +388,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.transportSubsidyTemporaries(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.companyHealthContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.companyRiskContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.contributionBoxTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.icbfContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.senaContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyPensionContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.feeTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                 });
     }
 
@@ -782,7 +787,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
        List<ComponentNominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,data.getBu(),
                data.getNominaFrom(),data.getNominaTo(),
                codeNominas.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")));
-        //log.info("nominal {}",nominal);
+        //log.debug("nominal {}",nominal);
 
         List<DataBaseResponse> deudasAgrupadas = headcount.stream()
                 .collect(Collectors.groupingBy(
@@ -932,7 +937,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .areaFuncional(e.getAf())
                         .cCostos(e.getCc())
                         .build()).collect(Collectors.toList());
-        //log.info("headcount {}",headcount);
+        //log.debug("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                 codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
@@ -950,9 +955,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .stream()
                             .filter(
                                     t-> {
-                                        //log.info("t.getName() {}",t.getName());
-                                        //log.info("entry.getKey() {}",entry.getKey());
-                                        ///log.info("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                        //log.debug("t.getName() {}",t.getName());
+                                        //log.debug("entry.getKey() {}",entry.getKey());
+                                        ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
                                         return  !entry.getKey().equals(HEADERPO) &&
                                                 t.getName().equalsIgnoreCase(entry.getKey());
                                     }
@@ -981,7 +986,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
         }
 
-        return new ArrayList<>(headcount.stream()
+        return new ArrayList<>(headcount
+                .stream()
+                //ordenar por typeEmployee equals T
+                .sorted((p1, p2) -> {
+                    if ("T".equals(p1.getClassEmp()) && !"T".equals(p2.getClassEmp())) {
+                        return -1;
+                    } else if (!"T".equals(p1.getClassEmp()) && "T".equals(p2.getClassEmp())) {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                })
                 .collect(Collectors.groupingBy(
                         object -> object.getPosition() + object.getIdssff(),
                         Collectors.collectingAndThen(
@@ -1015,7 +1031,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                         nominaPaymentComponentLinksCache = allLinks.stream()
                                                 .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
                                     }
-                                    log.debug("nominaPaymentComponentLinksCache: {}", nominaPaymentComponentLinksCache);
+                                    //log.debug("nominaPaymentComponentLinksCache: {}", nominaPaymentComponentLinksCache);
                                     Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
                                     List<NominaProjection> filteredNominal = nominal.stream()
                                             .filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
@@ -1037,7 +1053,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     );
                                 }
                         )
-                )).values());
+                ))
+                .values());
+
     }
 
     private HeadcountProjection convertToHeadcountProjection(HeadcountHistoricalProjection e) {
@@ -1062,7 +1080,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .cCostos(e.getCc())
                     .build();
         } catch (NumberFormatException ex) {
-            log.info("Error al convertir la proyección para la posición: {}", e.getPosition());
+            log.debug("Error al convertir la proyección para la posición: {}", e.getPosition());
             //throw new BadRequestException(String.format("Error al convertir la proyección para la posición, por que el valor no es valido: %s, %s", e.getPosition(), e.getAmount()));
             throw ex;
         }
@@ -1161,8 +1179,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             String nominalCodeHousing="1212";
             String nominalCodeExpatriates="1213";
             String [] nominaAFP= {"1503", "1513", "1523"};
-            //log.info("nominal {}",nominal);
-            //log.info("list {}",list.get(0).getIdssff());
+            //log.debug("nominal {}",nominal);
+            //log.debug("list {}",list.get(0).getIdssff());
             for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
 
