@@ -32,13 +32,13 @@ pipeline {
                 }
                 stage('UnitTest') {
                                      steps {
-                 						script {
-                 							if("${config.enviroment}"=='develop' && !readFile('pom.xml').contains('SNAPSHOT')){
-                 								currentBuild.result = 'FAILURE'
-                 								error("No se encontró una versión SNAPSHOT.")
-                 							}
-                 						}
-                 						sh 'mvn package -Dmaven.test.skip'
+
+                 						sh 'mvn test'
+                                     }
+                                     post{
+                                        always{
+                                            junit '**/target/surefire-reports/TEST-*.xml
+                                        }
                                      }
                                  }
                 stage('Scan') {
@@ -51,10 +51,10 @@ pipeline {
                 						}
                 					}
                 				}
-				stage('Delivery'){
+				/*stage('Delivery'){
 					steps{
 						    sh 'mvn package azure-webapp:deploy'
 					}
-            }
+            }*/
         }
      }
