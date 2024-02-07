@@ -1689,7 +1689,7 @@ public class Colombia {
         bonusMultipliers.put("BASE", 14.12);
         bonusMultipliers.put("INTEGRAL", 12.0);
         double multiplier = bonusMultipliers.getOrDefault(salaryType, 0.0);
-        //log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
+        log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
         if (bonusTarget == 0) {
             bonusTarget = 0.00;
         }
