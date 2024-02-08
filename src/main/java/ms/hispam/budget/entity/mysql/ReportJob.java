@@ -5,6 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -28,4 +30,9 @@ public class ReportJob {
     @Column(name = "nomina_range")
     private String nominaRange;
     private String code;
+
+    @Column(name = "creation_date")
+    private LocalDateTime creationDate;
+    @OneToMany(mappedBy = "reportJob")
+    private List<ParameterBu> parameters;
 }
