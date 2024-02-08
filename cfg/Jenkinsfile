@@ -49,7 +49,6 @@ pipeline {
                 						}
                 						withSonarQubeEnv('sonarQube') {
                 						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
-                						    jacoco(execPattern: 'target/jacoco.exec')
                 						}
                 					}
                 				}
