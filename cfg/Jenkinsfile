@@ -42,7 +42,7 @@ pipeline {
                                         }
                                      }
                                  }
-                stage('Scan') {
+                stage('Scan and Analysis SAST') {
                 					steps{
                 						script {
                 						  scannerHome = tool 'sonarQube'
@@ -52,13 +52,13 @@ pipeline {
                 						}
                 					}
                 				}
-          	    stage('RunSCAAnalysisUsingSnyk') {
-                                    steps {		
-                                        withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-                                            sh 'mvn snyk:test -fn'
-                                        }
-			                        }
-                                }		
+                                 stage('Analysis DAST') {
+                					steps{
+                						dependencyCheck additionalArguments: '' , odcInstallation:'DP-check'
+                                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                					}
+                				}
+          	   	
 				/*stage('Delivery'){
 					steps{
 						    sh 'mvn package azure-webapp:deploy'
