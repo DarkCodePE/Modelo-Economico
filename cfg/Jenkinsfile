@@ -67,7 +67,6 @@ pipeline {
                 stage('Analysis DAST') {
                 					steps{
                 						dependencyCheck additionalArguments: '--format HTML' , odcInstallation:'DP-check'
-                                        dependencyCheckPublisher pattern: '**/dependency-check-report.html'
                 					}
                 				}
                                  stage('Scan Trivi Security') {
