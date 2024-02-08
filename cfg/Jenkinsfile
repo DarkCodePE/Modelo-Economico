@@ -55,7 +55,7 @@ pipeline {
                                  stage('Analysis DAST') {
                 					steps{
                 						dependencyCheck additionalArguments: '' , odcInstallation:'DP-check'
-                                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                                        dependencyCheckPublisher pattern: '**/dependency-check-report.html'
                 					}
                 				}
           	   	
