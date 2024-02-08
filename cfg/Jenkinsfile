@@ -42,6 +42,18 @@ pipeline {
                                         }
                                      }
                                  }
+                stage('Build') {
+                    steps {
+						sh 'mvn -f pom.xml clean install -DskipTests'
+                    }
+                         post{
+                               failure{
+                                 script {
+                                   slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} sufrió un error en el despliegue")
+                                       }
+                                     }
+                              }
+                }                
                 stage('Scan and Analysis SAST') {
                 					steps{
                 						script {
