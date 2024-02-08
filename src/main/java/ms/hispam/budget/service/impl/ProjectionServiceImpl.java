@@ -359,7 +359,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
-                    methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getClassEmployee());
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), sum.get(), commissionList);
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
