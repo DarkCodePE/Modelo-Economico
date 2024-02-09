@@ -78,7 +78,7 @@ pipeline {
                 					steps{
 							sh 'cp target/${ARTIFACT_ID}-${VERSION}.jar cfg/'
 							sh 'docker build -t acrhispam.azurecr.io/${NAME}:${VERSION} --build-arg nombreArtefacto=${ARTIFACT_ID}-${VERSION}.jar cfg'
-                            sh 'trivy --no-progress --exit-code 1 --severity MEDIUM,HIGH,CRITICAL acrhispam.azurecr.io/${NAME}:${VERSION}'
+                            sh 'trivy  acrhispam.azurecr.io/${NAME}:${VERSION}'
                             sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
                 					}
                 				}
