@@ -71,23 +71,53 @@ pipeline {
 
                 					}
                 				}
-                                 stage('Scan Trivi Security') {
-                                    environment {
+                                	stage('Package'){
+					environment {
 						VERSION = readMavenPom().getVersion()
 						ARTIFACT_ID = readMavenPom().getArtifactId()
 						NAME = "${ARTIFACT_ID}"
 					}
-                					steps{
+					steps{
+						withCredentials([azureServicePrincipal('user_azure')]) {
+							sh 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID'
+							sh 'TOKEN=$(az acr login --name acrhispam --expose-token --output tsv --query accessToken) && docker login acrhispam.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $TOKEN'
 							sh 'cp target/${ARTIFACT_ID}-${VERSION}.jar cfg/'
 							sh 'docker build -t acrhispam.azurecr.io/${NAME}:${VERSION} --build-arg nombreArtefacto=${ARTIFACT_ID}-${VERSION}.jar cfg'
-                            sh 'trivy  image acrhispam.azurecr.io/${NAME}:${VERSION}'
-                            sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION}'
-                					}
-                				}
-				/*stage('Delivery'){
-					steps{
-						    sh 'mvn package azure-webapp:deploy'
+							sh 'docker inspect -f . acrhispam.azurecr.io/${NAME}:${VERSION}'
+							sh 'docker tag acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker push acrhispam.azurecr.io/${NAME}:${VERSION}'
+							sh 'docker push acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
+							sh 'docker logout'
+							sh 'az logout'
+						}
 					}
-            }*/
+				}
+				stage('Delivery'){
+					environment {
+						ARTIFACT_ID = readMavenPom().getArtifactId()
+						AKS = "${config.aks}"
+						RESOURCE_GROUP = "${config.resource_group}"
+					}
+					steps{
+						withCredentials([azureServicePrincipal('user_azure')]) {
+							sh 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID'
+							sh 'az aks get-credentials --name ${AKS} --resource-group ${RESOURCE_GROUP} --admin --overwrite-existing'
+							sh 'kubectl apply -f ./cfg/${ARTIFACT_ID}-deployment.yml'
+						}
+					}
+					post{
+                         failure{
+                           script {
+                                 slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} sufrió un error en el despliegue")
+                             }
+                         }
+                         success{
+                                script {
+                                    slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} desplegó con éxito")
+                                }
+                         }
+				}
+            }
         }
      }
