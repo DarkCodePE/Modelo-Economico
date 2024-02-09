@@ -311,6 +311,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
         List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
         List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial");
+        List<ParametersDTO>  employeeParticipationList = filterParametersByName(projection.getParameters(), "Participación de los trabajadores");
+        List<ParametersDTO> sgmmList = filterParametersByName(projection.getParameters(), "SGMM");
+        List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
+        List<ParametersDTO> lifeInsuranceList = filterParametersByName(projection.getParameters(), "Seguro de Vida");
+        //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
@@ -319,8 +324,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
+                    methodsMexico.participacionTrabajadores(component, employeeParticipationList, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
-
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
                     }

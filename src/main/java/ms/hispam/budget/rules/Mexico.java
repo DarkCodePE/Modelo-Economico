@@ -232,6 +232,7 @@ public class Mexico {
        }
        component.add(paymentComponentDTO);
    }
+
     public void provAguinaldo(List<PaymentComponentDTO> component, String period, Integer range) {
         // Convierte la lista de componentes a un mapa
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -329,7 +330,37 @@ public class Mexico {
         });
     }
 
-    private boolean isValidRange(long seniority, DaysVacationInfo daysVacation) {
-        return seniority >= daysVacation.getLowerLimit() && seniority <= daysVacation.getUpperLimit();
+    public void participacionTrabajadores(List<PaymentComponentDTO> component,  List<ParametersDTO>  employeeParticipationList, List<ParametersDTO> parameters, String period, Integer range) {
+        // Obtener el monto de "Participación de los Trabajadores" ingresado en parámetros
+        ParametersDTO participacionTrabajadoresParam = parameters.stream()
+            .filter(p -> p.getParameter().getName().equals("Participación de los Trabajadores"))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Parámetro 'Participación de los Trabajadores' no encontrado"));
+
+        double participacionTrabajadores = participacionTrabajadoresParam.getValue();
+
+        // Calcular la suma total de todos los salarios de la plantilla
+        double totalSalaries = component.stream()
+            .filter(c -> c.getPaymentComponent().equals("SALARY"))
+            .mapToDouble(c -> c.getAmount().doubleValue())
+            .sum();
+
+        // Crear un nuevo PaymentComponentDTO para "Participación de los Trabajadores"
+        PaymentComponentDTO participacionComponent = new PaymentComponentDTO();
+        participacionComponent.setPaymentComponent("Participación de los Trabajadores");
+
+        // Aplicar la fórmula para cada mes de proyección
+        List<MonthProjection> projections = new ArrayList<>();
+        for (MonthProjection projection : component.get(0).getProjections()) {
+            double proportion = projection.getAmount().doubleValue() / totalSalaries;
+            double participacion = proportion * participacionTrabajadores;
+            MonthProjection participacionProjection = new MonthProjection();
+            participacionProjection.setMonth(projection.getMonth());
+            participacionProjection.setAmount(BigDecimal.valueOf(participacion));
+            projections.add(participacionProjection);
+        }
+        participacionComponent.setProjections(projections);
+        // Agregar el componente de "Participación de los Trabajadores" a la lista de componentes
+        component.add(participacionComponent);
     }
 }

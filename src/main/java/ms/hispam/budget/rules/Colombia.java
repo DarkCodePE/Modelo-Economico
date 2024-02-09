@@ -1982,12 +1982,11 @@ public class Colombia {
                     projections.add(projection);
                 }
                 severanceInterestComponent.setProjections(projections);
-                component.add(severanceInterestComponent);
             }else {
                 severanceInterestComponent.setAmount(BigDecimal.valueOf(0));
                 severanceInterestComponent.setProjections(Shared.generateMonthProjection(period,range,severanceInterestComponent.getAmount()));
-                component.add(severanceInterestComponent);
             }
+            component.add(severanceInterestComponent);
         }else {
             PaymentComponentDTO severanceInterestComponent = new PaymentComponentDTO();
             severanceInterestComponent.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
