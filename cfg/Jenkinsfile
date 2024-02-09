@@ -30,7 +30,18 @@ pipeline {
 						checkout scm
                     }
                 }
-        
+                stage('UnitTest') {
+                                     steps {
+
+                 		        sh 'mvn clean test jacoco:prepare-agent jacoco:report'
+
+                                     }
+                                     post{
+                                        always{
+                                            junit '**/target/surefire-reports/TEST-*.xml'
+                                        }
+                                     }
+                                 }
                 stage('Build') {
                     steps {
 						sh 'mvn -f pom.xml clean install -DskipTests'
@@ -43,7 +54,7 @@ pipeline {
                                      }
                               }
                 }                
-              /*  stage('Scan and Analysis SAST') {
+                stage('Scan and Analysis SAST') {
                 					steps{
                 						script {
                 						  scannerHome = tool 'sonarQube'
@@ -52,10 +63,12 @@ pipeline {
                 						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
                 						}
                 					}
-                				}*/
+                				}
                 stage('Analysis DAST') {
                 					steps{
                 						dependencyCheck additionalArguments: '--format HTML' , odcInstallation:'DP-check'
+                                        dependencyCheckPublisher pattern: '**/dependency-check-report.html'
+
                 					}
                 				}
                                  stage('Scan Trivi Security') {
@@ -68,7 +81,7 @@ pipeline {
 							sh 'cp target/${ARTIFACT_ID}-${VERSION}.jar cfg/'
 							sh 'docker build -t acrhispam.azurecr.io/${NAME}:${VERSION} --build-arg nombreArtefacto=${ARTIFACT_ID}-${VERSION}.jar cfg'
                             sh 'trivy  image acrhispam.azurecr.io/${NAME}:${VERSION}'
-                            sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION} acrhispam.azurecr.io/${NAME}:latest'
+                            sh 'docker rmi acrhispam.azurecr.io/${NAME}:${VERSION}'
                 					}
                 				}
 				/*stage('Delivery'){
