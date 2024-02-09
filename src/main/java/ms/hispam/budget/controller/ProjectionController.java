@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
@@ -118,8 +119,12 @@ public class ProjectionController {
     }
     // Método para obtener el reporte generado
     @GetMapping("/report")
+    @Transactional("mysqlTransactionManager")
     public List<ReportJob> getReport(@RequestHeader String user) {
-        return reportDownloadService.getReport(user);
+        List<ReportJob> reportJobs = reportDownloadService.getReport(user);
+        // Carga los parámetros de cada ReportJob
+        reportJobs.forEach(reportJob -> reportJob.getParameters().size());
+        return reportJobs;
     }
     @GetMapping("/download-report")
     public ResponseEntity<byte[]> downloadFile(@RequestParam String path) {

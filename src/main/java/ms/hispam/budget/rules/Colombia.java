@@ -387,7 +387,7 @@ public class Colombia {
         log.debug("component -> {}", "salaryPra");
     }
 
-    public void revisionSalary(List<PaymentComponentDTO> component,List<ParametersDTO> parameters,String period, Integer range){
+    public void revisionSalary(List<PaymentComponentDTO> component,List<ParametersDTO> parameters,String period, Integer range, String classEmployee){
         // Obtén los componentes necesarios para el cálculo
         List<String> salaryComponents = Arrays.asList("SALARY", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -399,7 +399,7 @@ public class Colombia {
             PaymentComponentDTO salaryComponent = componentMap.get(salaryComponentName);
             if (salaryComponent != null) {
                 // Realiza el cálculo de revisión de salario para el componente actual
-                calculateSalaryRevision(salaryComponent, parameters, period, range, salaryComponentName);
+                calculateSalaryRevision(salaryComponent, parameters, period, range, salaryComponentName, classEmployee);
             } else {
                 // Lanza una excepción si el componente de salario no se encuentra
                 throw new RuntimeException("El componente de salario " + salaryComponentName + " no se encuentra en la lista de componentes.");
@@ -407,7 +407,8 @@ public class Colombia {
         }
     }
 
-    public void calculateSalaryRevision(PaymentComponentDTO paymentComponentDTO,List<ParametersDTO> parameters,String period, Integer range, String salaryComponentName){
+    public void calculateSalaryRevision(PaymentComponentDTO paymentComponentDTO,List<ParametersDTO> parameters,String period, Integer range, String salaryComponentName, String classEmployee){
+        String category = findCategory(classEmployee);
         // Asegúrate de que el período y el rango no son nulos antes de usarlos
         if (period == null || range == null) {
             throw new IllegalArgumentException("El período y el rango no pueden ser nulos.");
@@ -417,97 +418,97 @@ public class Colombia {
         ParametersDTO revisionSalaryMinEtt = getParametersById(parameters, 45);
 
        if (paymentComponentDTO.getProjections() != null) {
-           // Lógica específica para el componente SALARY
            if (revisionSalaryMin != null) {
-               if (Boolean.TRUE.equals(revisionSalaryMin.getIsRetroactive())) {
-                   int idxStart;
-                   int idxEnd;
-                   String[] periodRevisionSalary = revisionSalaryMin.getPeriodRetroactive().split("-");
-                   idxStart = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                           .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
-                   idxEnd = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                           .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary.length == 1 ? periodRevisionSalary[0] : periodRevisionSalary[1]);
-                   AtomicReference<Double> salaryFirst = new AtomicReference<>(0.0);
-                   AtomicReference<Double> salaryEnd = new AtomicReference<>(0.0);
-                   salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
-                   salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
-                   differPercent = (salaryEnd.get()) / (salaryFirst.get()) - 1;
-               }
-               double percent = revisionSalaryMin.getValue() / 100;
-               int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                       .map(MonthProjection::getMonth).collect(Collectors.toList()), revisionSalaryMin.getPeriod());
-               if (idx != -1) {
-                   for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
-                       double revisionSalaryAmount = 0;
-                       double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                       paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                       if (paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(revisionSalaryMin.getPeriod())) {
-                           // R13 * ( 1 +SI(Q13 / P13 - 1 > 0;SI(Q13 / P13 - 1 <= S$8;S$8 - ( Q13 / P13 - 1 );0);S$8 ) ))
-                           if (differPercent > 0) {
-                               // 9%
-                               if (differPercent <= percent) {
-                                   //log.debug("differPercent si es menor -> {}", differPercent);
-                                   differPercent = percent - differPercent;
+               if (category.equals("P") && salaryComponentName.equals("SALARY")) {
+                   if (Boolean.TRUE.equals(revisionSalaryMin.getIsRetroactive())) {
+                       int idxStart;
+                       int idxEnd;
+                       String[] periodRevisionSalary = revisionSalaryMin.getPeriodRetroactive().split("-");
+                       idxStart = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                               .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
+                       idxEnd = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                               .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary.length == 1 ? periodRevisionSalary[0] : periodRevisionSalary[1]);
+                       AtomicReference<Double> salaryFirst = new AtomicReference<>(0.0);
+                       AtomicReference<Double> salaryEnd = new AtomicReference<>(0.0);
+                       salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
+                       salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
+                       differPercent = (salaryEnd.get()) / (salaryFirst.get()) - 1;
+                   }
+                   double percent = revisionSalaryMin.getValue() / 100;
+                   int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                           .map(MonthProjection::getMonth).collect(Collectors.toList()), revisionSalaryMin.getPeriod());
+                   if (idx != -1) {
+                       for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
+                           double revisionSalaryAmount = 0;
+                           double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                           paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                           if (paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(revisionSalaryMin.getPeriod())) {
+                               // R13 * ( 1 +SI(Q13 / P13 - 1 > 0;SI(Q13 / P13 - 1 <= S$8;S$8 - ( Q13 / P13 - 1 );0);S$8 ) ))
+                               if (differPercent > 0) {
+                                   // 9%
+                                   if (differPercent <= percent) {
+                                       //log.debug("differPercent si es menor -> {}", differPercent);
+                                       differPercent = percent - differPercent;
+                                   } else {
+                                       differPercent = 0;
+                                   }
                                } else {
-                                   differPercent = 0;
+                                   differPercent = percent;
                                }
-                           } else {
-                               differPercent = percent;
+                               //log.debug("differPercent -> {}", differPercent);
+                               revisionSalaryAmount = amount * (1 + (differPercent));
+                               //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
+                               paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
                            }
-                           //log.debug("differPercent -> {}", differPercent);
-                           revisionSalaryAmount = amount * (1 + (differPercent));
-                           //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
-                           paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
                        }
                    }
                }
            }
-        }
-        if (Objects.equals(salaryComponentName, "TEMPORAL_SALARY")){
-            // Lógica específica para el componente TEMPORAL_SALARY
-            if (revisionSalaryMinEtt != null){
-                if (Boolean.TRUE.equals(revisionSalaryMinEtt.getIsRetroactive())) {
-                    int idxStart;
-                    int idxEnd;
-                    String[] periodRevisionSalary = revisionSalaryMinEtt.getPeriodRetroactive().split("-");
-                    idxStart = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                            .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
-                    idxEnd = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                            .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary.length == 1 ? periodRevisionSalary[0] : periodRevisionSalary[1]);
-                    AtomicReference<Double> salaryFirst = new AtomicReference<>(0.0);
-                    AtomicReference<Double> salaryEnd = new AtomicReference<>(0.0);
-                    salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
-                    salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
-                    differPercent = (salaryEnd.get()) / (salaryFirst.get()) - 1;
-                }
-                double percent = revisionSalaryMinEtt.getValue() / 100;
-                int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
-                        .map(MonthProjection::getMonth).collect(Collectors.toList()), revisionSalaryMinEtt.getPeriod());
-                if (idx != -1) {
-                    for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
-                        double revisionSalaryAmount;
-                        double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
-                        paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                        if (paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(revisionSalaryMinEtt.getPeriod())) {
-                            // R13 * ( 1 +SI(Q13 / P13 - 1 > 0;SI(Q13 / P13 - 1 <= S$8;S$8 - ( Q13 / P13 - 1 );0);S$8 ) ))
-                            if (differPercent > 0) {
-                                // 9%
-                                if (differPercent <= percent) {
-                                    differPercent = percent - differPercent;
-                                } else {
-                                    differPercent = 0;
-                                }
-                            } else {
-                                differPercent = percent;
-                            }
-                            //log.debug("differPercent -> {}", differPercent);
-                            revisionSalaryAmount = amount * (1 + (differPercent));
-                            //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
-                            paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
-                        }
-                    }
-                }
-            }
+           if (revisionSalaryMinEtt != null) {
+               if (category.equals("T") && salaryComponentName.equals("TEMPORAL_SALARY")) {
+                   if (Boolean.TRUE.equals(revisionSalaryMinEtt.getIsRetroactive())) {
+                       int idxStart;
+                       int idxEnd;
+                       String[] periodRevisionSalary = revisionSalaryMinEtt.getPeriodRetroactive().split("-");
+                       idxStart = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                               .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary[0]);
+                       idxEnd = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                               .map(MonthProjection::getMonth).collect(Collectors.toList()), periodRevisionSalary.length == 1 ? periodRevisionSalary[0] : periodRevisionSalary[1]);
+                       AtomicReference<Double> salaryFirst = new AtomicReference<>(0.0);
+                       AtomicReference<Double> salaryEnd = new AtomicReference<>(0.0);
+                       salaryFirst.set(paymentComponentDTO.getProjections().get(idxStart).getAmount().doubleValue());
+                       salaryEnd.set(paymentComponentDTO.getProjections().get(idxEnd).getAmount().doubleValue());
+                       differPercent = (salaryEnd.get()) / (salaryFirst.get()) - 1;
+                   }
+                   double percent = revisionSalaryMinEtt.getValue() / 100;
+                   int idx = Shared.getIndex(paymentComponentDTO.getProjections().stream()
+                           .map(MonthProjection::getMonth).collect(Collectors.toList()), revisionSalaryMinEtt.getPeriod());
+                   if (idx != -1) {
+                       for (int i = idx; i < paymentComponentDTO.getProjections().size(); i++) {
+                           double revisionSalaryAmount;
+                           double amount = i == 0 ? paymentComponentDTO.getProjections().get(i).getAmount().doubleValue() : paymentComponentDTO.getProjections().get(i - 1).getAmount().doubleValue();
+                           paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                           if (paymentComponentDTO.getProjections().get(i).getMonth().equalsIgnoreCase(revisionSalaryMinEtt.getPeriod())) {
+                               // R13 * ( 1 +SI(Q13 / P13 - 1 > 0;SI(Q13 / P13 - 1 <= S$8;S$8 - ( Q13 / P13 - 1 );0);S$8 ) ))
+                               if (differPercent > 0) {
+                                   // 9%
+                                   if (differPercent <= percent) {
+                                       differPercent = percent - differPercent;
+                                   } else {
+                                       differPercent = 0;
+                                   }
+                               } else {
+                                   differPercent = percent;
+                               }
+                               //log.debug("differPercent -> {}", differPercent);
+                               revisionSalaryAmount = amount * (1 + (differPercent));
+                               //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
+                               paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
+                           }
+                       }
+                   }
+               }
+           }
         }
     }
     public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList) {
@@ -1689,11 +1690,12 @@ public class Colombia {
         bonusMultipliers.put("BASE", 14.12);
         bonusMultipliers.put("INTEGRAL", 12.0);
         double multiplier = bonusMultipliers.getOrDefault(salaryType, 0.0);
-        //log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
+        log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
         if (bonusTarget == 0) {
             bonusTarget = 0.00;
         }
-        return baseSalary * multiplier * bonusTarget;
+        double bonusTargetPercent = bonusTarget / 100;
+        return (baseSalary * multiplier * bonusTargetPercent) / 12;
     }
     public void AuxilioDeTransporteAprendizSena(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);

@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -46,7 +47,8 @@ public class ReportDownloadService {
         }
     }
     // Método para obtener el reporte generado
+    @Transactional("mysqlTransactionManager")
     public List<ReportJob> getReport(String mail) {
-        return reportJobRepository.findByIdSsff(mail);
+        return reportJobRepository.findByIdSsffOrderByCreationDateDesc(mail);
     }
 }

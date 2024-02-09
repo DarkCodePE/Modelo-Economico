@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface ReportJobRepository extends JpaRepository<ReportJob, Integer>{
     List<ReportJob> findByIdSsff(String mail);
+    List<ReportJob> findByIdSsffOrderByCreationDateDesc(String idSsff);
 }

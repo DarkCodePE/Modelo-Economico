@@ -42,21 +42,34 @@ pipeline {
                                         }
                                      }
                                  }
-                stage('Scan') {
+                stage('Build') {
+                    steps {
+						sh 'mvn -f pom.xml clean install -DskipTests'
+                    }
+                         post{
+                               failure{
+                                 script {
+                                   slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} sufrió un error en el despliegue")
+                                       }
+                                     }
+                              }
+                }                
+                stage('Scan and Analysis SAST') {
                 					steps{
                 						script {
                 						  scannerHome = tool 'sonarQube'
                 						}
                 						withSonarQubeEnv('sonarQube') {
                 						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
-                						    jacoco(execPattern: 'target/jacoco.exec')
                 						}
                 					}
                 				}
-				/*stage('Delivery'){
-					steps{
-						    sh 'mvn package azure-webapp:deploy'
-					}
-            }*/
+                stage('Analysis DAST') {
+                					steps{
+                						dependencyCheck additionalArguments: '--format HTML' , odcInstallation:'DP-check'
+                                        dependencyCheckPublisher pattern: '**/dependency-check-report.html'
+
+                					}
+                				}
         }
      }
