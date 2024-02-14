@@ -59,11 +59,14 @@ public class XlsReportService {
         generateMoreView("Vista Mensual",workbook,projection.getViewMonthly());
 
         components.stream()
+                //.filter(c -> c.getName().equals("Consolidado De Intereses De Cesantias - Temporales"))
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
-                .limit(30)
+                //.limit(30)
                 .forEach(c->{
-            writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
-        });
+                    log.info("Generando hoja de excel para el componente: {}",c.getName());
+                    writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
+                }
+        );
         projection.getBaseExtern()
                 .getHeaders()
                 .stream()

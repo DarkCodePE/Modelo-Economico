@@ -12,4 +12,8 @@ public class ParameterDTO {
     private String name;
     private String description;
     private Integer typeValor;
+
+    public ParameterDTO(String name) {
+        this.name = name;
+    }
 }
