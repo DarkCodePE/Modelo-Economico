@@ -21,6 +21,7 @@ import java.time.temporal.ChronoUnit;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -100,6 +101,7 @@ public class Mexico {
         PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
         paymentComponentDTO.setPaymentComponent(SALARY);
         paymentComponentDTO.setAmount(BigDecimal.valueOf(Math.max(baseSalary, baseSalaryIntegral)));
+        //log.debug("baseSalary: {} , baseSalaryIntegral: {}", baseSalary, baseSalaryIntegral);
         paymentComponentDTO.setProjections(Shared.generateMonthProjection(period, range, paymentComponentDTO.getAmount()));
         return paymentComponentDTO;
     }
@@ -188,15 +190,20 @@ public class Mexico {
     return null;
 }
    public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, List<ParametersDTO> incrementList, List<ParametersDTO>revisionList, String period, Integer range, String poName) {
-       double baseSalary = getValueByComponentName(component, PC320001);
-       double baseSalaryIntegral = getValueByComponentName(component, PC320002);
+       //double baseSalary = getValueByComponentName(component, PC320001);
+       //double baseSalaryIntegral = getValueByComponentName(component, PC320002);
+       Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+       PaymentComponentDTO pc320001Component = componentMap.get(PC320001);
+       PaymentComponentDTO pc320002Component = componentMap.get(PC320002);
+       double baseSalary = pc320001Component == null ? 0.0 : pc320001Component.getAmount().doubleValue();
+       double baseSalaryIntegral = pc320002Component == null ? 0.0 : pc320002Component.getAmount().doubleValue();
        for (ParametersDTO salaryRevision : revisionList) {
            salaryRevisionMap.put(salaryRevision.getPeriod(), salaryRevision);
        }
        PaymentComponentDTO paymentComponentDTO = createPaymentComponent(baseSalary, baseSalaryIntegral, period, range);
        Map<String, Pair<Double, Double>> cache = createCache(salaryList, incrementList);
        double lastDifferPercent = 0;
-       double highestAmountSoFar = baseSalary;
+       double highestAmountSoFar = Math.max(baseSalary, baseSalaryIntegral);
        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
            String month = projection.getMonth();
            Pair<Double, Double> salaryAndIncrement = cache.get(month);
@@ -330,37 +337,223 @@ public class Mexico {
         });
     }
 
-    public void participacionTrabajadores(List<PaymentComponentDTO> component,  List<ParametersDTO>  employeeParticipationList, List<ParametersDTO> parameters, String period, Integer range) {
+    public void participacionTrabajadores(List<PaymentComponentDTO> component,  List<ParametersDTO>  employeeParticipationList, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        // Convierte la lista de componentes a un mapa
+        Map<String, PaymentComponentDTO> componentMap = component.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+        // Busca el componente de pago "SALARY" en el mapa
+        PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         // Obtener el monto de "Participación de los Trabajadores" ingresado en parámetros
         ParametersDTO participacionTrabajadoresParam = parameters.stream()
-            .filter(p -> p.getParameter().getName().equals("Participación de los Trabajadores"))
-            .findFirst()
-            .orElseThrow(() -> new RuntimeException("Parámetro 'Participación de los Trabajadores' no encontrado"));
+            .filter(p -> p.getParameter().getDescription().equals("Participacion de los trabajadores"))
+            .findFirst().orElse(null);
 
-        double participacionTrabajadores = participacionTrabajadoresParam.getValue();
+        double participacionTrabajadores = participacionTrabajadoresParam==null ? 0.0 : participacionTrabajadoresParam.getValue();
 
-        // Calcular la suma total de todos los salarios de la plantilla
-        double totalSalaries = component.stream()
-            .filter(c -> c.getPaymentComponent().equals("SALARY"))
-            .mapToDouble(c -> c.getAmount().doubleValue())
-            .sum();
-
+       // log.info("SALARY COMPONENT: {}", salaryComponent);
         // Crear un nuevo PaymentComponentDTO para "Participación de los Trabajadores"
         PaymentComponentDTO participacionComponent = new PaymentComponentDTO();
-        participacionComponent.setPaymentComponent("Participación de los Trabajadores");
-
+        participacionComponent.setPaymentComponent("PARTICIPACION");
+        participacionComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * participacionTrabajadores));
         // Aplicar la fórmula para cada mes de proyección
         List<MonthProjection> projections = new ArrayList<>();
-        for (MonthProjection projection : component.get(0).getProjections()) {
+        for (MonthProjection projection : salaryComponent.getProjections()) {
+            log.info("PROJECTION - AMOUNT: {}", projection.getAmount());
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
             double participacion = proportion * participacionTrabajadores;
+            log.info("PROJECTION- PROPORTION: {}", proportion);
+            log.info("PROJECTION- PARTICIPATION: {}", participacion);
             MonthProjection participacionProjection = new MonthProjection();
             participacionProjection.setMonth(projection.getMonth());
             participacionProjection.setAmount(BigDecimal.valueOf(participacion));
+            log.info("PROJECTION- PARTICIPATION: {}", participacionProjection.getAmount());
             projections.add(participacionProjection);
         }
         participacionComponent.setProjections(projections);
         // Agregar el componente de "Participación de los Trabajadores" a la lista de componentes
         component.add(participacionComponent);
+    }
+
+    public void seguroDental(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+        // Get the "Seguro Dental" amount from parameters
+        ParametersDTO seguroDentalParam = parameters.stream()
+            .filter(p -> p.getParameter().getDescription().equals("Seguro Dental"))
+            .findFirst()
+                .orElse(null);
+
+        double seguroDental = seguroDentalParam == null ? 0.0 : seguroDentalParam.getValue();
+
+        // Create a new PaymentComponentDTO for "Seguro Dental"
+        PaymentComponentDTO seguroDentalComponent = new PaymentComponentDTO();
+        seguroDentalComponent.setPaymentComponent("SEGURO_DENTAL");
+        seguroDentalComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * seguroDental));
+        // Apply the formula for each month of projection
+        List<MonthProjection> projections = new ArrayList<>();
+        for (MonthProjection projection : salaryComponent.getProjections()) {
+            double proportion = projection.getAmount().doubleValue() / totalSalaries;
+            double seguroDentalAmount = proportion * seguroDental;
+            MonthProjection seguroDentalProjection = new MonthProjection();
+            seguroDentalProjection.setMonth(projection.getMonth());
+            seguroDentalProjection.setAmount(BigDecimal.valueOf(seguroDentalAmount));
+            projections.add(seguroDentalProjection);
+        }
+        seguroDentalComponent.setProjections(projections);
+
+        // Add the "Seguro Dental" component to the component list
+        component.add(seguroDentalComponent);
+    }
+    public void seguroVida(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+        // Get the "Seguro Vida" amount from parameters
+        ParametersDTO seguroVidaParam = parameters.stream()
+                .filter(p -> p.getParameter().getDescription().equals("Seguro Vida"))
+                .findFirst()
+                .orElse(null);
+
+        double seguroVida = seguroVidaParam == null ? 0.0 : seguroVidaParam.getValue();
+
+        // Create a new PaymentComponentDTO for "Seguro Vida"
+        PaymentComponentDTO seguroVidaComponent = new PaymentComponentDTO();
+        seguroVidaComponent.setPaymentComponent("SEGURO_VIDA");
+        seguroVidaComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * seguroVida));
+        // Apply the formula for each month of projection
+        List<MonthProjection> projections = new ArrayList<>();
+        for (MonthProjection projection : salaryComponent.getProjections()) {
+            double proportion = projection.getAmount().doubleValue() / totalSalaries;
+            double seguroVidaAmount = proportion * seguroVida;
+            MonthProjection seguroVidaProjection = new MonthProjection();
+            seguroVidaProjection.setMonth(projection.getMonth());
+            seguroVidaProjection.setAmount(BigDecimal.valueOf(seguroVidaAmount));
+            projections.add(seguroVidaProjection);
+        }
+        seguroVidaComponent.setProjections(projections);
+
+        // Add the "Seguro Vida" component to the component list
+        component.add(seguroVidaComponent);
+    }
+
+  public void provisionSistemasComplementariosIAS(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+      Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+      PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+        // Get the "Prov Retiro (IAS)" amount from parameters
+        ParametersDTO provRetiroIASParam = parameters.stream()
+            .filter(p -> p.getParameter().getName().equals("Prov Retiro (IAS)"))
+            .findFirst()
+            .orElse(null);
+
+        double provRetiroIAS = provRetiroIASParam == null ? 0.0 : provRetiroIASParam.getValue();
+
+        // Create a new PaymentComponentDTO for "Prov Retiro (IAS)"
+        PaymentComponentDTO provRetiroIASComponent = new PaymentComponentDTO();
+        provRetiroIASComponent.setPaymentComponent("PROV_RETIRO_IAS");
+        provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIAS));
+        // Apply the formula for each month of projection
+        List<MonthProjection> projections = new ArrayList<>();
+        for (MonthProjection projection : salaryComponent.getProjections()) {
+            double proportion = projection.getAmount().doubleValue() / totalSalaries;
+            double provRetiroIASAmount = proportion * provRetiroIAS;
+            MonthProjection provRetiroIASProjection = new MonthProjection();
+            provRetiroIASProjection.setMonth(projection.getMonth());
+            provRetiroIASProjection.setAmount(BigDecimal.valueOf(provRetiroIASAmount));
+            projections.add(provRetiroIASProjection);
+        }
+        provRetiroIASComponent.setProjections(projections);
+
+        // Add the "Prov Retiro (IAS)" component to the component list
+        component.add(provRetiroIASComponent);
+    }
+    public void SGMM (List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, String poName, double totalSalaries) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+        // Get the "SGMM" amount from parameters
+        ParametersDTO SGMMParam = parameters.stream()
+                .filter(p -> p.getParameter().getName().equals("SGMM"))
+                .findFirst()
+                .orElse(null);
+
+        double SGMM = SGMMParam == null ? 0.0 : SGMMParam.getValue();
+
+        boolean isCp = poName != null && poName.contains("CP");
+        if (isCp) {
+            // Create a new PaymentComponentDTO for "SGMM"
+            PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
+            SGMMComponent.setPaymentComponent("SGMM");
+            SGMMComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * SGMM));
+            // Apply the formula for each month of projection
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : salaryComponent.getProjections()) {
+                double proportion = projection.getAmount().doubleValue() / totalSalaries;
+                double SGMMAmount = proportion * SGMM;
+                MonthProjection SGMMProjection = new MonthProjection();
+                SGMMProjection.setMonth(projection.getMonth());
+                SGMMProjection.setAmount(BigDecimal.valueOf(SGMMAmount));
+                projections.add(SGMMProjection);
+            }
+            SGMMComponent.setProjections(projections);
+
+            // Add the "SGMM" component to the component list
+            component.add(SGMMComponent);
+        }else {
+            //ZERO
+            PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
+            SGMMComponent.setPaymentComponent("SGMM");
+            SGMMComponent.setAmount(BigDecimal.valueOf(0.0));
+            SGMMComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
+            component.add(SGMMComponent);
+        }
+    }
+
+    public void valesDeDespensa(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+        // Crear el mapa de componentes
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+
+        // Obtener el componente de salario
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+
+        // Verificar si el componente de salario existe
+        if (salaryComponent != null) {
+            // Obtener los parámetros
+            ParametersDTO topeValesDespensaParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("Tope Vales Despensa"))
+                    .findFirst()
+                    .orElse(null);
+            ParametersDTO umaMensualParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("UMA mensual"))
+                    .findFirst()
+                    .orElse(null);
+
+            // Calcular el vales de despensa para cada mes de la proyección
+            for (MonthProjection projection : salaryComponent.getProjections()) {
+                double baseSalary = projection.getAmount().doubleValue();
+
+                // Calcular el vales de despensa
+                double topeValesDespensa = topeValesDespensaParam == null ? 0.0 : topeValesDespensaParam.getValue();
+                double umaMensual = umaMensualParam == null ? 0.0 : umaMensualParam.getValue();
+                double valesDeDespensa = baseSalary * topeValesDespensa;
+
+                // Comparar con UMA mensual
+                if (valesDeDespensa > umaMensual) {
+                    valesDeDespensa = umaMensual;
+                }
+
+                // Crear un nuevo PaymentComponentDTO para "VALES_DESPENSA"
+                PaymentComponentDTO valesDeDespensaComponent = new PaymentComponentDTO();
+                valesDeDespensaComponent.setPaymentComponent("VALES_DESPENSA");
+                valesDeDespensaComponent.setAmount(BigDecimal.valueOf(valesDeDespensa));
+
+                // Agregar el componente "VALES_DESPENSA" a la lista de componentes
+                component.add(valesDeDespensaComponent);
+            }
+        }
+    }
+    private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
+        return component.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
+                    existing.getProjections().addAll(replacement.getProjections());
+                    return existing;
+                }));
     }
 }

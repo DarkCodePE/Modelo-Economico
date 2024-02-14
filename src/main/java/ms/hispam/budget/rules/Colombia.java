@@ -177,11 +177,19 @@ public class Colombia {
            String year = period.substring(0, 4);
            String month = period.substring(4, 6);
            double value = commission.getValue();
+           // Incrementar el mes antes de entrar al bucle
+           int monthInt = Integer.parseInt(month) + 1;
+           if (monthInt > 12) {
+               monthInt = 1;
+               year = String.valueOf(Integer.parseInt(year) + 1);
+           }
+           month = String.format("%02d", monthInt);
 
            if (sortedCommissionList.size() == 1) {
                value /= 12;
                int startMonth = Integer.parseInt(month);
                int endMonth = startMonth + projectionRange;
+
                for (int m = startMonth; m < endMonth; m++) {
                    int yearOffset = (m - 1) / 12;
                    int monthOffset = (m - 1) % 12 + 1;
@@ -526,7 +534,6 @@ public class Colombia {
         double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
         double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
         double maxCommission = Math.max(pc938003Amount, pc938012Amount);
-        boolean isTemporal = false;
         PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
         //log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
         List<MonthProjection> projections = new ArrayList<>();
@@ -666,7 +673,7 @@ public class Colombia {
                 .filter(c -> severanceComponents.contains(c.getPaymentComponent()))
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
-        if (!category.equals("P") && salaryComponent.getSalaryType().equals("BASE")) {
+        if (category.equals("P") && salaryComponent.getSalaryType().equals("BASE")) {
             // Obtén los componentes necesarios para el cálculo
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -715,7 +722,7 @@ public class Colombia {
     public void consolidatedSeveranceInterest(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
         Map<String, PaymentComponentDTO> componentMapBase = createComponentMap(component);
-        PaymentComponentDTO salaryComponent = componentMapBase.get(SALARY);;
+        PaymentComponentDTO salaryComponent = componentMapBase.get(SALARY);
         if (category.equals("APR") || category.equals("PRA")){
             salaryComponent = componentMapBase.get(SALARY_PRA);
         }
@@ -1437,15 +1444,19 @@ public class Colombia {
             sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
         }
         // Obtén los componentes necesarios para el cálculo
-        List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION");
+        List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION", "HHEE", "SURCHARGES");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> sodexoComponents.contains(c.getPaymentComponent()))
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+        PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+        PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
         double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
         double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
-        double totalAmountBase = salary + commission;
+        double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+        double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+        double totalAmountBase = salary + commission + overtime + surcharges;
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
         sodexoComponent.setPaymentComponent("SODEXO");
