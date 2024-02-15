@@ -821,7 +821,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<DataBaseResponse> deudasAgrupadas = headcount.stream()
                 .collect(Collectors.groupingBy(
                         HeadcountHistoricalProjection::getPosition,
-                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(), BigDecimal.valueOf(deuda.getAmount())), Collectors.toList())
+                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(),deuda.getAmount()!=null? BigDecimal.valueOf(deuda.getAmount()):BigDecimal.ZERO), Collectors.toList())
                 )).entrySet().stream()
                 .map(entry -> {
                     HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
