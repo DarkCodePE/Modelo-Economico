@@ -270,48 +270,61 @@ public class Mexico {
         }
     }
     public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth, RangeBuDTO rangeBuByBU, Integer idBu) {
-        Objects.requireNonNull(dateContract, "La fecha de contrato no puede ser nula");
-        LocalDate dateActual = LocalDate.now();
-        long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
-        List<RangeBuDetailDTO> daysVacations;
-        if (rangeBuByBU != null) {
-            daysVacations = rangeBuByBU.getRangeBuDetails();
+        if (dateContract != null) {
+            LocalDate dateActual = LocalDate.now();
+            long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
+            List<RangeBuDetailDTO> daysVacations;
+            if (rangeBuByBU != null) {
+                daysVacations = rangeBuByBU.getRangeBuDetails();
+            }else {
+                daysVacations = getDaysVacationList();
+            }
+            if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
+            Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
+                    .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
+            int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
+            if (vacationsDays == 0) {
+                int daysVacationPerMonth = daysVacationList.get(0).getVacationDays() / 12;
+                long monthsSeniority = ChronoUnit.MONTHS.between(dateContract, dateActual);
+                vacationsDays = (int) (daysVacationPerMonth * monthsSeniority);
+            }
+            // Convierte la lista de componentes a un mapa
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            // Busca el componente de pago "SALARY" en el mapa
+            PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
+            if (salaryComponent != null) {
+                // Crea un nuevo objeto PaymentComponentDTO para las vacaciones
+                PaymentComponentDTO paymentComponentProvVacations = new PaymentComponentDTO();
+                paymentComponentProvVacations.setPaymentComponent(VACACIONES);
+                BigDecimal vacationAmount = BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / 30) * vacationsDays / 12);
+                paymentComponentProvVacations.setAmount(vacationAmount);
+                List<MonthProjection> projections = new ArrayList<>();
+                for (MonthProjection projection : salaryComponent.getProjections()) {
+                    double amountProj = projection.getAmount().doubleValue() / 30;
+                    double vacationsDaysPerMonth =  (double) vacationsDays / 12;
+                    //log.debug("amountProj: {} , vacationsDaysPerMonth {}", amountProj, vacationsDaysPerMonth);
+                    BigDecimal newAmount = BigDecimal.valueOf(amountProj *  vacationsDaysPerMonth);
+                    MonthProjection vacationProvisionProjection = new MonthProjection();
+                    vacationProvisionProjection.setMonth(projection.getMonth());
+                    vacationProvisionProjection.setAmount(newAmount);
+                    projections.add(vacationProvisionProjection);
+                }
+                paymentComponentProvVacations.setProjections(projections);
+                // Agrega el componente de vacaciones a la lista de componentes
+                component.add(paymentComponentProvVacations);
+            }else {
+                PaymentComponentDTO paymentComponentProvVacations = new PaymentComponentDTO();
+                paymentComponentProvVacations.setPaymentComponent(VACACIONES);
+                paymentComponentProvVacations.setAmount(BigDecimal.valueOf(0.0));
+                paymentComponentProvVacations.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
+                component.add(paymentComponentProvVacations);
+            }
         }else {
-            daysVacations = getDaysVacationList();
-        }
-        if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
-        Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
-                .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
-        int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
-        if (vacationsDays == 0) {
-            int daysVacationPerMonth = daysVacationList.get(0).getVacationDays() / 12;
-            long monthsSeniority = ChronoUnit.MONTHS.between(dateContract, dateActual);
-            vacationsDays = (int) (daysVacationPerMonth * monthsSeniority);
-        }
-        // Convierte la lista de componentes a un mapa
-        Map<String, PaymentComponentDTO> componentMap = component.stream()
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
-        // Busca el componente de pago "SALARY" en el mapa
-        PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
-        if (salaryComponent != null) {
-            // Crea un nuevo objeto PaymentComponentDTO para las vacaciones
             PaymentComponentDTO paymentComponentProvVacations = new PaymentComponentDTO();
             paymentComponentProvVacations.setPaymentComponent(VACACIONES);
-            BigDecimal vacationAmount = BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / 30) * vacationsDays / 12);
-            paymentComponentProvVacations.setAmount(vacationAmount);
-            List<MonthProjection> projections = new ArrayList<>();
-            for (MonthProjection projection : salaryComponent.getProjections()) {
-                double amountProj = projection.getAmount().doubleValue() / 30;
-                double vacationsDaysPerMonth =  (double) vacationsDays / 12;
-                //log.debug("amountProj: {} , vacationsDaysPerMonth {}", amountProj, vacationsDaysPerMonth);
-                BigDecimal newAmount = BigDecimal.valueOf(amountProj *  vacationsDaysPerMonth);
-                MonthProjection vacationProvisionProjection = new MonthProjection();
-                vacationProvisionProjection.setMonth(projection.getMonth());
-                vacationProvisionProjection.setAmount(newAmount);
-                projections.add(vacationProvisionProjection);
-            }
-            paymentComponentProvVacations.setProjections(projections);
-            // Agrega el componente de vacaciones a la lista de componentes
+            paymentComponentProvVacations.setAmount(BigDecimal.valueOf(0.0));
+            paymentComponentProvVacations.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(paymentComponentProvVacations);
         }
     }

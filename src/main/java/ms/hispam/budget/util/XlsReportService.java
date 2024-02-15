@@ -288,7 +288,7 @@ public class XlsReportService {
                 pdataCell = data.createCell(j+3);
                 Cell finalPdataCell = pdataCell;
                 int finalJ = j;
-                dataBase.getData().get(i).getComponents().stream().filter(r->r.getComponent().equalsIgnoreCase(dataBase.getComponents().get(finalJ).getComponent())).findFirst()
+                dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null && r.getComponent().equalsIgnoreCase(dataBase.getNominas().get(finalJ).getCodeNomina())).findFirst()
                         .ifPresentOrElse(r-> finalPdataCell.setCellValue(r.getAmount().doubleValue()),
                                 ()->finalPdataCell.setCellValue(0));
                 starDetail++;
@@ -297,7 +297,7 @@ public class XlsReportService {
                 pdataCell = data.createCell(starDetail+3);
                 Cell finalPdataCell = pdataCell;
                 int finalK= k;
-                dataBase.getData().get(i).getComponents().stream().filter(r->r.getComponent().equalsIgnoreCase(dataBase.getNominas().get(finalK).getCodeNomina())).findFirst()
+                dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null && r.getComponent().equalsIgnoreCase(dataBase.getNominas().get(finalK).getCodeNomina())).findFirst()
                         .ifPresentOrElse(r-> finalPdataCell.setCellValue(r.getAmount().doubleValue()),
                                 ()->finalPdataCell.setCellValue(0));
                 starDetail++;
