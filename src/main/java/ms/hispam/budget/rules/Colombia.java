@@ -2447,5 +2447,27 @@ public class Colombia {
         }
         log.debug("component -> {}", "feeTemporaries");
     }
+    //Auxilio Escolaridad
+    public void auxilioDeEscolaridad(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+        String category = findCategory(classEmployee);
+        // Find PaymentComponentDTO for the Auxilio de Escolaridad
+      /*  Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO auxilioEscolaridadComponent = componentMap.get("escolaridad");*/
+        PaymentComponentDTO auxilioEscolaridadComponent = component.stream()
+                .filter(c -> c.getPaymentComponent().equals("escolaridad"))
+                .findFirst()
+                .orElse(null);
+        if (auxilioEscolaridadComponent == null){
+            // Create a new PaymentComponentDTO for the Auxilio de Escolaridad
+            auxilioEscolaridadComponent = new PaymentComponentDTO();
+            auxilioEscolaridadComponent.setPaymentComponent("escolaridad");
+            auxilioEscolaridadComponent.setAmount(BigDecimal.valueOf(0));
+            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range ,auxilioEscolaridadComponent.getAmount()));
+        }else {
+            // Add the payment component to the list of components
+            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range, auxilioEscolaridadComponent.getAmount()));
+        }
+        component.add(auxilioEscolaridadComponent);
+        log.debug("component -> {}", "AuxilioDeEscolaridad");
+    }
 }
-

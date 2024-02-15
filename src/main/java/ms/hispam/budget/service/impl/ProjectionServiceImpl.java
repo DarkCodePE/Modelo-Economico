@@ -422,6 +422,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
                     }
+                    log.debug("headcountData {}",headcountData.getComponents());
+                    methodsColombia.auxilioDeEscolaridad(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                 });
     }
 
@@ -469,7 +471,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                        PaymentComponentDTO.builder()
                        .paymentComponent(p)
                        .amount(BigDecimal.valueOf(po!=null && po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0))
-                       .projections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(po!=null&&
+                       .projections(Shared.generateMonthProjection(period,range -1, BigDecimal.valueOf(po!=null&&
                                po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0)))
                        .build()
        ).collect(Collectors.toList());

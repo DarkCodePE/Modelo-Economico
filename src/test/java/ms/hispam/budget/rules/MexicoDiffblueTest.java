@@ -42,7 +42,7 @@ class MexicoDiffblueTest {
         ArrayList<PaymentComponentDTO> component = new ArrayList<>();
 
         // Act and Assert
-        assertThrows(RuntimeException.class, () -> mexico.seguroDental(component, new ArrayList<>(), "Period", 1));
+        assertThrows(RuntimeException.class, () -> mexico.seguroDental(component, new ArrayList<>(), "Period", 1, 0.0));
     }
 
     /**
@@ -65,7 +65,7 @@ class MexicoDiffblueTest {
         component.add(buildResult);
 
         // Act and Assert
-        assertThrows(RuntimeException.class, () -> mexico.seguroDental(component, new ArrayList<>(), "Period", 1));
+        assertThrows(RuntimeException.class, () -> mexico.seguroDental(component, new ArrayList<>(), "Period", 1, 0.0));
     }
 
     /**
@@ -104,7 +104,8 @@ class MexicoDiffblueTest {
         Integer range = 12;
 
         // Actuar
-        mexico.seguroDental(component, parameters, period, range);
+        double someDoubleValue = 0.0; // Reemplaza esto con el valor double que necesitas pasar
+        mexico.seguroDental(component, parameters, "Period", 1, someDoubleValue);
 
         // Afirmar
         Optional<PaymentComponentDTO> seguroDentalComponentOpt = component.stream()
@@ -183,7 +184,7 @@ class MexicoDiffblueTest {
         Integer range = 12;
 
         // Actuar
-        mexico.participacionTrabajadores(component, new ArrayList<>(), parameters, period, range);
+        mexico.participacionTrabajadores(component, new ArrayList<>(), parameters, period, range, 0.0);
 
         // Afirmar
         Optional<PaymentComponentDTO> participacionTrabajadoresComponentOpt = component.stream()
@@ -233,7 +234,7 @@ class MexicoDiffblueTest {
         ArrayList<ParametersDTO> employeeParticipationList = new ArrayList<>();
 
         // Act
-        mexico.participacionTrabajadores(component, employeeParticipationList, new ArrayList<>(), "Period", 1);
+        mexico.participacionTrabajadores(component, employeeParticipationList, new ArrayList<>(), "Period", 1, 0.0);
     }
 
 }
