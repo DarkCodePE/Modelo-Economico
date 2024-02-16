@@ -62,18 +62,13 @@ public class XlsReportService {
                 //.filter(c -> c.getName().equals("Consolidado De Intereses De Cesantias - Temporales"))
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
                 //.limit(30)
-                .forEach(c->{
-                    log.info("Generando hoja de excel para el componente: {}",c.getName());
-                    writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData());
-                }
-        );
+                .forEach(c-> writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData()));
+
         projection.getBaseExtern()
                 .getHeaders()
                 .stream()
                 .filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r)))
-                .forEach(c->{
-            writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData());
-        });
+                .forEach(c-> writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData()));
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
@@ -378,8 +373,17 @@ public class XlsReportService {
             cell = row.createCell(1);
             cell.setCellValue(projectionDTO.getIdssff());
             cell.setCellStyle(style); // Reutilizar el estilo
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component)).findFirst();
+            //debug lista de componentes
+            List<PaymentComponentDTO> list = projectionDTO
+                    .getComponents();
+            log.debug("Componentes: {}", list);
+            log.debug("Componente: {}", component);
+            Optional<PaymentComponentDTO> componentDTO = projectionDTO
+                    .getComponents()
+                    .stream()
+                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
+                    .findFirst();
+            log.debug("Componente: {}", componentDTO);
             if (componentDTO.isPresent()) {
                 cell = row.createCell(2);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());

@@ -318,6 +318,7 @@ public class ExcelService {
             startHeader++;
         }
         int start =1;
+        log.debug("Projection: {}", projection);
         for (int i = 0; i < projection.size(); i++) {
             CellStyle style = workbook.createCellStyle();
             style.setWrapText(true);
