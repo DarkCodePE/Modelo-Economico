@@ -96,6 +96,7 @@ public class ProjectionController {
     @PostMapping("/download-projection")
     public ExcelReportDTO downloadProjection(@RequestBody ParameterDownload projection, @RequestHeader String user) {
         try {
+            log.debug("Projection: {}", projection);
             ReportJob job = new ReportJob();
             String taskId = UUID.randomUUID().toString();
             job.setStatus("en progreso");

@@ -1430,19 +1430,13 @@ public class Colombia {
         log.debug("component -> {}", "companyPensionContribution");
     }
 
-    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, List<ParametersDTO> sodexoList) {
+        Map<String, ParametersDTO> sodexoMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSodexo = new ConcurrentHashMap<>();
+        createCache(sodexoList, sodexoMap, cacheSodexo,  (parameter, mapParameter) -> {});
         String category = findCategory(classEmployee);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
         double legalSalaryMinInternal = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
-        ParametersDTO sodexo = getParametersById(parameters, 49);
-        String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
-        double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
-        // Obtén el mes del período sodexo
-        int sodexoMonth = 0;
-        if (periodSodexo.length() >= 6) {
-            // Obtén el mes del período sodexo
-            sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
-        }
         // Obtén los componentes necesarios para el cálculo
         List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION", "HHEE", "SURCHARGES");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -1457,16 +1451,32 @@ public class Colombia {
         double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
         double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
         double totalAmountBase = salary + commission + overtime + surcharges;
+        // Use the period to get the ParametersDTO from the sodexoMap
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        //log.info("sodexoMap -> {}", period);
+        ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
+        double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
         sodexoComponent.setPaymentComponent("SODEXO");
-        sodexoComponent.setAmount(BigDecimal.valueOf((category.equals("P") || category.equals("APR") || category.equals("PRA")) && totalAmountBase < 2 * legalSalaryMinInternal ? sodexoValue : 0));
+        sodexoComponent.setAmount(BigDecimal.valueOf((category.equals("P") || category.equals("APR") || category.equals("PRA")) && totalAmountBase < 2 * legalSalaryMinInternal ? sodexoValueBase : 0));
         if (!category.equals("T")) {
             // Calcular el valor de Sodexo para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
             double lastValidSodexoValue = 0.0;
             if (salaryComponent != null && salaryComponent.getProjections() != null){
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                    ParametersDTO sodexo = sodexoMap.get(primeProjection.getMonth());
+                    String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
+                    double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
+                    int sodexoMonth = 0;
+                    if (periodSodexo.length() >= 6) {
+                        // Obtén el mes del período sodexo
+                        sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
+                    }
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
                             .filter(Objects::nonNull)
@@ -2446,28 +2456,5 @@ public class Colombia {
             component.add(feeComponent);
         }
         log.debug("component -> {}", "feeTemporaries");
-    }
-    //Auxilio Escolaridad
-    public void auxilioDeEscolaridad(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
-        String category = findCategory(classEmployee);
-        // Find PaymentComponentDTO for the Auxilio de Escolaridad
-      /*  Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO auxilioEscolaridadComponent = componentMap.get("escolaridad");*/
-        PaymentComponentDTO auxilioEscolaridadComponent = component.stream()
-                .filter(c -> c.getPaymentComponent().equals("escolaridad"))
-                .findFirst()
-                .orElse(null);
-        if (auxilioEscolaridadComponent == null){
-            // Create a new PaymentComponentDTO for the Auxilio de Escolaridad
-            auxilioEscolaridadComponent = new PaymentComponentDTO();
-            auxilioEscolaridadComponent.setPaymentComponent("escolaridad");
-            auxilioEscolaridadComponent.setAmount(BigDecimal.valueOf(0));
-            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range ,auxilioEscolaridadComponent.getAmount()));
-        }else {
-            // Add the payment component to the list of components
-            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range, auxilioEscolaridadComponent.getAmount()));
-        }
-        component.add(auxilioEscolaridadComponent);
-        log.debug("component -> {}", "AuxilioDeEscolaridad");
     }
 }
