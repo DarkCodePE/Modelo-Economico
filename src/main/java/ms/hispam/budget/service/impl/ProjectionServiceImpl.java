@@ -228,6 +228,79 @@ public class ProjectionServiceImpl implements ProjectionService {
             //return new Page<>();
         }
     }
+
+    @Override
+    public Object getNewProjection(ParametersByProjection projection) {
+
+        List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
+        List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
+        if(headcount.isEmpty()){
+            throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
+        }
+        switch (projection.getBu()){
+            case "T. ECUADOR":
+                isEcuador(headcount,projection);
+                break;
+            case "T. URUGUAY":
+                isUruguay(headcount,projection);
+                break;
+            case "T. COLOMBIA":
+                isColombia(headcount,projection);
+                break;
+            case "T. MEXICO":
+                isMexico(headcount,projection);
+                break;
+            case "T. PERU":
+                isPeru(headcount,projection);
+                break;
+            default:
+                break;
+        }
+
+        Map<String, Map<String, BigDecimal>> componentMonthAmountMap = headcount.stream()
+                .flatMap(headcoun -> headcoun.getComponents().stream()) // Obtener un stream de todos los componentes de cada headcount
+                .collect(Collectors.groupingBy(
+                        PaymentComponentDTO::getPaymentComponent, // Agrupar por componente
+                        Collectors.flatMapping(
+                                paymentComponent -> paymentComponent.getProjections().stream(), // Obtener un stream de todas las proyecciones de cada componente
+                                Collectors.groupingBy(
+                                        MonthProjection::getMonth, // Agrupar por mes
+                                        Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add) // Sumar las cantidades por mes
+                                )
+                        )
+                ));
+
+        Map<String, Map<String, BigDecimal>> componentAnnualSummary = componentMonthAmountMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, // Utilizar el nombre del componente como clave
+                        entry -> entry.getValue().entrySet().stream()
+                                .collect(Collectors.groupingBy(
+                                                entrySet -> entrySet.getKey().substring(0, 4), // Extraer el año de la clave del mapa interior
+                                                Collectors.reducing(BigDecimal.ZERO, Map.Entry::getValue, BigDecimal::add) // Sumar las cantidades por año
+                                        )
+                                )
+                ));
+
+
+        log.info("Mensualizado",componentMonthAmountMap.entrySet());
+        log.info("Anualizado",componentAnnualSummary.entrySet());
+
+
+
+
+
+
+
+
+
+
+
+        return null;
+    }
+
+
+
+
     private List<ParametersDTO> getListParametersById(List<ParametersDTO> parameters, int id) {
         return parameters.stream()
                 .filter(p -> p.getParameter().getId() == id)

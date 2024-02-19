@@ -47,6 +47,12 @@ public class ProjectionController {
         return service.getProjection(projection);
     }
 
+    @PostMapping("/new-projection")
+    public Object getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
+        Shared.replaceSLash(projection);
+        return service.getNewProjection(projection);
+    }
+
     @PostMapping("/data-base")
     public DataBaseMainReponse getDataBase(@RequestBody DataRequest dataRequest) {
 

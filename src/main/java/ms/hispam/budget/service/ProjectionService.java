@@ -17,6 +17,8 @@ public interface ProjectionService {
 
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection);
 
+    public Object getNewProjection(ParametersByProjection projection);
+
     Config getComponentByBu(String bu);
 
     Boolean saveProjection( ParameterHistorial projection,String email);
