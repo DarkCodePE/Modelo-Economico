@@ -90,6 +90,10 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Executor executor;
     @Autowired
     private XlsReportService xlsReportService;
+    @Autowired
+    private ConvenioRepository convenioRepository;
+    @Autowired
+    private ConvenioBonoRepository convenioBonoRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
 
@@ -310,7 +314,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .findFirst()
                 .orElse(null);
         Integer idBu = projection.getIdBu();
-        Mexico methodsMexico = new Mexico(mexicoService);
+        Mexico methodsMexico = new Mexico(mexicoService, convenioRepository, convenioBonoRepository);
         //Genera las proyecciones del rango
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
         List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
@@ -323,13 +327,19 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         headcount.stream()
                 //.parallel()
                 .forEach(headcountData -> {
-                    log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
+                    //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     //log.debug("getPo {} - Salary {}",headcountData.getPo(), headcountData.getComponents().stream().filter(c->c.getPaymentComponent().equals("PC938003") || c.getPaymentComponent().equals("PC938012")).mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
-                    //methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.performanceBonus(component, headcountData.getPoName(), headcountData.getPoName(), projection.getPeriod(), projection.getRange());
+                    //methodsMexico.seguroSocial(component, headcountData.getPoName(), projection.getPeriod(), projection.getRange());
+                    //methodsMexico.seguroSocialRetiro(component, headcountData.getPoName(), projection.getPeriod(), projection.getRange());
+                    //methodsMexico.seguroSocialInfonavit(component, headcountData.getPoName(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.primaVacacional(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.aportacionCtaSEREmpresa(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
