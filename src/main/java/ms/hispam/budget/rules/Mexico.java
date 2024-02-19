@@ -480,7 +480,7 @@ public class Mexico {
       PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "Prov Retiro (IAS)" amount from parameters
         ParametersDTO provRetiroIASParam = parameters.stream()
-            .filter(p -> p.getParameter().getName().equals("Prov Retiro (IAS)"))
+            .filter(p -> p.getParameter().getDescription().equals("Prov Retiro (IAS)"))
             .findFirst()
             .orElse(null);
 
@@ -510,7 +510,7 @@ public class Mexico {
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "SGMM" amount from parameters
         ParametersDTO SGMMParam = parameters.stream()
-                .filter(p -> p.getParameter().getName().equals("SGMM"))
+                .filter(p -> p.getParameter().getDescription().equals("SGMM"))
                 .findFirst()
                 .orElse(null);
 
