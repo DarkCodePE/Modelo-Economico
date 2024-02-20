@@ -325,7 +325,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> lifeInsuranceList = filterParametersByName(projection.getParameters(), "Seguro de Vida");
         //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
-                //.parallel()
+                .parallel()
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     //log.debug("getPo {} - Salary {}",headcountData.getPo(), headcountData.getComponents().stream().filter(c->c.getPaymentComponent().equals("PC938003") || c.getPaymentComponent().equals("PC938012")).mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble());
@@ -340,6 +340,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     //methodsMexico.seguroSocialInfonavit(component, headcountData.getPoName(), projection.getPeriod(), projection.getRange());
                     methodsMexico.primaVacacional(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.aportacionCtaSEREmpresa(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
+                    methodsMexico.provisionAguinaldoCtaSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.provisionPrimaVacacionalSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
@@ -347,7 +349,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 });
                 double totalSalarios = calcularTotalSalarios(headcount);
         headcount.stream()
-                //.parallel()
+                        .parallel()
                         .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.participacionTrabajadores(component, employeeParticipationList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
