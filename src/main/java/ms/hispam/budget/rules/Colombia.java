@@ -69,11 +69,11 @@ public class Colombia {
         double maxCommission = Math.max(commission1, commission2);
         //log.debug("maxCommission -> {}", maxCommission);
         //log.debug("period -> {}", period);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-        YearMonth yearMonth = YearMonth.parse(period, formatter);
-        yearMonth = yearMonth.plusMonths(1);
-        period = yearMonth.format(formatter);
+        //log.debug("sumCommission -> {}", sumCommission);
+        log.debug("period -> {}", period);
+        log.debug("cacheCommission -> {}", cacheCommission);
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(period) == null ? 0.0 : cacheCommission.get(period));
+        log.debug("commission -> {}", commission);
         if (!classEmployee.equals("T") && maxCommission != 0.0) {
             commissionComponent.setAmount(commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue())));
         } else {
@@ -167,7 +167,7 @@ public class Colombia {
             }
         }
     }
-   private void createCommissionCache(List<ParametersDTO> commissionList, Map<String, Double> cache, Integer projectionRange) {
+   private void createCommissionCache2(List<ParametersDTO> commissionList, Map<String, Double> cache, Integer projectionRange) {
        List<ParametersDTO> sortedCommissionList = new ArrayList<>(commissionList);
        sortedCommissionList.sort(Comparator.comparing(ParametersDTO::getPeriod));
 
@@ -178,53 +178,70 @@ public class Colombia {
            String month = period.substring(4, 6);
            double value = commission.getValue();
            // Incrementar el mes antes de entrar al bucle
-           int monthInt = Integer.parseInt(month) + 1;
+           int monthInt = Integer.parseInt(month);
            if (monthInt > 12) {
                monthInt = 1;
                year = String.valueOf(Integer.parseInt(year) + 1);
            }
            month = String.format("%02d", monthInt);
 
-           if (sortedCommissionList.size() == 1) {
-               value /= 12;
-               int startMonth = Integer.parseInt(month);
-               int endMonth = startMonth + projectionRange;
-
-               for (int m = startMonth; m < endMonth; m++) {
-                   int yearOffset = (m - 1) / 12;
-                   int monthOffset = (m - 1) % 12 + 1;
-                   //log.debug("yearOffset -> {}", yearOffset);
-                   //log.debug("monthOffset -> {}", monthOffset);
-                   String cachePeriod = String.format("%04d%02d", Integer.parseInt(year) + yearOffset, monthOffset);
-                   cache.put(cachePeriod, value);
-               }
-           } else {
-               if (i < sortedCommissionList.size() - 1) {
-                   ParametersDTO nextCommission = sortedCommissionList.get(i + 1);
-                   String nextPeriod = nextCommission.getPeriod();
-                   String nextYear = nextPeriod.substring(0, 4);
-                   String nextMonth = nextPeriod.substring(4, 6);
-
-                   if (!year.equals(nextYear)) {
-                       for (int m = Integer.parseInt(month); m <= 12; m++) {
-                           String cachePeriod = year + String.format("%02d", m);
-                           cache.put(cachePeriod, value/12);
-                       }
-                   } else {
-                       for (int m = Integer.parseInt(month); m < Integer.parseInt(nextMonth); m++) {
-                           String cachePeriod = year + String.format("%02d", m);
-                           cache.put(cachePeriod,  value/12);
-                       }
-                   }
-               } else {
-                   for (int m = Integer.parseInt(month); m <= 12; m++) {
-                       String cachePeriod = year + String.format("%02d", m);
-                       cache.put(cachePeriod, value);
-                   }
-               }
+           value /= 12;
+           int startMonth = Integer.parseInt(month);
+           int endMonth = projectionRange;
+            log.debug("endMonth -> {}", endMonth);
+           for (int m = startMonth; m <= endMonth; m++) {
+               int yearOffset = (m - 1) / 12;
+               int monthOffset = (m - 1) % 12 + 1;
+               //log.debug("yearOffset -> {}", yearOffset);
+               //log.debug("monthOffset -> {}", monthOffset);
+               String cachePeriod = String.format("%04d%02d", Integer.parseInt(year) + yearOffset, monthOffset);
+               cache.put(cachePeriod, value);
            }
        }
    }
+
+    private void createCommissionCache(List<ParametersDTO> commissionList, String period, int range, Map<String, Double> cache) {
+        // Genera todos los meses de la proyección y almacénalos en una lista.
+        List<String> allMonths = new ArrayList<>();
+        String currentYear = period.substring(0, 4);
+        String currentMonth = period.substring(4, 6);
+        for (int i = 0; i < range + 1; i++) {
+            allMonths.add(currentYear + currentMonth);
+            int monthInt = Integer.parseInt(currentMonth);
+            monthInt++;
+            if (monthInt > 12) {
+                monthInt = 1;
+                int yearInt = Integer.parseInt(currentYear);
+                yearInt++;
+                currentYear = String.format("%04d", yearInt);
+            }
+            currentMonth = String.format("%02d", monthInt);
+        }
+
+        // Inicializa el mapa de caché con todos los meses de la proyección y un valor inicial de 0.
+        for (String month : allMonths) {
+            cache.put(month, 0.0);
+        }
+
+        // Crea una copia de la lista de comisiones antes de ordenarla.
+        List<ParametersDTO> sortedCommissionList = new ArrayList<>(commissionList);
+        sortedCommissionList.sort(Comparator.comparing(ParametersDTO::getPeriod));
+
+        // Para cada comisión en la lista de comisiones:
+        for (ParametersDTO commission : sortedCommissionList) {
+            // Encuentra el índice del mes de la comisión en la lista de meses de la proyección.
+            int index = allMonths.indexOf(commission.getPeriod());
+            if (index != -1) {
+                // Actualiza el valor en el mapa de caché para ese mes y todos los meses siguientes hasta que encuentres un nuevo índice de lista de comisiones que coincida.
+                for (int i = index; i < allMonths.size(); i++) {
+                    if (i < allMonths.size() - 1 && allMonths.get(i + 1).equals(commission.getPeriod())) {
+                        break;
+                    }
+                    cache.put(allMonths.get(i), commission.getValue() / 12);
+                }
+            }
+        }
+    }
     private ParametersDTO findLatestSalaryForPeriod(List<ParametersDTO> salaryList, String period) {
         for (int i = salaryList.size() - 1; i >= 0; i--) {
             if (salaryList.get(i).getPeriod().compareTo(period) <= 0) {
@@ -523,7 +540,7 @@ public class Colombia {
         //commission param
         //log.debug("sumCommission -> {}", sumCommission);
         Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
-        createCommissionCache(commissionList, cacheCommission, range);
+        createCommissionCache(commissionList, period, range, cacheCommission);
         //log.debug("cacheCommission -> {}", cacheCommission);
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
@@ -539,6 +556,7 @@ public class Colombia {
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : paymentComponentDTO.getProjections()) {
            //SI($I5<>"T";//AJ$10/12*($M5/SUMA($M$4:$M$15));0)
+            log.debug("projection.getMonth() -> {}", projection.getMonth());
             BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
             projection.setMonth(projection.getMonth());
             if (commission.doubleValue() != 0.0){
@@ -1430,19 +1448,13 @@ public class Colombia {
         log.debug("component -> {}", "companyPensionContribution");
     }
 
-    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, List<ParametersDTO> sodexoList) {
+        Map<String, ParametersDTO> sodexoMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSodexo = new ConcurrentHashMap<>();
+        createCache(sodexoList, sodexoMap, cacheSodexo,  (parameter, mapParameter) -> {});
         String category = findCategory(classEmployee);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
         double legalSalaryMinInternal = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
-        ParametersDTO sodexo = getParametersById(parameters, 49);
-        String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
-        double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
-        // Obtén el mes del período sodexo
-        int sodexoMonth = 0;
-        if (periodSodexo.length() >= 6) {
-            // Obtén el mes del período sodexo
-            sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
-        }
         // Obtén los componentes necesarios para el cálculo
         List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION", "HHEE", "SURCHARGES");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -1457,16 +1469,32 @@ public class Colombia {
         double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
         double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
         double totalAmountBase = salary + commission + overtime + surcharges;
+        // Use the period to get the ParametersDTO from the sodexoMap
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        //log.info("sodexoMap -> {}", period);
+        ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
+        double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
         sodexoComponent.setPaymentComponent("SODEXO");
-        sodexoComponent.setAmount(BigDecimal.valueOf((category.equals("P") || category.equals("APR") || category.equals("PRA")) && totalAmountBase < 2 * legalSalaryMinInternal ? sodexoValue : 0));
+        sodexoComponent.setAmount(BigDecimal.valueOf((category.equals("P") || category.equals("APR") || category.equals("PRA")) && totalAmountBase < 2 * legalSalaryMinInternal ? sodexoValueBase : 0));
         if (!category.equals("T")) {
             // Calcular el valor de Sodexo para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
             double lastValidSodexoValue = 0.0;
             if (salaryComponent != null && salaryComponent.getProjections() != null){
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                    ParametersDTO sodexo = sodexoMap.get(primeProjection.getMonth());
+                    String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
+                    double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
+                    int sodexoMonth = 0;
+                    if (periodSodexo.length() >= 6) {
+                        // Obtén el mes del período sodexo
+                        sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
+                    }
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
                             .filter(Objects::nonNull)
@@ -1809,7 +1837,7 @@ public class Colombia {
         String category = findCategory(classEmployee);
         if (category.equals("T")) {
             Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
-            createCommissionCache(commissionList, cacheCommission, range);
+            createCommissionCache(commissionList, period, range, cacheCommission);
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
             PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
             PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
@@ -2446,28 +2474,5 @@ public class Colombia {
             component.add(feeComponent);
         }
         log.debug("component -> {}", "feeTemporaries");
-    }
-    //Auxilio Escolaridad
-    public void auxilioDeEscolaridad(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
-        String category = findCategory(classEmployee);
-        // Find PaymentComponentDTO for the Auxilio de Escolaridad
-      /*  Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO auxilioEscolaridadComponent = componentMap.get("escolaridad");*/
-        PaymentComponentDTO auxilioEscolaridadComponent = component.stream()
-                .filter(c -> c.getPaymentComponent().equals("escolaridad"))
-                .findFirst()
-                .orElse(null);
-        if (auxilioEscolaridadComponent == null){
-            // Create a new PaymentComponentDTO for the Auxilio de Escolaridad
-            auxilioEscolaridadComponent = new PaymentComponentDTO();
-            auxilioEscolaridadComponent.setPaymentComponent("escolaridad");
-            auxilioEscolaridadComponent.setAmount(BigDecimal.valueOf(0));
-            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range ,auxilioEscolaridadComponent.getAmount()));
-        }else {
-            // Add the payment component to the list of components
-            auxilioEscolaridadComponent.setProjections(Shared.generateMonthProjection(period,range, auxilioEscolaridadComponent.getAmount()));
-        }
-        component.add(auxilioEscolaridadComponent);
-        log.debug("component -> {}", "AuxilioDeEscolaridad");
     }
 }
