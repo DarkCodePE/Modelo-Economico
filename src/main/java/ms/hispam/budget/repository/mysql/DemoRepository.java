@@ -19,7 +19,7 @@ public interface DemoRepository extends JpaRepository<Parameters,Integer> {
     @Query(nativeQuery = true,value = "call sp_parameter_historical(?1)")
     List<ParameterProjectionBD> getParameter_historical(Integer id);
 
-    @Query(nativeQuery = true,value = "select pca.payment_component vcomponent ,a.account ,a.name_account  vname from budget.payment_component_account pca left join budget.account a on a.id =pca.account  where a.bu =?1")
+    @Query(nativeQuery = true,value = "call sp_component_account(?1)")
     List<AccountProjection>getAccount(Integer bu);
 
     @Query(nativeQuery = true,value = "call sp_rosseta(?1)")

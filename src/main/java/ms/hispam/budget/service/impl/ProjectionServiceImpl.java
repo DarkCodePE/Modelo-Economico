@@ -28,14 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -230,13 +226,20 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
 
     @Override
-    public Object getNewProjection(ParametersByProjection projection) {
+    public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
 
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-        List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
+
+
         if(headcount.isEmpty()){
             throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
         }
+        Map<String, AccountProjection> componentesMap = new HashMap<>();
+       List<AccountProjection> components =   getAccountsByBu(projection.getIdBu()) ;
+        for (AccountProjection concept : components) {
+            componentesMap.put(concept.getVcomponent(), concept);
+        }
+
         switch (projection.getBu()){
             case "T. ECUADOR":
                 isEcuador(headcount,projection);
@@ -256,8 +259,101 @@ public class ProjectionServiceImpl implements ProjectionService {
             default:
                 break;
         }
+        System.out.println(headcount);
+        //Filter parameters by show
+        headcount = headcount.stream().filter(p -> p.getComponents().stream()
+                .anyMatch(c -> componentesMap.get( c.getPaymentComponent()).getVshow()==1 )).collect(Collectors.toList());
+        //Agrupar por componente y agrupar por mes
+        List<ResumenComponentDTO> componentMonthAmountMap = getResumenPorMonth(headcount,componentesMap).stream()
+                .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
+                .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
+                .collect(Collectors.toList());
 
-        Map<String, Map<String, BigDecimal>> componentMonthAmountMap = headcount.stream()
+        //Agrupar por mes
+        List<MonthProjection> monthAmountList = groupingByMonth(componentMonthAmountMap).stream()
+                .sorted(Comparator.comparing(MonthProjection::getMonth)).collect(Collectors.toList());
+
+        //agrupar por año
+        List<MonthProjection> yearAmountList = groupingByYear(monthAmountList).stream()
+                .sorted(Comparator.comparing(MonthProjection::getMonth)).collect(Collectors.toList());
+        // agrupar por componente y agrupar por año
+        List<ResumenComponentDTO> resumenPorAnioList = getResumenPorAnio(componentMonthAmountMap).stream()
+                .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
+                .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
+                .collect(Collectors.toList());
+        //Agrupar por cuenta y mes componentMonthAmountMap
+        List<ResumenComponentDTO> groupingByAccountMonth = groupingAccountMonth(componentMonthAmountMap,components).stream()
+                .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
+                .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
+                .collect(Collectors.toList());
+
+        List<ResumenComponentDTO> groupingByAccountYear =getResumenPorAnio(groupingByAccountMonth).stream()
+                .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
+                .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
+                .collect(Collectors.toList());
+
+
+
+
+        return ProjectionSecondDTO.builder()
+                .resumeComponent(ResumeSpecDTO.builder()
+                        .resumeComponentMonth(componentMonthAmountMap)
+                        .resumeComponentYear(resumenPorAnioList)
+                        .build())
+                .monthProjections(monthAmountList)
+                .yearProjections(yearAmountList)
+                .resumeAccount(ResumeSpecDTO.builder()
+                        .resumeComponentMonth(groupingByAccountMonth)
+                        .resumeComponentYear(groupingByAccountYear)
+                        .build())
+                .build();
+
+    }
+
+    private  List<MonthProjection> groupingByMonth( List<ResumenComponentDTO> componentMonthAmountMap){
+        return componentMonthAmountMap.stream()
+                .flatMap(component -> component.getProjections().stream())
+                .collect(Collectors.groupingBy(MonthProjection::getMonth,
+                        Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add)))
+                .entrySet().stream()
+                .map(e -> new MonthProjection(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+    }
+    private  List<MonthProjection> groupingByYear( List<MonthProjection> monthAmountList){
+        return monthAmountList.stream()
+                .collect(Collectors.groupingBy(ma -> ma.getMonth().substring(0, 4),
+                        Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add)))
+                .entrySet().stream()
+                .map(e -> new MonthProjection(e.getKey(), e.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    private List<ResumenComponentDTO> groupingAccountMonth(List<ResumenComponentDTO> componentMonthAmountMap, List<AccountProjection> accounts){
+        return componentMonthAmountMap.stream()
+                .collect(Collectors.groupingBy(
+                        ResumenComponentDTO::getAccount, // Agrupar por componente
+                        Collectors.flatMapping(
+                                paymentComponent -> paymentComponent.getProjections() .stream(), // Obtener un stream de todas las proyecciones de cada componente
+                                Collectors.groupingBy(
+                                        MonthProjection::getMonth, // Agrupar por mes
+                                        Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add) // Sumar las cantidades por mes
+                                )
+                        )
+                )).entrySet().stream().map(entry -> {
+                    ResumenComponentDTO componentAmount = new ResumenComponentDTO();
+                    componentAmount.setAccount(entry.getKey());
+                    componentAmount.setComponent(accounts.stream().filter(r->r.getAccount().equals(entry.getKey())).findFirst().get().getNameaccount());
+                    List<MonthProjection> projections = entry.getValue().entrySet().stream()
+                            .map(monthEntry -> new MonthProjection(monthEntry.getKey(), monthEntry.getValue()))
+                            .collect(Collectors.toList());
+                    componentAmount.setProjections(projections);
+                    return componentAmount;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private   List<ResumenComponentDTO> getResumenPorMonth(List<ProjectionDTO> headcount,Map<String, AccountProjection> componentesMap){
+      return  headcount.stream()
                 .flatMap(headcoun -> headcoun.getComponents().stream()) // Obtener un stream de todos los componentes de cada headcount
                 .collect(Collectors.groupingBy(
                         PaymentComponentDTO::getPaymentComponent, // Agrupar por componente
@@ -268,35 +364,39 @@ public class ProjectionServiceImpl implements ProjectionService {
                                         Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add) // Sumar las cantidades por mes
                                 )
                         )
-                ));
+                )).entrySet().stream().map(entry -> {
+                    ResumenComponentDTO componentAmount = new ResumenComponentDTO();
+                    componentAmount.setComponent(componentesMap.get(entry.getKey()).getVname());
+                  componentAmount.setAccount(componentesMap.get(entry.getKey()).getAccount());
 
-        Map<String, Map<String, BigDecimal>> componentAnnualSummary = componentMonthAmountMap.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey, // Utilizar el nombre del componente como clave
-                        entry -> entry.getValue().entrySet().stream()
-                                .collect(Collectors.groupingBy(
-                                                entrySet -> entrySet.getKey().substring(0, 4), // Extraer el año de la clave del mapa interior
-                                                Collectors.reducing(BigDecimal.ZERO, Map.Entry::getValue, BigDecimal::add) // Sumar las cantidades por año
-                                        )
-                                )
-                ));
+                  List<MonthProjection> projections = entry.getValue().entrySet().stream()
+                            .map(monthEntry -> new MonthProjection(monthEntry.getKey(), monthEntry.getValue()))
+                            .collect(Collectors.toList());
+                    componentAmount.setProjections(projections);
+                    return componentAmount;
+                })
+                .collect(Collectors.toList());
 
-
-        log.info("Mensualizado",componentMonthAmountMap.entrySet());
-        log.info("Anualizado",componentAnnualSummary.entrySet());
-
-
-
-
-
-
-
-
-
-
-
-        return null;
     }
+
+    private List<ResumenComponentDTO> getResumenPorAnio(List<ResumenComponentDTO> resumenMonth){
+        return resumenMonth.stream()
+                .map(resumenComponentDTO -> {
+                    Map<String, BigDecimal> amountByYear = resumenComponentDTO.getProjections().stream()
+                            .collect(Collectors.groupingBy(
+                                    monthProjection -> monthProjection.getMonth().substring(0, 4), // Agrupar por año
+                                    Collectors.reducing(BigDecimal.ZERO, MonthProjection::getAmount, BigDecimal::add) // Sumar las cantidades por año
+                            ));
+                    return new ResumenComponentDTO(resumenComponentDTO.getComponent(), resumenComponentDTO.getAccount(),
+                             amountByYear.entrySet().stream()
+                            .map(entry -> new MonthProjection(entry.getKey(), entry.getValue()))
+                            .collect(Collectors.toList()));
+                })
+                .collect(Collectors.toList());
+    }
+
+
+
 
 
 
