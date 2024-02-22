@@ -1000,6 +1000,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .codeNomina(e.getCodigoNomina())
                         .importe(e.getImporte())
                             .build()).collect(Collectors.toList());
+        log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
             for (int i = 0; i < projection.getBc().getData().size() ; i++) {
@@ -1092,6 +1093,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             .filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
+                                    log.debug("filteredNominal: {}", filteredNominal);
                                     addNominal(projection,projectionsComponent,filteredNominal,codeNominals,list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
@@ -1229,7 +1231,26 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             projectionsComponent.add(housingComponent);
             projectionsComponent.add(bearingComponent);
 
-        }else if (projection.getBu().equalsIgnoreCase("T. PERU")){
+        } // else if mexico
+        else if (projection.getBu().equalsIgnoreCase("T. MEXICO")) {
+            log.debug("nominal {}",nominal);
+           //Bono disponibilidad
+            String nominalCode = "COMPENSACION";
+            for(NominaProjection h : nominal.stream().filter(g->g.getIdssff()
+                    .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList()) ) {
+                if (h.getCodeNomina().equalsIgnoreCase(nominalCode)) {
+                    projectionsComponent.add(PaymentComponentDTO.builder().
+                            type(16).
+                            paymentComponent("COMPENSACION").amount(BigDecimal.valueOf(h.getImporte()))
+                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte()))).build());
+                } else {
+                    projectionsComponent.add(PaymentComponentDTO.builder().
+                            type(16).
+                            paymentComponent("COMPENSACION").amount(BigDecimal.ZERO)
+                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO)).build());
+                }
+            }
+        } else if (projection.getBu().equalsIgnoreCase("T. PERU")){
             String nominalCodeMoving="1247";
             String nominalCodeHousing="1212";
             String nominalCodeExpatriates="1213";

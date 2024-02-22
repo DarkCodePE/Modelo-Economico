@@ -1019,6 +1019,63 @@ public class Mexico {
             component.add(provisionPrimaVacacionalSERComponent);
         }
     }
+    public void provisionFondoAhorro(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+
+        if (salaryComponent != null) {
+            ParametersDTO umaMensualParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("UMA mensual"))
+                    .findFirst()
+                    .orElse(null);
+            ParametersDTO topeMensualFondoParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("Tope mensual fondo"))
+                    .findFirst()
+                    .orElse(null);
+            ParametersDTO topeSueldoMensualFondoParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("Tope sueldo mensual - fondo"))
+                    .findFirst()
+                    .orElse(null);
+            ParametersDTO provisionFondoAhorroParam = parameters.stream()
+                    .filter(p -> p.getParameter().getDescription().equals("% Provisión Fondo de Ahorro"))
+                    .findFirst()
+                    .orElse(null);
+
+            double umaMensual = umaMensualParam == null ? 0.0 : umaMensualParam.getValue();
+            double topeMensualFondo = topeMensualFondoParam == null ? (umaMensual / 30) * 1.3 * 30 : topeMensualFondoParam.getValue();
+            double topeSueldoMensualFondo = topeSueldoMensualFondoParam == null ? topeMensualFondo / 1.3 : topeSueldoMensualFondoParam.getValue();
+            double provisionFondoAhorro = provisionFondoAhorroParam == null ? 0.0 : provisionFondoAhorroParam.getValue() / 100;
+
+            PaymentComponentDTO provisionFondoAhorroComponent = new PaymentComponentDTO();
+            provisionFondoAhorroComponent.setPaymentComponent("PROVISION_FONDO_AHORRO");
+            List<MonthProjection> projections = new ArrayList<>();
+
+            for (MonthProjection projection : salaryComponent.getProjections()) {
+                double baseSalary = projection.getAmount().doubleValue();
+                double provisionFondoAhorroAmount;
+
+                if (baseSalary > topeSueldoMensualFondo) {
+                    provisionFondoAhorroAmount = topeMensualFondo;
+                } else {
+                    provisionFondoAhorroAmount = baseSalary * provisionFondoAhorro;
+                }
+
+                MonthProjection provisionFondoAhorroProjection = new MonthProjection();
+                provisionFondoAhorroProjection.setMonth(projection.getMonth());
+                provisionFondoAhorroProjection.setAmount(BigDecimal.valueOf(provisionFondoAhorroAmount));
+                projections.add(provisionFondoAhorroProjection);
+            }
+
+            provisionFondoAhorroComponent.setProjections(projections);
+            component.add(provisionFondoAhorroComponent);
+        } else {
+            PaymentComponentDTO provisionFondoAhorroComponent = new PaymentComponentDTO();
+            provisionFondoAhorroComponent.setPaymentComponent("PROVISION_FONDO_AHORRO");
+            provisionFondoAhorroComponent.setAmount(BigDecimal.valueOf(0.0));
+            provisionFondoAhorroComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
+            component.add(provisionFondoAhorroComponent);
+        }
+    }
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
         return component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
