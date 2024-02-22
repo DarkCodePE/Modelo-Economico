@@ -11,6 +11,8 @@ import ms.hispam.budget.service.ProjectionService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -33,7 +35,7 @@ public class XlsReportService {
 
     private final ReportJobRepository reportJobRepository;
 
-    private final ProjectionService service;
+    private  ProjectionService service;
     private final  ExternalService externalService;
     // Crear un ReentrantLock
     private static final ReentrantLock lock = new ReentrantLock();
@@ -43,16 +45,18 @@ public class XlsReportService {
     private final EmailService emailService;
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
 
-    public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service, ExternalService externalService, EmailService emailService) {
+    public XlsReportService(ReportJobRepository reportJobRepository,  ExternalService externalService, EmailService emailService) {
         this.reportJobRepository = reportJobRepository;
-        this.service = service;
         this.externalService = externalService;
         this.emailService = emailService;
     }
-
+    @Autowired
+    public void setService(@Lazy ProjectionService service) {
+        this.service = service;
+    }
     public static byte[] generateExcelProjection(ParametersByProjection projection ,ProjectionSecondDTO data, DataBaseMainReponse dataBase){
 
-        System.out.println(data);
+        log.debug("Generando reporte de proyección", data);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
         generateParameter(workbook,projection.getParameters());
