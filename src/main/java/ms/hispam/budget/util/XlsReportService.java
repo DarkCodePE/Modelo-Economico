@@ -7,10 +7,10 @@ import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
+import ms.hispam.budget.service.ProjectionService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +32,8 @@ import java.util.stream.Collectors;
 public class XlsReportService {
 
     private final ReportJobRepository reportJobRepository;
+
+    private final ProjectionService service;
     private final  ExternalService externalService;
     // Crear un ReentrantLock
     private static final ReentrantLock lock = new ReentrantLock();
@@ -42,33 +43,36 @@ public class XlsReportService {
     private final EmailService emailService;
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
 
-    public XlsReportService(ReportJobRepository reportJobRepository, ExternalService externalService, EmailService emailService) {
+    public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service, ExternalService externalService, EmailService emailService) {
         this.reportJobRepository = reportJobRepository;
+        this.service = service;
         this.externalService = externalService;
         this.emailService = emailService;
     }
 
-    public static byte[] generateExcelProjection(ParameterDownload projection , List<ComponentProjection> components, DataBaseMainReponse dataBase){
+    public static byte[] generateExcelProjection(ParametersByProjection projection ,ProjectionSecondDTO data, DataBaseMainReponse dataBase){
+
+        System.out.println(data);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
         generateParameter(workbook,projection.getParameters());
         // vista Input
         generateInput(workbook,dataBase);
         //Vista anual
-        generateMoreView("Vista Anual",workbook,projection.getViewAnnual());
-        generateMoreView("Vista Mensual",workbook,projection.getViewMonthly());
+        //generateMoreView("Vista Anual",workbook,projection.getViewAnnual());
+        //generateMoreView("Vista Mensual",workbook,projection.getViewMonthly());
 
-        components.stream()
+       /* components.stream()
                 //.filter(c -> c.getName().equals("Consolidado De Intereses De Cesantias - Temporales"))
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
                 //.limit(30)
                 .forEach(c-> writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),projection.getData()));
-
-        projection.getBaseExtern()
+*/
+     /*   projection.getBaseExtern()
                 .getHeaders()
                 .stream()
                 .filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r)))
-                .forEach(c-> writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData()));
+                .forEach(c-> writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),projection.getData()));*/
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
@@ -404,10 +408,12 @@ public class XlsReportService {
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     // Modifica este método para que sea asíncrono
-    public static CompletableFuture<byte[]> generateExcelProjectionAsync(ParameterDownload projection, List<ComponentProjection> components, DataBaseMainReponse dataBase) {
+    public  CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase) {
         return CompletableFuture.supplyAsync(() -> {
+            projection.setViewPo(true);
+            ProjectionSecondDTO data = service.getNewProjection(projection);
             // Toda la lógica actual de generación de reportes
-            return generateExcelProjection(projection, components, dataBase);
+            return generateExcelProjection(projection, data, dataBase);
         }, executorService);
     }
 
@@ -419,7 +425,7 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParameterDownload projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user) {
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user) {
         generateExcelProjectionAsync(projection, components, dataBase)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");

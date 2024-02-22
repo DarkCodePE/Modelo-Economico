@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.DataBaseMainReponse;
 import ms.hispam.budget.dto.ExcelReportDTO;
 import ms.hispam.budget.dto.ParameterDownload;
+import ms.hispam.budget.dto.ParametersByProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
@@ -19,7 +20,7 @@ import java.util.concurrent.Executor;
 @Service
 @Slf4j(topic = "REPORT_GENERATION_SERVICE")
 public class ReportGenerationService {
-    private final XlsReportService xlsReportService;
+    /*private final XlsReportService xlsReportService;
     private final ReportJobRepository reportJobRepository;
     private final Executor executor;
     public ReportGenerationService(XlsReportService xlsReportService, ReportJobRepository reportJobRepository, Executor executor) {
@@ -29,7 +30,7 @@ public class ReportGenerationService {
     }
     // Método para iniciar la generación del reporte y manejar la notificación al usuario
     @Async
-    public CompletableFuture<ExcelReportDTO> startReportGeneration(ParameterDownload projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact) {
+    public CompletableFuture<ExcelReportDTO> startReportGeneration(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             // Crea un nuevo trabajo de generación de informes de forma asíncrona
             ReportJob job = new ReportJob();
@@ -46,11 +47,11 @@ public class ReportGenerationService {
             log.debug("Reporte en progreso: {}", reportInProgress);
 
             // Inicia la generación del reporte de manera asíncrona sin bloquear el hilo
-            xlsReportService.generateAndCompleteReportAsync(projection, components, dataBase, userContact, job, userContact);
+            //xlsReportService.generateAndCompleteReportAsync(projection, components, dataBase, userContact, job, userContact);
 
             // Retorna el DTO del reporte, que ya fue construido
             return reportInProgress;
         }, executor); //
     }
-
+*/
 }

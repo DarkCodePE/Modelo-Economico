@@ -36,5 +36,7 @@ public class ParametersByProjection {
     private BaseExternResponse baseExtern;
     private BaseExternResponse bc;
     private String current;
+    private List<PositionBaselineDTO> disabledPo;
+    private Boolean viewPo;
 
 }

@@ -398,15 +398,11 @@ public class Mexico {
         // Aplicar la fórmula para cada mes de proyección
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : salaryComponent.getProjections()) {
-            log.info("PROJECTION - AMOUNT: {}", projection.getAmount());
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
             double participacion = proportion * participacionTrabajadores;
-            log.info("PROJECTION- PROPORTION: {}", proportion);
-            log.info("PROJECTION- PARTICIPATION: {}", participacion);
             MonthProjection participacionProjection = new MonthProjection();
             participacionProjection.setMonth(projection.getMonth());
             participacionProjection.setAmount(BigDecimal.valueOf(participacion));
-            log.info("PROJECTION- PARTICIPATION: {}", participacionProjection.getAmount());
             projections.add(participacionProjection);
         }
         participacionComponent.setProjections(projections);

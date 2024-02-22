@@ -48,7 +48,7 @@ public class ProjectionController {
     }
 
     @PostMapping("/new-projection")
-    public Object getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
+    public ProjectionSecondDTO getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
         return service.getNewProjection(projection);
     }
@@ -100,9 +100,8 @@ public class ProjectionController {
         }
     }*/
     @PostMapping("/download-projection")
-    public ExcelReportDTO downloadProjection(@RequestBody ParameterDownload projection, @RequestHeader String user) {
+    public ExcelReportDTO downloadProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
         try {
-            log.debug("Projection: {}", projection);
             ReportJob job = new ReportJob();
             String taskId = UUID.randomUUID().toString();
             job.setStatus("en progreso");
@@ -173,6 +172,14 @@ public class ProjectionController {
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "datos.xlsx");
         return new ResponseEntity<>(service.downloadFileType(projection,type,idBu), headers, 200);
+    }
+
+    @GetMapping("/get-position-baseline")
+    public List<PositionBaseline> getPositionBaseline(@RequestParam String filter ,
+                                                      @RequestParam String period,
+                                                      @RequestParam String bu,
+                                                      @RequestParam Integer idBu) {
+        return service.getPositionBaseline(period,filter,bu,idBu);
     }
 
 }

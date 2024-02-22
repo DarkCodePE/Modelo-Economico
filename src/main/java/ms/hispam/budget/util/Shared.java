@@ -167,4 +167,14 @@ public class Shared {
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
     }
+    public static boolean estaEnRango(String from, String to, String actual) {
+        // Convertir las fechas a LocalDate
+        LocalDate fromDate = LocalDate.parse(from + "/01", DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        LocalDate toDate = LocalDate.parse(to + "/01", DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        LocalDate actualDate = LocalDate.parse(actual + "/01", DateTimeFormatter.ofPattern("yyyyMM/dd"));
+
+        // Comprobar si actual está en el rango
+        return (actualDate.isEqual(fromDate) || actualDate.isAfter(fromDate)) &&
+                (actualDate.isEqual(toDate) || actualDate.isBefore(toDate.plusMonths(1)));
+    }
 }

@@ -17,7 +17,7 @@ public interface ProjectionService {
 
     public Page<ProjectionDTO> getProjection(ParametersByProjection projection);
 
-    public Object getNewProjection(ParametersByProjection projection);
+    public ProjectionSecondDTO getNewProjection(ParametersByProjection projection);
 
     Config getComponentByBu(String bu);
 
@@ -30,7 +30,7 @@ public interface ProjectionService {
 
     Boolean deleteHistorical( Integer id);
 
-    void downloadProjection(ParameterDownload projection, String userContact, ReportJob job);
+    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job);
 
     byte[] downloadProjectionHistorical(Integer id);
 
@@ -46,4 +46,5 @@ public interface ProjectionService {
 
     byte[] downloadFileType( List<ProjectionDTO> projection , Integer type,Integer idBu);
 
+    List<PositionBaseline> getPositionBaseline(String period,String filter,String bu,Integer idBu);
 }
