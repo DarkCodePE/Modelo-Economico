@@ -3,6 +3,7 @@ package ms.hispam.budget.dto;
 import lombok.*;
 import ms.hispam.budget.dto.projections.RealesProjection;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Builder
@@ -21,6 +22,8 @@ public class ProjectionSecondDTO {
     private List<MonthProjection> resumeRealesYear;
     private List<MonthProjection> resumeRealesMonth;
     private ViewPosition viewPosition;
+    private  List<RosetaDTO> rosseta;
+    private BigDecimal tCambio;
 
 
 }

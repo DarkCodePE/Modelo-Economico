@@ -14,6 +14,7 @@ public class RosetaDTO {
     private String name;
     private List<String> payment;
     private List<RosetaDTO> childs;
+    private List<MonthProjection> projections;
     private boolean open;
 
     public RosetaDTO(String code, String name) {
@@ -22,5 +23,6 @@ public class RosetaDTO {
         this.open=true;
         this.payment=new ArrayList<>();
         this.childs = new ArrayList<>();
+        this.projections=new ArrayList<>();
     }
 }

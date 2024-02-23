@@ -298,6 +298,17 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .count(headcount.size())
                 .build():null;
 
+        //get rosseta
+        List<RosetaDTO> rosseta= getRoseta(projection.getIdBu());
+        //recorrer rosseta por childs y ver si en payment esta incluido componentMonthAmountMap para acumular el mes y monto
+        for (RosetaDTO rosetaDTO : rosseta) {
+            acumularMontosPorComponente(rosetaDTO,componentMonthAmountMap);
+        }
+        Double tCambio  = repository.getTypeChange(projection.getPeriod(),
+                projection.getCurrent()).orElse(0.0);
+
+
+
         return ProjectionSecondDTO.builder()
                 .resumeComponent(ResumeSpecDTO.builder()
                         .resumeComponentMonth(componentMonthAmountMap)
@@ -314,9 +325,41 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .resumeRealesMonth(monthReales)
                 .resumeRealesYear(yearReales)
                 .viewPosition(viewPosition)
+                .rosseta(rosseta)
+                .tCambio(new BigDecimal(tCambio))
                 .build();
 
     }
+
+    private  void acumularMontosPorComponente(RosetaDTO rosetaDTO,List<ResumenComponentDTO> componentMonthAmountMap) {
+        Map<String, BigDecimal> montosPorMes = new HashMap<>();
+        for (String componente : rosetaDTO.getPayment()) {
+            for (ResumenComponentDTO component : componentMonthAmountMap) {
+                if (component.getCode().equals(componente)) {
+                    for (MonthProjection projection : component.getProjections()) {
+                        String month = projection.getMonth();
+                        BigDecimal amount = projection.getAmount();
+
+                        if (montosPorMes.containsKey(month)) {
+                            montosPorMes.put(month, montosPorMes.get(month).add(amount));
+                        } else {
+                            montosPorMes.put(month, amount);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (RosetaDTO child : rosetaDTO.getChilds()) {
+            acumularMontosPorComponente(child,componentMonthAmountMap);
+        }
+
+        for (Map.Entry<String, BigDecimal> entry : montosPorMes.entrySet()) {
+            rosetaDTO.getProjections().add(new MonthProjection(entry.getKey(), entry.getValue()));
+        }
+    }
+
+
 
     private List<ProjectionDTO> getHeadcount(ParametersByProjection projection, Map<String, AccountProjection> componentesMap){
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
@@ -440,7 +483,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     ResumenComponentDTO componentAmount = new ResumenComponentDTO();
                     componentAmount.setComponent(componentesMap.get(entry.getKey()).getVname());
                   componentAmount.setAccount(componentesMap.get(entry.getKey()).getAccount());
-
+                  componentAmount.setCode(entry.getKey());
                   List<MonthProjection> projections = entry.getValue().entrySet().stream()
                             .map(monthEntry -> new MonthProjection(monthEntry.getKey(), monthEntry.getValue()))
                             .collect(Collectors.toList());
@@ -949,9 +992,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job) {
             try {
-                projection.setPeriod(projection.getPeriod().replace("/", ""));
-                projection.setNominaFrom(projection.getNominaFrom().replace("/", ""));
-                projection.setNominaTo(projection.getNominaTo().replace("/", ""));
+                Shared.replaceSLash(projection);
 
                 List<ComponentProjection> componentProjections = sharedRepo.getComponentByBu(projection.getBu());
                 //TODO: ADD BASE EXTERN
@@ -1177,9 +1218,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     @Override
-    public byte[] downloadFileType(List<ProjectionDTO> projection,Integer type,Integer idBu) {
+    public byte[] downloadFileType(ParametersByProjection projection,Integer type,Integer idBu) {
         Bu bu = buRepository.findById(idBu).orElseThrow(()-> new BadRequestException("No se encuentra la Bu"));
-        return ExcelService.generateExcelType(projection,type,bu,sharedRepo.getAccount(idBu));
+        Shared.replaceSLash(projection);
+        Map<String, AccountProjection> componentesMap = new HashMap<>();
+        List<AccountProjection> components =   getAccountsByBu(idBu) ;
+        for (AccountProjection concept : components) {
+            componentesMap.put(concept.getVcomponent(), concept);
+        }
+        List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
+        return ExcelService.generateExcelType(headcount,type,bu,sharedRepo.getAccount(idBu));
     }
 
     @Override

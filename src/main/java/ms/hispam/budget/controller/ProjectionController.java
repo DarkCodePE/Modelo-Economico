@@ -107,6 +107,7 @@ public class ProjectionController {
             job.setStatus("en progreso");
             job.setMonthBase(projection.getPeriod());
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
+            job.setCreationDate(java.time.LocalDateTime.now());
             job.setCode(taskId);
             job.setIdSsff(user);
             ReportJob jobDB =  reportJobRepository.save(job);
@@ -167,7 +168,7 @@ public class ProjectionController {
     }
 
     @PostMapping("/download-type")
-    public ResponseEntity<byte[]> downloadFile(@RequestBody List<ProjectionDTO> projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
+    public ResponseEntity<byte[]> downloadFile(@RequestBody ParametersByProjection projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "datos.xlsx");

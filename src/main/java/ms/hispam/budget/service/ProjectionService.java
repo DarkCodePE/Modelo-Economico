@@ -44,7 +44,7 @@ public interface ProjectionService {
 
     Boolean saveMoneyOdin(String po,Integer requirement);
 
-    byte[] downloadFileType( List<ProjectionDTO> projection , Integer type,Integer idBu);
+    byte[] downloadFileType(ParametersByProjection projection,Integer type,Integer idBu);
 
     List<PositionBaseline> getPositionBaseline(String period,String filter,String bu,Integer idBu);
 }
