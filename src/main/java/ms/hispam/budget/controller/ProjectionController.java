@@ -43,8 +43,14 @@ public class ProjectionController {
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
-        //log.debug("Projection: {}", projection);
+        ////log.debug("Projection: {}", projection);
         return service.getProjection(projection);
+    }
+
+    @PostMapping("/new-projection")
+    public ProjectionSecondDTO getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
+        Shared.replaceSLash(projection);
+        return service.getNewProjection(projection);
     }
 
     @PostMapping("/data-base")
@@ -85,7 +91,7 @@ public class ProjectionController {
     /*@PostMapping("/download-projection")
     public CompletableFuture<ExcelReportDTO> downloadProjection(@RequestBody ParameterDownload projection) {
         try {
-            log.debug("Projection: {}", projection);
+            //log.debug("Projection: {}", projection);
             return service.downloadProjection(projection);
         } catch (Exception e) {
             // Aquí puedes manejar la excepción como prefieras. Por ejemplo, puedes registrar el error y luego lanzar una nueva excepción:
@@ -94,14 +100,14 @@ public class ProjectionController {
         }
     }*/
     @PostMapping("/download-projection")
-    public ExcelReportDTO downloadProjection(@RequestBody ParameterDownload projection, @RequestHeader String user) {
+    public ExcelReportDTO downloadProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
         try {
-            log.debug("Projection: {}", projection);
             ReportJob job = new ReportJob();
             String taskId = UUID.randomUUID().toString();
             job.setStatus("en progreso");
             job.setMonthBase(projection.getPeriod());
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
+            job.setCreationDate(java.time.LocalDateTime.now());
             job.setCode(taskId);
             job.setIdSsff(user);
             ReportJob jobDB =  reportJobRepository.save(job);
@@ -162,11 +168,19 @@ public class ProjectionController {
     }
 
     @PostMapping("/download-type")
-    public ResponseEntity<byte[]> downloadFile(@RequestBody List<ProjectionDTO> projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
+    public ResponseEntity<byte[]> downloadFile(@RequestBody ParametersByProjection projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "datos.xlsx");
         return new ResponseEntity<>(service.downloadFileType(projection,type,idBu), headers, 200);
+    }
+
+    @GetMapping("/get-position-baseline")
+    public List<PositionBaseline> getPositionBaseline(@RequestParam String filter ,
+                                                      @RequestParam String period,
+                                                      @RequestParam String bu,
+                                                      @RequestParam Integer idBu) {
+        return service.getPositionBaseline(period,filter,bu,idBu);
     }
 
 }

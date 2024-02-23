@@ -27,12 +27,14 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @ExtendWith(SpringExtension.class)
 @Slf4j(topic = "MexicoDiffblueTest")
 class MexicoDiffblueTest {
+
     /*@Autowired
     private Mexico mexico;
+>>>>>>> old_change_peru_v3
 
-    @MockBean
-    private MexicoService mexicoService;
 
+<<<<<<< HEAD
+=======
     *//**
      * Method under test: {@link Mexico
      * #seguroDental(List, List, String, Integer)}
@@ -118,12 +120,12 @@ class MexicoDiffblueTest {
         assertTrue(seguroDentalComponentOpt.isPresent(), "Componente Seguro Dental no encontrado");
 
         PaymentComponentDTO seguroDentalComponent = seguroDentalComponentOpt.get();
-        log.debug("seguroDentalComponent: {}", seguroDentalComponent);
+        //log.debug("seguroDentalComponent: {}", seguroDentalComponent);
         assertEquals(0, BigDecimal.valueOf(100.0).compareTo(seguroDentalComponent.getAmount()),
                 "Cantidad incorrecta de Seguro Dental");
 
         List<MonthProjection> projectionsPerMoth = seguroDentalComponent.getProjections();
-        log.debug("projections: {}", projections);
+        //log.debug("projections: {}", projections);
         assertEquals(range.intValue(), projectionsPerMoth.size(), "Número incorrecto de proyecciones");
 
         double totalSalaries = component.stream()
@@ -133,7 +135,7 @@ class MexicoDiffblueTest {
 
         for (MonthProjection projection : projections) {
             double expectedAmount = (projection.getAmount().doubleValue() / totalSalaries) * seguroDentalParam.getValue();
-            log.debug("expectedAmount: {}", expectedAmount);
+            //log.debug("expectedAmount: {}", expectedAmount);
             assertEquals(0, BigDecimal.valueOf(expectedAmount).compareTo(BigDecimal.valueOf(8.333333333333332)),
                     "Cantidad de seguro dental incorrecta");
         }
@@ -242,5 +244,5 @@ class MexicoDiffblueTest {
         mexico.participacionTrabajadores(component, employeeParticipationList, new ArrayList<>(), "Period", 1, 0.0);
     }
 */
-}
 
+}

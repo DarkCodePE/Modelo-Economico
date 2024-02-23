@@ -1,9 +1,7 @@
 package ms.hispam.budget.repository.sqlserver;
 
-import ms.hispam.budget.dto.projections.ComponentCashProjection;
-import ms.hispam.budget.dto.projections.ComponentNominaProjection;
-import ms.hispam.budget.dto.projections.CostPoProjection;
-import ms.hispam.budget.dto.projections.HeadcountHistoricalProjection;
+import ms.hispam.budget.dto.PositionBaseline;
+import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.sqlserver.ParametrosGlobal;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -38,6 +36,16 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
 
     @Query(nativeQuery = true,value = "select tasa_eur from [cc].T_CC_TasaCambio  where periodo=?1 and divisa=?2")
     Optional<Double> getTypeChange(String period,String divisa);
+
+  //GET REALES
+    @Query(nativeQuery = true,value = "EXEC get_reales_bu @bu = :bu,  @periodo = :periodo")
+    List<RealesProjection> getReales(@Param("bu") String bu, @Param("periodo") String periodo);
+
+    @Query(nativeQuery = true,value = "EXEC get_po_baseline @vperiod = :vperiod,@entity = :entity,@employclass = :employclass,  @vfilter = :vfilter")
+    List<PositionBaseline> findPoBaseline(@Param("vperiod") String vperiod,
+                                          @Param("entity") String entity,
+                                          @Param("employclass") String employclass,
+                                          @Param("vfilter") String vfilter);
 
 
 
