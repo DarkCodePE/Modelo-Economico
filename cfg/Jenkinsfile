@@ -1,75 +1,87 @@
 def config;
-node(){
- def fileId
-    if ("${env.JOB_BASE_NAME}" == 'develop') {
-        fileId = 'e739f5b7-27df-4f83-bd2a-7450d396412c'  // ID del archivo para la rama "develop"
-    } else if ("${env.JOB_BASE_NAME}" == 'main') {
-        fileId = '65047eb2-2a7d-4afc-bf15-4461e842c721'  // ID del archivo para la rama "main"
+pipeline {
+    agent any
+
+    options {
+        skipDefaultCheckout(true)
     }
-    configFileProvider([configFile(fileId: fileId, targetLocation: 'config')]) {
-        config = readJSON file: 'config'
+
+    tools {
+        maven 'maven-default'
+        dockerTool 'docker'
+    }
+
+    environment {
+        FILE_ID_DEVELOP = 'e739f5b7-27df-4f83-bd2a-7450d396412c'
+        FILE_ID_MAIN = '65047eb2-2a7d-4afc-bf15-4461e842c721'
+        SONAR_SCANNER_HOME = tool 'sonarQube'
+    }
+
+    stages {
+        stage('Prepare') {
+            steps {
+                script {
+                    def fileId = env.JOB_BASE_NAME == 'develop' ? env.FILE_ID_DEVELOP : env.FILE_ID_MAIN
+                    configFileProvider([configFile(fileId: fileId, targetLocation: 'config')]) {
+                        config = readJSON file: 'config'
+                    }
+                }
+            }
+        }
+
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Unit Test & Coverage') {
+            steps {
+                sh 'mvn clean test jacoco:report'
+            }
+            post {
+                 always {
+                       junit '**/target/surefire-reports/TEST-*.xml'
+                 }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn -f pom.xml package -DskipTests'
+            }
+        }
+
+        stage('DAST Analysis') {
+            steps{
+                    dependencyCheck  additionalArguments: '--format JSON --format HTML' , odcInstallation:'DP-check'
+
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarQube') {
+                    sh "${env.SONAR_SCANNER_HOME}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
+                }
+            }
+        }
+    post {
+        failure {
+          script {
+                      def buildError = currentBuild.rawBuild.getLog(100)
+                    slackSend(channel: "despliegues", message: "El build del proyecto ${env.JOB_NAME} falló. Error: ${buildError}")
+
+                  }
+        }
+        success {
+            slackSend(channel: "despliegues", message: "El proyecto ${env.JOB_NAME} se desplegó con éxito")
+        }
     }
 }
-pipeline {
-           agent any
-			options {
-				skipDefaultCheckout(true)
-			}
-			tools{
-				maven 'maven-default'
-				dockerTool 'docker'
-			}
-            stages {
-				stage('CleanWorkspace') {
-                    steps {
-						cleanWs()
-                    }
-                }
-				stage('Checkout') {
-                    steps {
-						checkout scm
-                    }
-                }
-                stage('UnitTest') {
-                                     steps {
-
-                 		        sh 'mvn clean test jacoco:prepare-agent jacoco:report'
-
-                                     }
-                                     post{
-                                        always{
-                                            junit '**/target/surefire-reports/TEST-*.xml'
-                                        }
-                                     }
-                                 }
-                stage('Build') {
-                    steps {
-						sh 'mvn -f pom.xml clean install -DskipTests'
-                    }
-                         post{
-                               failure{
-                                 script {
-                                   slackSend( channel: "despliegues",  message: "El proyecto ${ARTIFACT_ID} sufrió un error en el despliegue")
-                                       }
-                                     }
-                              }
-                }                
-                stage('Scan and Analysis SAST') {
-                					steps{
-                						script {
-                						  scannerHome = tool 'sonarQube'
-                						}
-                						withSonarQubeEnv('sonarQube') {
-                						  sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=cfg/sonar.properties"
-                						}
-                					}
-                				}
-                stage('Analysis DAST') {
-                					steps{
-                						dependencyCheck additionalArguments: '--format HTML' , odcInstallation:'DP-check'
-                                        dependencyCheckPublisher pattern: '**/dependency-check-report.html'
-
-                					}
-                				}
-        }
-     }

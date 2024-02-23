@@ -43,7 +43,7 @@ public class ProjectionController {
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
         Shared.replaceSLash(projection);
-        //log.debug("Projection: {}", projection);
+        ////log.debug("Projection: {}", projection);
         return service.getProjection(projection);
     }
 
@@ -91,7 +91,7 @@ public class ProjectionController {
     /*@PostMapping("/download-projection")
     public CompletableFuture<ExcelReportDTO> downloadProjection(@RequestBody ParameterDownload projection) {
         try {
-            log.debug("Projection: {}", projection);
+            //log.debug("Projection: {}", projection);
             return service.downloadProjection(projection);
         } catch (Exception e) {
             // Aquí puedes manejar la excepción como prefieras. Por ejemplo, puedes registrar el error y luego lanzar una nueva excepción:

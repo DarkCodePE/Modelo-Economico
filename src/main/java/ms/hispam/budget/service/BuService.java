@@ -44,7 +44,7 @@ public class BuService {
                 .filter(detail -> detail.getBu().getId().equals(buId) && detail.getId().equals(rangoBuPivot.getId()))
                 .flatMap(pivotBuRange -> convertPivotBuRangeToRangeBuDetail(pivotBuRange, buId).stream())
                 .collect(Collectors.toList());
-        //log.debug("rangeBuDet: {}", rangeBuDet);
+        ////log.debug("rangeBuDet: {}", rangeBuDet);
 
         return RangeBuDTO.builder()
                 .idBu(rangoBuPivot.getBu().getId())
@@ -54,7 +54,7 @@ public class BuService {
     }
     private List<RangeBuDetailDTO> convertPivotBuRangeToRangeBuDetail(RangoBuPivot pivotBuRange, Integer buId) {
         List<RangeBu> rangeBuList = rangeBuRepository.findByPivotBuRange_Id(pivotBuRange.getId()).stream().filter(rangeBu -> rangeBu.getPivotBuRange().getBu().getId().equals(buId)).collect(Collectors.toList());
-        //log.debug("rangeBuList: {}", rangeBuList);
+        ////log.debug("rangeBuList: {}", rangeBuList);
 
         return rangeBuList.stream()
                 .map(rangeBu -> RangeBuDetailDTO.builder()

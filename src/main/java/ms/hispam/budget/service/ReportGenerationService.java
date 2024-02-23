@@ -44,7 +44,7 @@ public class ReportGenerationService {
                     .status(job.getStatus())
                     .URL(job.getReportUrl())
                     .build();
-            log.debug("Reporte en progreso: {}", reportInProgress);
+            //log.debug("Reporte en progreso: {}", reportInProgress);
 
             // Inicia la generación del reporte de manera asíncrona sin bloquear el hilo
             //xlsReportService.generateAndCompleteReportAsync(projection, components, dataBase, userContact, job, userContact);

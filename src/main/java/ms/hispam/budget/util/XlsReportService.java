@@ -473,14 +473,14 @@ public class XlsReportService {
             //debug lista de componentes
             List<PaymentComponentDTO> list = projectionDTO
                     .getComponents();
-            log.debug("Componentes: {}", list);
-            log.debug("Componente: {}", component);
+            //log.debug("Componentes: {}", list);
+            //log.debug("Componente: {}", component);
             Optional<PaymentComponentDTO> componentDTO = projectionDTO
                     .getComponents()
                     .stream()
                     .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
                     .findFirst();
-            log.debug("Componente: {}", componentDTO);
+            //log.debug("Componente: {}", componentDTO);
             if (componentDTO.isPresent()) {
                 cell = row.createCell(2);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
