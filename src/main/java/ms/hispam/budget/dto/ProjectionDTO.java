@@ -24,4 +24,6 @@ public class ProjectionDTO {
     private String areaFuncional;
     private String division;
     private String cCostos;
+    private String convent;
+    private String level;
 }

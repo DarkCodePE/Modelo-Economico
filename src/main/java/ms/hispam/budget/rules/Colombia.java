@@ -778,8 +778,11 @@ public class Colombia {
         log.debug("component -> {}", "consolidatedSeveranceInterest");
     }
 
-    public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> subsidyMinList) {
         String category = findCategory(classEmployee);
+        Map<String, ParametersDTO>  subsidyMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSubsidy = new ConcurrentHashMap<>();
+        createCache(subsidyMinList, subsidyMap, cacheSubsidy,  (parameter, mapParameter) -> {});
         // Obtén los componentes necesarios para el cálculo
         List<String> subsidyComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION", "SALARY_PRA", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -788,11 +791,9 @@ public class Colombia {
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
         double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        ParametersDTO subsidyMin = getParametersById(parameters, 48);
-        double subsidyMinInternal = subsidyMin!=null ? subsidyMin.getValue() : 0.0;
-        String periodSubsidy = subsidyMin!=null ? subsidyMin.getPeriod() : "";
-        int subsidyMonth = Integer.parseInt(periodSubsidy.substring(4, 6));
-        int subsidyYear = Integer.parseInt(periodSubsidy.substring(0, 4));
+        //String periodSubsidy = subsidyMin!=null ? subsidyMin.getPeriod() : "";
+        //int subsidyMonth = Integer.parseInt(periodSubsidy.substring(4, 6));
+        //int subsidyYear = Integer.parseInt(periodSubsidy.substring(0, 4));
         //total base
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -804,8 +805,14 @@ public class Colombia {
         // Crear un nuevo PaymentComponentDTO para el Subsidio de Transporte
         PaymentComponentDTO transportSubsidyComponent = new PaymentComponentDTO();
         transportSubsidyComponent.setPaymentComponent("SUBSIDIO_TRANSPORTE");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO subsidyMinNext = subsidyMap.get(nextPeriod);
+        double subsidyMinNextValue = subsidyMinNext != null ? subsidyMinNext.getValue() : 0.0;
         double totalAmountBase = salary + overtime + surcharges + commission;
-        transportSubsidyComponent.setAmount(BigDecimal.valueOf(totalAmountBase < 2 * legalSalaryMinInternal ? subsidyMinInternal : 0));
+        transportSubsidyComponent.setAmount(BigDecimal.valueOf(totalAmountBase < 2 * legalSalaryMinInternal ? subsidyMinNextValue : 0));
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
         BigDecimal lastValidSubsidyValue = BigDecimal.ZERO;
         if (category.equals("P") && salaryType.equals("BASE")) {
@@ -819,27 +826,13 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+                ParametersDTO subsidyMinInternalParam = subsidyMap.get(primeProjection.getMonth());
+                double subsidyMinInternalValue = subsidyMinInternalParam != null ? subsidyMinInternalParam.getValue() : 0.0;
                 // Calcular el costo del Subsidio de Transporte
                 BigDecimal transportSubsidyCost;
-
-                String primeProjectionYearMonth = primeProjection.getMonth();
-                String subsidyYearMonth = String.format("%04d%02d", subsidyYear, subsidyMonth);
-
-                int primeProjectionYear = Integer.parseInt(primeProjectionYearMonth.substring(0, 4));
-                int primeProjectionMonth = Integer.parseInt(primeProjectionYearMonth.substring(4, 6));
-
-                int currentSubsidyYear = Integer.parseInt(subsidyYearMonth.substring(0, 4));
-                int currentSubsidyMonth = Integer.parseInt(subsidyYearMonth.substring(4, 6));
-
-                if (primeProjectionYear > currentSubsidyYear || (primeProjectionYear == currentSubsidyYear && primeProjectionMonth >= currentSubsidyMonth)) {
-                    if (totalAmount.doubleValue() < 2 * legalSalaryMinInternal) {
-                        transportSubsidyCost = BigDecimal.valueOf(subsidyMinInternal);
-                        lastValidSubsidyValue = BigDecimal.valueOf(subsidyMinInternal);
-                    } else {
-                        transportSubsidyCost =  BigDecimal.ZERO;
-                        lastValidSubsidyValue =  BigDecimal.ZERO;
-                    }
+                if (totalAmount.doubleValue() < 2 * legalSalaryMinInternal) {
+                    transportSubsidyCost = BigDecimal.valueOf(subsidyMinInternalValue);
+                    lastValidSubsidyValue = transportSubsidyCost;
                 } else {
                     transportSubsidyCost = lastValidSubsidyValue;
                 }
@@ -1400,10 +1393,12 @@ public class Colombia {
         double pensionContributionBase;
         if (salaryType.equals("BASE") && totalAmountBase > 25 * legalSalaryMinInternal) {
             pensionContributionBase = 25 * legalSalaryMinInternal * 0.12;
-        } else if (salaryType.equals("INTEGRAL")) {
-            pensionContributionBase = totalAmountBase * 0.70 * 0.12;
-        } else {
+        } else if (salaryType.equals("INTEGRAL") &&  0.70 * totalAmountBase > 25 * legalSalaryMinInternal) {
+            pensionContributionBase = 25 * legalSalaryMinInternal * 0.12;
+        } else if (salaryType.equals("BASE")) {
             pensionContributionBase = totalAmountBase * 0.12;
+        } else {
+            pensionContributionBase = 0.70 * totalAmountBase * 0.12;
         }
         pensionContributionComponent.setAmount(BigDecimal.valueOf(pensionContributionBase));
         if (category.equals("P")) {

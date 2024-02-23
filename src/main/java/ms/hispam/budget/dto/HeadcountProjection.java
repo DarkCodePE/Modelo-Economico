@@ -32,4 +32,6 @@ public class HeadcountProjection {
     private String areaFuncional;
     private String divisionName;
     private String cCostos;
+    private String convent;
+    private String level;
 }
