@@ -35,4 +35,7 @@ public interface HeadcountHistoricalProjection {
     default Optional<LocalDate> getFcontraAsLocalDate() {
         return Optional.ofNullable(getFcontra()).map(Date::toLocalDate);
     }
+    //convent
+    public String getConvent();
+    public String getLevel();
 }

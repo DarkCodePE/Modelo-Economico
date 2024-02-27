@@ -1798,7 +1798,7 @@ public class Colombia {
         String category = findCategory(classEmployee);
         PaymentComponentDTO digitalConnectivityAidComponent = new PaymentComponentDTO();
         digitalConnectivityAidComponent.setPaymentComponent("AUXILIO_CONECTIVIDAD_DIGITAL");
-        if (category.equals("PRA") || category.equals("APR")) {
+        if (category.equals("P")) {
             double digitalConnectivityAidValue = findExcludedPositions(position, parameters);
             digitalConnectivityAidComponent.setAmount(BigDecimal.valueOf(digitalConnectivityAidValue));
             digitalConnectivityAidComponent.setProjections(Shared.generateMonthProjection(period,range,digitalConnectivityAidComponent.getAmount()));

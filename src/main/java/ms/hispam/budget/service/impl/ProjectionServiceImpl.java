@@ -213,7 +213,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 proyeccion.getFContra(),
                                 proyeccion.getAreaFuncional(),
                                 proyeccion.getDivision(),
-                                proyeccion.getCCostos()
+                                proyeccion.getCCostos(),
+                                proyeccion.getConvent(),
+                                proyeccion.getLevel()
                         );
                     })
                     .collect(Collectors.toList());
@@ -608,15 +610,19 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     //log.debug("getPo {} - Salary {}",headcountData.getPo(), headcountData.getComponents().stream().filter(c->c.getPaymentComponent().equals("PC938003") || c.getPaymentComponent().equals("PC938012")).mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble());
+                    //log.debug("getPo {} - Salary {}",  headcountData.getConvent());
+                    //log.debug("getPo {} - Salary {}",  headcountData.getLevel());
+                    String convenioNivel = headcountData.getConvent() + headcountData.getLevel();
+                    //log.debug("convenioNivel {}",convenioNivel);
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.performanceBonus(component, headcountData.getConvent(), headcountData.getPoName(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocial(component, headcountData.getConvent(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocialRetiro(component, headcountData.getConvent(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocialInfonavit(component, headcountData.getPoName(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.performanceBonus(component, headcountData.getPoName(), convenioNivel, projection.getPeriod(), projection.getRange());
+                    methodsMexico.seguroSocial(component, convenioNivel, projection.getPeriod(), projection.getRange());
+                    methodsMexico.seguroSocialRetiro(component, convenioNivel, projection.getPeriod(), projection.getRange());
+                    methodsMexico.seguroSocialInfonavit(component, convenioNivel, projection.getPeriod(), projection.getRange());
                     methodsMexico.primaVacacional(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.aportacionCtaSEREmpresa(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
                     methodsMexico.provisionAguinaldoCtaSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
@@ -1284,6 +1290,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .divisionName(e.getDivisionname())
                         .areaFuncional(e.getAf())
                         .cCostos(e.getCc())
+                        .convent(e.getConvent())
+                        .level(e.getLevel())
                         .build()).collect(Collectors.toList());
         //log.debug("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
@@ -1399,8 +1407,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             list.get(0).getFContra(),
                                             list.get(0).getAreaFuncional(),
                                             list.get(0).getDivisionName(),
-                                            list.get(0).getCCostos()
-
+                                            list.get(0).getCCostos(),
+                                            list.get(0).getConvent(),
+                                            list.get(0).getLevel()
                                     );
                                 }
                         )
@@ -1528,7 +1537,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         } // else if mexico
         else if (projection.getBu().equalsIgnoreCase("T. MEXICO")) {
             log.debug("nominal {}",nominal);
-            //COMPENSACION
             double totalCompensation = 0.0;
             double totalGratification = 0.0;
             //Gratificacion Extraordinaria

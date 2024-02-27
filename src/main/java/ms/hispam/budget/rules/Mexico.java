@@ -90,6 +90,8 @@ public class Mexico {
             String key = convenioBono.getConvenioNivel();
             convenioBonoCache.put(key, convenioBono);
         }
+       // log.info("ConvenioCache: {}", convenioCache);
+       // log.info("ConvenioBonoCache: {}", convenioBonoCache);
     }
 
     public List<RangeBuDetailDTO> getAllDaysVacation(List<RangeBuDetailDTO> rangeBu, Integer idBu) {
@@ -615,14 +617,11 @@ public class Mexico {
         }
     }
     public void performanceBonus(List<PaymentComponentDTO> component, String poName, String convenioBono, String period, Integer range) {
-
-        PaymentComponentDTO bonusComponent = new PaymentComponentDTO();
-        bonusComponent.setPaymentComponent("PERFORMANCE_BONUS");
-        bonusComponent.setAmount(BigDecimal.valueOf(0.0));
-        bonusComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
-        component.add(bonusComponent);
-       /* ConvenioBono convenioBonoData = convenioBonoCache.get("ANA8");
-        if (convenioBonoData != null) {
+        //log.debug("ConvenioBono: {}", convenioBono);
+        //log.debug("ConvenioBonoCache: {}", convenioBonoCache);
+        //ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
+        //log.debug("ConvenioBono: {}", convenioBonoData);
+        //if (convenioBonoData != null) {
             // Convert the component list to a map
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
@@ -633,8 +632,8 @@ public class Mexico {
             // If the level is 'V', no bonus is applied
             if (isV) {
                 // Get the bonus percentage from the ConvenioBono object
-                double bonusPercent = convenioBonoData.getBonoPercentage();
-
+               // double bonusPercent = convenioBonoData.getBonoPercentage();
+                double bonusPercent = 8.33;
                 double monthlyBonus = (salaryComponent.getAmount().doubleValue() * bonusPercent / 100) / 12;
 
                 // Create a new PaymentComponentDTO for the bonus
@@ -662,7 +661,7 @@ public class Mexico {
                 bonusComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(bonusComponent);
             }
-        }else {
+        /*}else {
             //ZERO
             PaymentComponentDTO bonusComponent = new PaymentComponentDTO();
             bonusComponent.setPaymentComponent("PERFORMANCE_BONUS");
@@ -673,11 +672,12 @@ public class Mexico {
     }
     public void seguroSocial(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
         // Obtén el convenio de la posición
-        Convenio convenio = convenioCache.get(convenioName);
+        //Convenio convenio = convenioCache.get(convenioName);
+        //log.debug("Convenio: {}", convenio);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social
-        if (convenio != null) {
-            double seguroSocial = convenio.getImssPercentage();
-
+        //if (convenio != null) {
+            //double seguroSocial = convenio.getImssPercentage();
+            double seguroSocial = 8.33;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
 
@@ -711,22 +711,22 @@ public class Mexico {
                 seguroSocialComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialComponent);
             }
-        }else {
+        /*}else {
             //ZERO
             PaymentComponentDTO seguroSocialComponent = new PaymentComponentDTO();
             seguroSocialComponent.setPaymentComponent("IMSS");
             seguroSocialComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialComponent);
-        }
+        }*/
     }
     public void seguroSocialRetiro(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
         // Obtén el convenio de la posición
-        Convenio convenio = convenioCache.get(convenioName);
+        //Convenio convenio = convenioCache.get(convenioName);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social (Retiro)
-        if (convenio != null) {
-            double seguroSocialRetiro = convenio.getRetiroPercentage();
-
+        //if (convenio != null) {
+            //double seguroSocialRetiro = convenio.getRetiroPercentage();
+             double seguroSocialRetiro = 8.33;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
@@ -761,22 +761,22 @@ public class Mexico {
                 seguroSocialRetiroComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialRetiroComponent);
             }
-        } else {
+        /*} else {
             //ZERO
             PaymentComponentDTO seguroSocialRetiroComponent = new PaymentComponentDTO();
             seguroSocialRetiroComponent.setPaymentComponent("IMSS_RETIRO");
             seguroSocialRetiroComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialRetiroComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialRetiroComponent);
-        }
+        }*/
     }
     public void seguroSocialInfonavit(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
         // Obtén el convenio de la posición
-        Convenio convenio = convenioCache.get(convenioName);
+        //Convenio convenio = convenioCache.get(convenioName);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social (Infonavit)
-        if (convenio != null) {
-            double seguroSocialInfonavit = convenio.getInfonavitPercentage();
-
+        //if (convenio != null) {
+            //double seguroSocialInfonavit = convenio.getInfonavitPercentage();
+            double seguroSocialInfonavit = 8.33;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
@@ -811,14 +811,14 @@ public class Mexico {
                 seguroSocialInfonavitComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialInfonavitComponent);
             }
-        } else {
+        /*} else {
             //ZERO
             PaymentComponentDTO seguroSocialInfonavitComponent = new PaymentComponentDTO();
             seguroSocialInfonavitComponent.setPaymentComponent("IMSS_INFONAVIT");
             seguroSocialInfonavitComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialInfonavitComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialInfonavitComponent);
-        }
+        }*/
     }
 
     /**
