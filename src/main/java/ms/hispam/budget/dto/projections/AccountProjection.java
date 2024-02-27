@@ -7,6 +7,5 @@ public interface AccountProjection {
     public String getVname();
     public String getAccount();
     public String getNameaccount();
-
     public Integer getVshow();
 }

@@ -201,7 +201,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                                     componente.setName(componente.getPaymentComponent());
                                 })
                                 .collect(Collectors.toList());
-
+                        log.debug("componentesValidosEnProyeccion {}",componentesValidosEnProyeccion);
                         // Crea una nueva proyección con los componentes válidos
                         return new ProjectionDTO(
                                 proyeccion.getIdssff(),
@@ -402,11 +402,21 @@ public class ProjectionServiceImpl implements ProjectionService {
                                 .forEach(m->m.setAmount(BigDecimal.ZERO)))));
 
 
+        log.debug("headcount {}",headcount);
+        Set<String> validComponents = componentesMap.entrySet().stream()
+                .filter(entry -> entry.getValue().getVshow() == 1)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
 
-        //Filter parameters by show
         headcount.forEach(p -> p.setComponents(p.getComponents().stream()
+                .filter(c -> validComponents.contains(c.getPaymentComponent()))
+                .collect(Collectors.toList())));
+        log.debug("headcount {}",headcount);
+        //Filter parameters by show
+        /*headcount.forEach(p -> p.setComponents(p.getComponents().stream()
                 .filter(c -> componentesMap.get(c.getPaymentComponent()) != null
-                        && componentesMap.get(c.getPaymentComponent()).getVshow() == 1).collect(Collectors.toList())));
+                        && componentesMap.get(c.getPaymentComponent()).getVshow() == 1)
+                .collect(Collectors.toList())));*/
         return headcount;
     }
 
@@ -644,6 +654,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.provisionSistemasComplementariosIAS(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.SGMM(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalarios);
                 });
+        //log.debug("headcount {}",headcount);
     }
     public double calcularTotalSalarios(List<ProjectionDTO> headcount) {
         return headcount.stream()
@@ -1392,7 +1403,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     //log.debug("nominaPaymentComponentLinksCache: {}", nominaPaymentComponentLinksCache);
                                     Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
                                     List<NominaProjection> filteredNominal = nominal.stream()
-                                            .filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
+                                            //.filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
                                     log.debug("filteredNominal: {}", filteredNominal);
@@ -1565,31 +1576,39 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .paymentComponent("COMPENSACION")
                     .amount(BigDecimal.valueOf(totalCompensation))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalCompensation)))
+                    .show(true)
                     .build();
             PaymentComponentDTO gratificationComponent = PaymentComponentDTO.builder()
                     .type(16)
                     .paymentComponent("GRATIFICACION")
                     .amount(BigDecimal.valueOf(totalGratification))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalGratification)))
+                    .show(true)
                     .build();
             PaymentComponentDTO gratificacionExtraordinariaComponent = PaymentComponentDTO.builder()
                     .type(16)
                     .paymentComponent("GRATIFICACION_EXTRAORDINARIA")
                     .amount(BigDecimal.valueOf(gratificacionExtraordinaria))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(gratificacionExtraordinaria)))
+                    .show(true)
                     .build();
             PaymentComponentDTO trabajoExtensoComponent = PaymentComponentDTO.builder()
                     .type(16)
                     .paymentComponent("TRABAJO_EXTENSO")
                     .amount(BigDecimal.valueOf(totalTrabajoExtenso))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalTrabajoExtenso)))
+                    .show(true)
                     .build();
-            List<PaymentComponentDTO> compensationComponents = new ArrayList<>();
+            projectionsComponent.add(compensationComponent);
+            projectionsComponent.add(gratificationComponent);
+            projectionsComponent.add(gratificacionExtraordinariaComponent);
+            projectionsComponent.add(trabajoExtensoComponent);
+            /*List<PaymentComponentDTO> compensationComponents = new ArrayList<>();
             compensationComponents.add(compensationComponent);
             compensationComponents.add(gratificationComponent);
             compensationComponents.add(gratificacionExtraordinariaComponent);
             compensationComponents.add(trabajoExtensoComponent);
-            projectionsComponent.addAll(compensationComponents);
+            projectionsComponent.addAll(compensationComponents);*/
         } else if (projection.getBu().equalsIgnoreCase("T. PERU")){
             String nominalCodeMoving="1247";
             String nominalCodeHousing="1212";
