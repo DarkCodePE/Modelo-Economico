@@ -537,43 +537,47 @@ public class Colombia {
            }
         }
     }
-    public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList) {
+    public void commission(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList, List<String> excludedPositionsBC, String position) {
         //commission param
-        ////log.debug("sumCommission -> {}", sumCommission);
-        Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
-        createCommissionCache(commissionList, period, range, cacheCommission);
-        ////log.debug("cacheCommission -> {}", cacheCommission);
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
-        PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
-        ////log.debug("pc938003Component -> {}", pc938003Component);
-        ////log.debug("pc938012Component -> {}", pc938012Component);
-        String category = findCategory(classEmployee);
-        double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
-        double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
-        double maxCommission = Math.max(pc938003Amount, pc938012Amount);
-        PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
-        ////log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
-        List<MonthProjection> projections = new ArrayList<>();
-        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-           //SI($I5<>"T";//AJ$10/12*($M5/SUMA($M$4:$M$15));0)
-           // //log.debug("projection.getMonth() -> {}", projection.getMonth());
-            BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
-            projection.setMonth(projection.getMonth());
-            if (commission.doubleValue() != 0.0){
-                if (maxCommission != 0.0) {
-                    BigDecimal result = commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue()));
-                    projection.setAmount(result);
-                } else {
+        boolean isExcluded = excludedPositionsBC.stream()
+                .anyMatch(excludedPosition -> excludedPosition.equals(position));
+        if (!isExcluded) {
+            ////log.debug("sumCommission -> {}", sumCommission);
+            Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
+            createCommissionCache(commissionList, period, range, cacheCommission);
+            ////log.debug("cacheCommission -> {}", cacheCommission);
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
+            PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
+            ////log.debug("pc938003Component -> {}", pc938003Component);
+            ////log.debug("pc938012Component -> {}", pc938012Component);
+            String category = findCategory(classEmployee);
+            double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+            double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            double maxCommission = Math.max(pc938003Amount, pc938012Amount);
+            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
+            ////log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                //SI($I5<>"T";//AJ$10/12*($M5/SUMA($M$4:$M$15));0)
+                // //log.debug("projection.getMonth() -> {}", projection.getMonth());
+                BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
+                projection.setMonth(projection.getMonth());
+                if (commission.doubleValue() != 0.0){
+                    if (maxCommission != 0.0) {
+                        BigDecimal result = commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue()));
+                        projection.setAmount(result);
+                    } else {
+                        projection.setAmount(BigDecimal.valueOf(0));
+                    }
+                }else{
                     projection.setAmount(BigDecimal.valueOf(0));
                 }
-            }else{
-                projection.setAmount(BigDecimal.valueOf(0));
+                projections.add(projection);
             }
-            projections.add(projection);
+            paymentComponentDTO.setProjections(projections);
+            component.add(paymentComponentDTO);
         }
-        paymentComponentDTO.setProjections(projections);
-        component.add(paymentComponentDTO);
         ////log.debug("component -> {}", "commission");
     }
     public void prodMonthPrime(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {

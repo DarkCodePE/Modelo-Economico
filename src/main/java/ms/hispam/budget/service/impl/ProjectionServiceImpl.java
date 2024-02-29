@@ -96,7 +96,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private ConvenioBonoRepository convenioBonoRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
-
+    private List<String> excludedPositionsBC = new ArrayList<>();
     private List<Operation> operations;
     private Peru methodsPeru;
     @Autowired
@@ -718,7 +718,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getClassEmployee());
-                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList);
+                    //methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList);
+                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList, excludedPositionsBC, headcountData.getPoName());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -1352,14 +1353,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             )
                             .findFirst()
                             .ifPresentOrElse(t->
-                      headcount.add(HeadcountProjection.builder()
-                                      .position(resp.get(HEADERPO).toString())
-                                      .idssff(String.valueOf(finalI))
-                                      .poname("")
-                                      .classEmp(resp.get("typeEmployee").toString())
-                                      .component(t.getComponent())
-                                      .amount(Double.parseDouble(resp.get(t.getName()).toString()))
-                              .build()),()->
+                            {
+                                String position = resp.get(HEADERPO).toString();
+                                headcount.add(HeadcountProjection.builder()
+                                        .position(position)
+                                        .idssff(String.valueOf(finalI))
+                                        .poname("")
+                                        .classEmp(resp.get("typeEmployee").toString())
+                                        .component(t.getComponent())
+                                        .amount(Double.parseDouble(resp.get(t.getName()).toString()))
+                                        .build());
+                                excludedPositionsBC.add(position);
+                            },()->
                       codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
                               r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
                           nominal.add(NominaProjection.builder()
