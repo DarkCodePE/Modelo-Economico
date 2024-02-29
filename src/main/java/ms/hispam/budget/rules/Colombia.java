@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersDTO;
 import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.dto.ProjectionDTO;
 import ms.hispam.budget.dto.projections.ParamFilterDTO;
 import ms.hispam.budget.util.Shared;
 import org.apache.commons.lang3.tuple.Pair;
@@ -1793,39 +1794,53 @@ public class Colombia {
         }
         //log.debug("component -> {}", "AuxilioDeTransporteAprendizSena");
     }
-    public void AuxilioConectividadDigital(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, String position) {
-        ////log.debug("position: " + position);
+    public void AuxilioConectividadDigital(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, String position, List<ProjectionDTO> excludedPositions, List<ParametersDTO> digitalConnectivityList) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+        Map<String, ParametersDTO> digitalConnectivityMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheDigitalConnectivity = new ConcurrentHashMap<>();
+        createCache(digitalConnectivityList, digitalConnectivityMap, cacheDigitalConnectivity,  (parameter, mapParameter) -> {});
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO digitalConnectivityBase = digitalConnectivityMap.get(nextPeriod);
+        double digitalConnectivityValueBase = digitalConnectivityBase != null ? digitalConnectivityBase.getValue() : 0.0;
         String category = findCategory(classEmployee);
         PaymentComponentDTO digitalConnectivityAidComponent = new PaymentComponentDTO();
         digitalConnectivityAidComponent.setPaymentComponent("AUXILIO_CONECTIVIDAD_DIGITAL");
         if (category.equals("P")) {
-            double digitalConnectivityAidValue = findExcludedPositions(position, parameters);
+            double digitalConnectivityAidValue = findExcludedPositions(position, digitalConnectivityValueBase, excludedPositions);
             digitalConnectivityAidComponent.setAmount(BigDecimal.valueOf(digitalConnectivityAidValue));
-            digitalConnectivityAidComponent.setProjections(Shared.generateMonthProjection(period,range,digitalConnectivityAidComponent.getAmount()));
-        }else {
+            List<MonthProjection> projections = new ArrayList<>();
+            double lastDigitalConnectivityAidValueProjection = digitalConnectivityAidValue;
+            for (MonthProjection monthProjection : salaryComponent.getProjections()) {
+                ParametersDTO digitalConnectivity = digitalConnectivityMap.get(monthProjection.getMonth());
+                if (digitalConnectivity != null) {
+                    double digitalConnectivityValue = digitalConnectivity.getValue();
+                    lastDigitalConnectivityAidValueProjection = findExcludedPositions(position, digitalConnectivityValue, excludedPositions);
+                }
+                MonthProjection projection = new MonthProjection();
+                projection.setMonth(monthProjection.getMonth());
+                projection.setAmount(BigDecimal.valueOf(lastDigitalConnectivityAidValueProjection));
+                projections.add(projection);
+            }
+            digitalConnectivityAidComponent.setProjections(projections);
+        } else {
             digitalConnectivityAidComponent.setAmount(BigDecimal.valueOf(0));
             digitalConnectivityAidComponent.setProjections(Shared.generateMonthProjection(period,range,digitalConnectivityAidComponent.getAmount()));
         }
-        ////log.debug("digitalConnectivityAidComponent: " + digitalConnectivityAidComponent);
         component.add(digitalConnectivityAidComponent);
-        //log.debug("component -> {}", "AuxilioConectividadDigital");
     }
-    public Double findExcludedPositions (String position, List<ParametersDTO> parameters) {
-        ParametersDTO digitalConnectivityAid = getParametersById(parameters, 51);
-        double digitalConnectivityAidValue = digitalConnectivityAid != null ? digitalConnectivityAid.getValue() : 0.0;
-        String[] excludedPositions = {
-                "Puestos Excluídos Conectividad Digital",
-                "Analista Centro de Experiencia",
-                "Analista asesor comercial PAP",
-                "Analista inventarios",
-                "Analista asesor comercial fuerza de venta prepago",
-                "profesional lider centro de experiencia",
-                "analista integral centro de experiencia"
-        };
-        if (Arrays.asList(excludedPositions).contains(position)) {
+    public Double findExcludedPositions (String position, Double digitalConnectivityValue, List<ProjectionDTO> excludedPositions) {
+        // Verificar si la posición está en la lista de posiciones excluidas
+        boolean isExcluded = excludedPositions.stream()
+                .anyMatch(excludedPosition -> excludedPosition.getPo().equals(position));
+        log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
+        if (isExcluded) {
             return 0.0;
         } else {
-            return digitalConnectivityAidValue;
+            return digitalConnectivityValue;
         }
     }
     public void commissionTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList) {

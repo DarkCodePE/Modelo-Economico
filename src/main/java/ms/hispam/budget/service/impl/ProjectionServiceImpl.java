@@ -242,13 +242,15 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Override
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
         Map<String, AccountProjection> componentesMap = new HashMap<>();
+        log.debug("projection {}",projection.getIdBu());
         List<AccountProjection> components =   getAccountsByBu(projection.getIdBu()) ;
+        log.debug("components {}",components.size());
         for (AccountProjection concept : components) {
             componentesMap.put(concept.getVcomponent(), concept);
         }
+        log.debug("componentesMap {}",componentesMap);
         List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
-
-
+        log.debug("headcount {}",headcount);
         //Agrupar por componente y agrupar por mes
         List<ResumenComponentDTO> componentMonthAmountMap = getResumenPorMonth(headcount,componentesMap).stream()
                 .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
@@ -666,6 +668,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .sum();
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
+        //getRangeBuDetails value is equal to 1
+        RangeBuDTO rangeBuByBU = projection.getTemporalParameters().stream()
+                .filter(r -> r.getIdBu().equals(projection.getIdBu()))
+                .findFirst()
+                .orElse(null);
+        log.debug("rangeBuByBU {}",rangeBuByBU);
+        List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : null;
+        log.debug("rangeBuDetail {}",rangeBuDetail);
+
+        List<ProjectionDTO> excludedPositions = headcount.stream()
+                .filter(h -> rangeBuDetail == null || rangeBuDetail.stream()
+                        .noneMatch(r -> r.getRange().equals(h.getPoName()) && r.getValue().equals(1.0) ))
+                .collect(Collectors.toList());
+
         Colombia methodsColombia = new Colombia();
         //SUMATORIA LOS COMPONENTES  PC938003 / PC938012
         double sum = headcount.parallelStream()
@@ -687,6 +703,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> commissionList = filterParametersByName(projection.getParameters(), "Comisiones (anual)");
         List<ParametersDTO> sodexoList = filterParametersByName(projection.getParameters(), "Sodexo");
         List<ParametersDTO> transportSubsidyList = filterParametersByName(projection.getParameters(), "Subsidio de Transporte");
+        //ParametersDTO digitalConnectivityAid = getParametersById(parameters, 51);
+            List<ParametersDTO> digitalConnectivityList = filterParametersByName(projection.getParameters(), "Auxilio Conectividad Digital");
         //log.debug("commissionList {}",commissionList);
         //log.debug("revisionEttList {}",revisionEttList);
         //log.debug("revisionList {}",revisionList);
@@ -719,7 +737,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.senaTemporales(component, projection.getParameters(),headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                     methodsColombia.uniqueBonus(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.AuxilioDeTransporteAprendizSena(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.AuxilioConectividadDigital(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName());
+                    methodsColombia.AuxilioConectividadDigital(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), excludedPositions, digitalConnectivityList);
                     methodsColombia.commissionTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),totalSum, commissionList);
                     methodsColombia.prodMonthPrimeTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacationTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -1277,6 +1295,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
+        //TODO: ADD MONTH BASE
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
         List<HeadcountProjection> headcount =  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,

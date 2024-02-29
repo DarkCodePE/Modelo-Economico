@@ -53,9 +53,11 @@ public class BuService {
                 .build();
     }
     private List<RangeBuDetailDTO> convertPivotBuRangeToRangeBuDetail(RangoBuPivot pivotBuRange, Integer buId) {
-        List<RangeBu> rangeBuList = rangeBuRepository.findByPivotBuRange_Id(pivotBuRange.getId()).stream().filter(rangeBu -> rangeBu.getPivotBuRange().getBu().getId().equals(buId)).collect(Collectors.toList());
+        List<RangeBu> rangeBuList = rangeBuRepository.findByPivotBuRange_Id(pivotBuRange.getId())
+                .stream()
+                .filter(rangeBu -> rangeBu.getPivotBuRange().getBu().getId().equals(buId))
+                         .collect(Collectors.toList());
         ////log.debug("rangeBuList: {}", rangeBuList);
-
         return rangeBuList.stream()
                 .map(rangeBu -> RangeBuDetailDTO.builder()
                         .id(rangeBu.getId())
@@ -64,5 +66,19 @@ public class BuService {
                         .value(rangeBu.getValueOfRange())
                         .build())
                 .collect(Collectors.toList());
+    }
+    //save rangeBuDetail by pivotBuRangeId
+    public RangeBuDetailDTO saveRangeBuDetail(RangeBuDetailDTO rangeBuDetailDTO) {
+        Optional<RangoBuPivot> pivotBuRange = pivotBuRangeRepository.findById(rangeBuDetailDTO.getIdPivot().longValue());
+        if (pivotBuRange.isPresent()) {
+            RangeBu rangeBu = new RangeBu();
+            rangeBu.setRange(rangeBuDetailDTO.getRange());
+            rangeBu.setValueOfRange(rangeBuDetailDTO.getValue());
+            rangeBu.setPivotBuRange(pivotBuRange.get());
+            rangeBu = rangeBuRepository.save(rangeBu);
+            rangeBuDetailDTO.setId(rangeBu.getId());
+            return rangeBuDetailDTO;
+        }
+        return null;
     }
 }
