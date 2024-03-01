@@ -2409,7 +2409,7 @@ public class Colombia {
                     MonthProjection projection = new MonthProjection();
                     projection.setMonth(primeProjection.getMonth());
                     if (totalAmount >= 10 * legalSalaryMinInternal) {
-                        log.info("totalAmount -> {}", totalAmount);
+                        //log.info("totalAmount -> {}", totalAmount);
                         projection.setAmount(BigDecimal.valueOf(totalAmount * 0.02));
                     } else {
                         projection.setAmount(BigDecimal.valueOf(0));
