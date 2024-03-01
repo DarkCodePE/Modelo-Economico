@@ -851,7 +851,7 @@ public class Colombia {
         double totalAmountBase = salary + overtime + surcharges + commission;
         transportSubsidyComponent.setAmount(BigDecimal.valueOf(totalAmountBase < 2 * legalSalaryMinInternal ? subsidyMinNextValue : 0));
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
-        BigDecimal lastValidSubsidyValue = BigDecimal.ZERO;
+        BigDecimal lastValidSubsidyValue = transportSubsidyComponent.getAmount();
         if (category.equals("P") && salaryType.equals("BASE")) {
             // Calcular el Subsidio de Transporte para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
@@ -1480,7 +1480,7 @@ public class Colombia {
         //log.debug("component -> {}", "companyPensionContribution");
     }
 
-    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, List<ParametersDTO> sodexoList, String position, List<ProjectionDTO> excludedPositions) {
+    public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, List<ParametersDTO> sodexoList, String position, List<RangeBuDetailDTO> excludedPositions) {
         Map<String, ParametersDTO> sodexoMap = new ConcurrentHashMap<>();
         Map<String, Double> cacheSodexo = new ConcurrentHashMap<>();
         createCache(sodexoList, sodexoMap, cacheSodexo,  (parameter, mapParameter) -> {});
@@ -1509,6 +1509,7 @@ public class Colombia {
         //log.info("sodexoMap -> {}", period);
         ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
         double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
+        log.info("sodexoValueBase -> {}", sodexoValueBase);
         double sodexoValueExclusions =  findExcludedPositions(position, sodexoValueBase, excludedPositions);
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
@@ -1517,18 +1518,14 @@ public class Colombia {
         if (category.equals("P")) {
             // Calcular el valor de Sodexo para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
-            double lastValidSodexoValue = 0.0;
+            double lastValidSodexoValue = sodexoComponent.getAmount().doubleValue();
             if (salaryComponent != null && salaryComponent.getProjections() != null){
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
                     ParametersDTO sodexo = sodexoMap.get(primeProjection.getMonth());
                     String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
                     double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
                     double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoValue, excludedPositions);
-                    int sodexoMonth = 0;
-                    if (periodSodexo.length() >= 6) {
-                        // Obtén el mes del período sodexo
-                        sodexoMonth = Integer.parseInt(periodSodexo.substring(4, 6));
-                    }
+                    log.info("sodexoValueExclusionsProjection -> {}", sodexoValueExclusionsProjection);
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
                             .filter(Objects::nonNull)
@@ -1537,14 +1534,9 @@ public class Colombia {
                             .mapToDouble(projection -> projection.getAmount().doubleValue())
                             .sum();
                     double sodexoContribution;
-                    if (sodexoMonth != 0 && Integer.parseInt(primeProjection.getMonth().substring(4, 6)) >= sodexoMonth) {
-                        if (totalAmount < 2 * legalSalaryMinInternal) {
-                            sodexoContribution = sodexoValueExclusionsProjection;
-                            lastValidSodexoValue = sodexoValueExclusionsProjection;
-                        } else {
-                            sodexoContribution = 0;
-                            lastValidSodexoValue = 0;
-                        }
+                    if (totalAmount < 2 * legalSalaryMinInternal) {
+                        sodexoContribution = sodexoValueExclusionsProjection;
+                        lastValidSodexoValue = sodexoValueExclusionsProjection;
                     } else {
                         sodexoContribution = lastValidSodexoValue;
                     }
@@ -1832,7 +1824,7 @@ public class Colombia {
         }
         //log.debug("component -> {}", "AuxilioDeTransporteAprendizSena");
     }
-    public void AuxilioConectividadDigital(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, String position, List<ProjectionDTO> excludedPositions, List<ParametersDTO> digitalConnectivityList) {
+    public void AuxilioConectividadDigital(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, String position, List<RangeBuDetailDTO> excludedPositions, List<ParametersDTO> digitalConnectivityList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         Map<String, ParametersDTO> digitalConnectivityMap = new ConcurrentHashMap<>();
@@ -1870,11 +1862,11 @@ public class Colombia {
         }
         component.add(digitalConnectivityAidComponent);
     }
-    public Double findExcludedPositions (String position, Double digitalConnectivityValue, List<ProjectionDTO> excludedPositions) {
+    public Double findExcludedPositions (String position, Double digitalConnectivityValue, List<RangeBuDetailDTO> excludedPositions) {
         // Verificar si la posición está en la lista de posiciones excluidas
         boolean isExcluded = excludedPositions.stream()
-                .anyMatch(excludedPosition -> excludedPosition.getPo().equals(position));
-        log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
+                .anyMatch(excludedPosition -> excludedPosition.getRange().equals(position) && excludedPosition.getValue() == 0);
+        //log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
         if (isExcluded) {
             return 0.0;
         } else {
@@ -2534,5 +2526,45 @@ public class Colombia {
             component.add(feeComponent);
         }
         //log.debug("component -> {}", "feeTemporaries");
+    }
+    public void socialSecurityUniqueBonus(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range, List<ParametersDTO> ssBonusList) {
+            Map<String, ParametersDTO> ssBonusMap = new ConcurrentHashMap<>();
+            Map<String, Double> cacheBonus = new ConcurrentHashMap<>();
+            createCache(ssBonusList, ssBonusMap, cacheBonus, ((parameter, mapParameter) -> {}));
+            // Obtener el valor de "Bonificación Única"
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO uniqueBonusComponent = componentMap.get("UNIQUE_BONUS");
+            // Use the period to get the ParametersDTO from the sodexoMap
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            // Obtener el valor del parámetro {SS Bono}
+            ParametersDTO ssBonusParameterBase = ssBonusMap.get(nextPeriod);
+            double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue() : 0.0;
+            // Calcular el valor de "Seguridad Social Bonificación Única"
+            double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
+            // Crear el componente de pago "Seguridad Social Bonificación Única"
+            PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
+            socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
+            socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
+            String category = findCategory(classEmployee);
+            if (category.equals("P")) {
+                List<MonthProjection> projections = new ArrayList<>();
+                for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
+                    ParametersDTO bonusParameter = ssBonusMap.get(primeProjection.getMonth());
+                    double bonus = bonusParameter != null ? bonusParameter.getValue() : 0.0;
+                    MonthProjection projection = new MonthProjection();
+                    projection.setMonth(primeProjection.getMonth());
+                    projection.setAmount(BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus));
+                    projections.add(projection);
+                }
+                socialSecurityUniqueBonusComponent.setProjections(projections);
+            }else {
+                socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(0));
+                socialSecurityUniqueBonusComponent.setProjections(Shared.generateMonthProjection(period, range, socialSecurityUniqueBonusComponent.getAmount()));
+            }
+            // Añadir el componente de pago a la lista de componentes
+            component.add(socialSecurityUniqueBonusComponent);
     }
 }
