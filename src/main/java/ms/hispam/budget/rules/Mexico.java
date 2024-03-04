@@ -326,7 +326,7 @@ public class Mexico {
             }else {
                 daysVacations = getDaysVacationList();
             }
-            if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
+            //if (daysVacations.isEmpty()) daysVacations = getDaysVacationList();
             Map<String, RangeBuDetailDTO> daysVacationsMap = daysVacations.stream()
                     .collect(Collectors.toMap(RangeBuDetailDTO::getRange, Function.identity()));
             int vacationsDays = getCachedVacationsDays(seniority, daysVacationsMap);
@@ -387,16 +387,26 @@ public class Mexico {
         );
     }
     private int getCachedVacationsDays(long seniority, Map<String, RangeBuDetailDTO> daysVacationsMap) {
-        String seniorityKey = String.valueOf(seniority);
-        return vacationsDaysCache.computeIfAbsent(seniorityKey, key -> {
-            RangeBuDetailDTO daysVacation = daysVacationsMap.get(key);
-            if (daysVacation != null) {
-                return daysVacation.getValue().intValue();
+        return vacationsDaysCache.computeIfAbsent(String.valueOf(seniority), key -> {
+            for (Map.Entry<String, RangeBuDetailDTO> entry : daysVacationsMap.entrySet()) {
+                if (isSeniorityInRange(seniority, entry.getKey())) {
+                    return entry.getValue().getValue().intValue();
+                }
             }
             return 0;
         });
     }
-
+    private boolean isSeniorityInRange(long seniority, String range) {
+        String[] bounds = range.split(" a ");
+        if (bounds.length == 2) {
+            long lowerBound = Long.parseLong(bounds[0]);
+            long upperBound = Long.parseLong(bounds[1]);
+            return seniority >= lowerBound && seniority <= upperBound;
+        } else if (bounds.length == 1) {
+            return seniority == Long.parseLong(bounds[0]);
+        }
+        return false;
+    }
     public void participacionTrabajadores(List<PaymentComponentDTO> component,  List<ParametersDTO>  employeeParticipationList, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
         // Convierte la lista de componentes a un mapa
         Map<String, PaymentComponentDTO> componentMap = component.stream()
@@ -889,6 +899,7 @@ public class Mexico {
         }
     }
     public void aportacionCtaSEREmpresa(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, String poName, LocalDate birthDate, LocalDate hiringDate) {
+        Map<String, ParametersDTO>  parametersMap = new ConcurrentHashMap<>();
        // //log.debug("birthDate: {}", birthDate);
         // Crear el mapa de componentes
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);

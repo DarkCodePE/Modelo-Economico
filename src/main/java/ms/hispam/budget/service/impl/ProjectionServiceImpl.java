@@ -635,6 +635,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
         List<ParametersDTO> lifeInsuranceList = filterParametersByName(projection.getParameters(), "Seguro de Vida");
         List<ParametersDTO> mothProportionParam = filterParametersByName(projection.getParameters(), "Proporción Mensual");
+        //%Aporte Cta SER empresa
+        List<ParametersDTO> aportacionCtaSEREmpresa = filterParametersByName(projection.getParameters(), "Aportación Cta SER Empresa");
         //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
                 .parallel()
@@ -660,6 +662,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.provisionPrimaVacacionalSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.provisionFondoAhorro(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.compensacion(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
+                    methodsMexico.disponibilidad(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
                     methodsMexico.disponibilidad(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
                     methodsMexico.gratificacion(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.gratificacionExtraordinaria(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
@@ -1699,8 +1702,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             double ayudaMudanza = 0.0;
             //Importe vida cara
             double importeVidaCara = 0.0;
+          /*  List<NominaProjection> nominalBySSFF = nominal.stream().filter(g->g.getIdssff()
+                    .equalsIgnoreCase("1001906")).collect(Collectors.toList());*/
             List<NominaProjection> nominalBySSFF = nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList());
+            //log.info("ssff {}",list.get(0).getIdssff());
             if (!nominalBySSFF.isEmpty()) {
                 for (NominaProjection h : nominal) {
                     List<NominaPaymentComponentLink> nominaPaymentComponentLinks = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
@@ -1717,28 +1723,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         gratificacionExtraordinaria = nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("GRATIFICACION_EXTRAORDINARIA"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        totalTrabajoExtenso = nominaPaymentComponentLinks.stream()
+                        totalTrabajoExtenso += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("TRABAJO_EXTENSO"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        totalTrabajoGravable = nominaPaymentComponentLinks.stream()
+                        totalTrabajoGravable += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("TRABAJO_GRAVABLE"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        parteExentaFestivoLaborado = nominaPaymentComponentLinks.stream()
+                        parteExentaFestivoLaborado += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PARTE_EXENTA_FESTIVO_LABORADO"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        parteGravableFestivoLaborado = nominaPaymentComponentLinks.stream()
+                        parteGravableFestivoLaborado += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PARTE_GRAVABLE_FESTIVO_LABORADO"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        primaDominicalGravable = nominaPaymentComponentLinks.stream()
+                        primaDominicalGravable += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PRIMA_DOMINICAL_GRAVABLE"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        ayudaMudanza = nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("MOVING"))
+                        ayudaMudanza += nominaPaymentComponentLinks.stream()
+                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("MUDANZA"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        importeVidaCara = nominaPaymentComponentLinks.stream()
+                        importeVidaCara += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("VIDA_CARA"))
                                 .mapToDouble(n -> h.getImporte()).sum();
-                        primaDominicalExenta = nominaPaymentComponentLinks.stream()
+                        primaDominicalExenta += nominaPaymentComponentLinks.stream()
                                 .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PRIMA_DOMINICAL_EXENTA"))
                                 .mapToDouble(n -> h.getImporte()).sum();
                     }
@@ -1938,7 +1944,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 projectionsComponent.add(importeVidaCaraComponent);
                 projectionsComponent.add(primaDominicalExentaComponent);
             }
-            log.info("projectionsComponent {}",projectionsComponent);
+            //log.info("projectionsComponent {}",projectionsComponent);
         } else if (projection.getBu().equalsIgnoreCase("T. PERU")){
             String nominalCodeMoving="1247";
             String nominalCodeHousing="1212";
