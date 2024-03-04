@@ -443,7 +443,7 @@ public class Colombia {
         List<String> salaryComponents = Arrays.asList("SALARY", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> salaryComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
 
         // Itera sobre cada componente de salario
         for (String salaryComponentName : salaryComponents) {
@@ -670,10 +670,12 @@ public class Colombia {
     public void consolidatedVacation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
         // Obtén los componentes necesarios para el cálculo
-        List<String> vacationComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION","SALARY_PRA","TEMPORAL_SALARY");
+        List<String> vacationComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
+        log.info("vacationComponents -> {}", component);
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
+        log.info("componentMap -> {}", componentMap);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         if (category.equals("P")){
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -726,7 +728,7 @@ public class Colombia {
         List<String> severanceComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION","SALARY_PRA","TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> severanceComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         if (category.equals("P") && salaryComponent.getSalaryType().equals("BASE")) {
             // Obtén los componentes necesarios para el cálculo
@@ -824,7 +826,7 @@ public class Colombia {
         List<String> subsidyComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION", "SALARY_PRA", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> subsidyComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
         double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
@@ -867,8 +869,8 @@ public class Colombia {
                 double subsidyMinInternalValue = subsidyMinInternalParam != null ? subsidyMinInternalParam.getValue() : 0.0;
                 // Calcular el costo del Subsidio de Transporte
                 BigDecimal transportSubsidyCost;
-                if (totalAmount.doubleValue() < 2 * legalSalaryMinInternal) {
-                    transportSubsidyCost = BigDecimal.valueOf(subsidyMinInternalValue);
+                if (subsidyMinInternalParam != null) {
+                    transportSubsidyCost = totalAmount.doubleValue() < 2 * legalSalaryMinInternal ? BigDecimal.valueOf(subsidyMinInternalValue) : lastValidSubsidyValue;
                     lastValidSubsidyValue = transportSubsidyCost;
                 } else {
                     transportSubsidyCost = lastValidSubsidyValue;
@@ -893,7 +895,7 @@ public class Colombia {
         List<String> boxComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION", "SALARY_PRA", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> boxComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -950,7 +952,7 @@ public class Colombia {
         List<String> healthComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION", "SALARY_PRA", "TEMPORAL_SALARY");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> healthComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         if (category.equals("APR") || category.equals("PRA")){
             salaryComponent = componentMap.get(SALARY_PRA);
@@ -1062,7 +1064,7 @@ public class Colombia {
         List<String> riskComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -1148,7 +1150,7 @@ public class Colombia {
         List<String> riskComponents = Arrays.asList("SALARY_PRA", "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY_PRA");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -1210,7 +1212,7 @@ public class Colombia {
         List<String> riskComponents = Arrays.asList(TEMPORAL_SALARY, "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -1271,7 +1273,7 @@ public class Colombia {
         List<String> icbfComponents = Arrays.asList(SALARY, "HHEE", "SURCHARGES", "COMMISSION", SALARY_PRA);
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> icbfComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
         if (category.equals("APR") || category.equals("PRA")){
             salaryComponent = componentMap.get(SALARY_PRA);
@@ -1346,7 +1348,7 @@ public class Colombia {
         List<String> senaComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> senaComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         if (category.equals("APR") || category.equals("PRA")){
             salaryComponent = componentMap.get(SALARY_PRA);
@@ -1413,7 +1415,7 @@ public class Colombia {
         List<String> pensionComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> pensionComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -1491,7 +1493,7 @@ public class Colombia {
         List<String> sodexoComponents = Arrays.asList("SALARY", "COMMISSION", "HHEE", "SURCHARGES");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> sodexoComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -1525,7 +1527,7 @@ public class Colombia {
                     String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
                     double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
                     double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoValue, excludedPositions);
-                    log.info("sodexoValueExclusionsProjection -> {}", sodexoValueExclusionsProjection);
+                    log.info("position -> {}, sodexoValueExclusionsProjection -> {}, moth -> {}", position, sodexoValueExclusionsProjection, primeProjection.getMonth());
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
                             .filter(Objects::nonNull)
@@ -1533,10 +1535,14 @@ public class Colombia {
                             .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                             .mapToDouble(projection -> projection.getAmount().doubleValue())
                             .sum();
-                    double sodexoContribution;
-                    if (totalAmount < 2 * legalSalaryMinInternal) {
-                        sodexoContribution = sodexoValueExclusionsProjection;
-                        lastValidSodexoValue = sodexoValueExclusionsProjection;
+                    double sodexoContribution = 0.0;
+                    if (sodexo != null) {
+                        if (totalAmount < 2 * legalSalaryMinInternal) {
+                            sodexoContribution = sodexoValueExclusionsProjection;
+                            lastValidSodexoValue = sodexoContribution;
+                        } else {
+                            sodexoContribution = lastValidSodexoValue;
+                        }
                     } else {
                         sodexoContribution = lastValidSodexoValue;
                     }
@@ -1567,7 +1573,7 @@ public class Colombia {
         List<String> newComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> newComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
 
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -1657,7 +1663,7 @@ public class Colombia {
         List<String> newComponents = Arrays.asList("SALARY_TEMP", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> newComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
 
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY_TEMP");
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -1772,7 +1778,7 @@ public class Colombia {
             List<String> transportSubsidyComponents = Arrays.asList("SALARY_PRA", "HHEE", "SURCHARGES", "COMMISSION");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> transportSubsidyComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get("SALARY_PRA");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -1788,6 +1794,7 @@ public class Colombia {
             if (totalAmountBase > 0){
                 transportSubsidyComponent.setAmount(totalAmountBase <= 2 * legalSalaryMinInternal ? BigDecimal.valueOf(legalSalaryMinInternal) : BigDecimal.ZERO);
                 // Calcular el Auxilio de Transporte Aprendiz Sena para cada proyección
+                double lastTransportSubsidyValue = transportSubsidyComponent.getAmount().doubleValue();
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection monthProjection : componentMap.get("SALARY_PRA").getProjections()) {
                     BigDecimal totalAmount = transportSubsidyComponents.stream()
@@ -1803,8 +1810,9 @@ public class Colombia {
                     BigDecimal transportSubsidy;
                     if (totalAmount.doubleValue() <= 2 * legalSalaryMinInternal) {
                         transportSubsidy = subsidyTransport != null ? BigDecimal.valueOf(subsidyTransport.getValue()) : BigDecimal.ZERO;
+                        lastTransportSubsidyValue = transportSubsidy.doubleValue();
                     } else {
-                        transportSubsidy = BigDecimal.ZERO;
+                        transportSubsidy =  BigDecimal.valueOf(lastTransportSubsidyValue);
                     }
                     projection.setAmount(transportSubsidy);
                     projections.add(projection);
@@ -1962,7 +1970,7 @@ public class Colombia {
             //log.debug("component: " + component);
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> existing));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2005,7 +2013,7 @@ public class Colombia {
     List<String> severanceComponents = Arrays.asList(TEMPORAL_SALARY, "HHEE", "SURCHARGES", COMMISSION_TEMP);
     Map<String, PaymentComponentDTO> componentMap = component.stream()
             .filter(c -> severanceComponents.contains(c.getPaymentComponent()))
-            .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+            .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
     PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
         if (category.equals("T")) {
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -2085,7 +2093,7 @@ public class Colombia {
             List<String> subsidyComponents = Arrays.asList(TEMPORAL_SALARY, "HHEE", "SURCHARGES", COMMISSION_TEMP);
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> subsidyComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2134,7 +2142,7 @@ public class Colombia {
             List<String> healthComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> healthComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2199,7 +2207,7 @@ public class Colombia {
             List<String> riskComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
 
             PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -2265,7 +2273,7 @@ public class Colombia {
            List<String> boxComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
            Map<String, PaymentComponentDTO> componentMap = component.stream()
                    .filter(c -> boxComponents.contains(c.getPaymentComponent()))
-                   .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                   .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
            PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2317,7 +2325,7 @@ public class Colombia {
             List<String> icbfComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> icbfComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2371,7 +2379,7 @@ public class Colombia {
             List<String> senaComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> senaComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2433,7 +2441,7 @@ public class Colombia {
             List<String> pensionComponents = Arrays.asList("TEMPORAL_SALARY", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> pensionComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO salaryComponent = componentMap.get("TEMPORAL_SALARY");
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
             PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
@@ -2485,7 +2493,7 @@ public class Colombia {
             List<String> feeComponents = Arrays.asList("TEMPORAL_SALARY", "COMMISSION_TEMP", "MONTHLY_PRIME_PROVISION_TEMP", "CONSOLIDATED_VACATION_TEMP", "CONSOLIDATED_SEVERANCE_TEMP", "CONSOLIDATED_SEVERANCE_INTEREST_TEMP", "TRANSPORT_SUBSIDY_TEMP", "COMPANY_HEALTH_CONTRIBUTION_TEMP", "COMPANY_RISK_CONTRIBUTION_TEMP", "CONTRIBUTION_BOX_TEMP", "ICBF_CONTRIBUTION_TEMP", "SENA_CONTRIBUTION_TEMP", "COMPANY_PENSION_CONTRIBUTION_TEMP");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> feeComponents.contains(c.getPaymentComponent()))
-                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             // Calculate the total base
             double totalAmountBase = feeComponents.stream()
                     .map(componentMap::get)
