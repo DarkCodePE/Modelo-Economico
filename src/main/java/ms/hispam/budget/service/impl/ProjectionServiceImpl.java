@@ -745,8 +745,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
-                .parallel()
+                .filter(e->e.getPo().equals("CE99999"))
                 .forEach(headcountData -> {
+                    log.info(headcountData.getPo());
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList,  dataMapTemporal, headcountData.getPo());
@@ -1375,45 +1376,77 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 Map<String,Object> resp = projection.getBc().getData().get(i);
                 String pos = resp.get(HEADERPO).toString();
                 dataMapTemporal.put(pos, new HashMap<>(resp));
-                for (Map.Entry<String, Object> entry : resp.entrySet()) {
-                    int finalI = i;
-                    projection.getPaymentComponent()
-                            .stream()
-                            .filter(
-                                    t-> {
-                                        //log.debug("t.getName() {}",t.getName());
-                                        //log.debug("entry.getKey() {}",entry.getKey());
-                                        ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
-                                        return  !entry.getKey().equals(HEADERPO) &&
-                                                t.getName().equalsIgnoreCase(entry.getKey());
-                                    }
-                            )
-                            .findFirst()
-                            .ifPresentOrElse(t->
-                            {
-                                String position = resp.get(HEADERPO).toString();
-                                headcount.add(HeadcountProjection.builder()
-                                        .position(position)
-                                        .idssff(String.valueOf(finalI))
-                                        .poname("")
-                                        .classEmp(resp.get("typeEmployee").toString())
-                                        .component(t.getComponent())
-                                        .amount(Double.parseDouble(resp.get(t.getName()).toString()))
-                                        .build());
-                                excludedPositionsBC.add(position);
-                            },()->
-                      codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
-                              r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
-                          nominal.add(NominaProjection.builder()
-                                          .idssff(String.valueOf(finalI))
-                                          .codeNomina(q.getCodeNomina())
-                                        .importe(Double.parseDouble(resp.get(q.getName()).toString()))
-                                  .build())
-                      )
-                  );
-                }
-            }
 
+                    for (Map.Entry<String, Object> entry : resp.entrySet()) {
+                        int finalI = i;
+                        projection.getPaymentComponent()
+                                .stream()
+                                .filter(
+                                        t-> {
+                                            //log.debug("t.getName() {}",t.getName());
+                                            //log.debug("entry.getKey() {}",entry.getKey());
+                                            ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                            return  !entry.getKey().equals(HEADERPO) &&
+                                                    t.getName().equalsIgnoreCase(entry.getKey());
+                                        }
+                                )
+                                .findFirst()
+                                .ifPresentOrElse(t->
+                                        {
+                                            String position = resp.get(HEADERPO).toString();
+                                            headcount.add(HeadcountProjection.builder()
+                                                    .position(position)
+                                                    .idssff(String.valueOf(finalI))
+                                                    .poname("")
+                                                    .classEmp(resp.get("typeEmployee").toString())
+                                                    .component(t.getComponent())
+                                                    .amount(Double.parseDouble(resp.get(t.getName()).toString()))
+                                                    .build());
+                                            excludedPositionsBC.add(position);
+                                        },()->
+                                                codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
+                                                        r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
+                                                        nominal.add(NominaProjection.builder()
+                                                                .idssff(String.valueOf(finalI))
+                                                                .codeNomina(q.getCodeNomina())
+                                                                .importe(Double.parseDouble(resp.get(q.getName()).toString()))
+                                                                .build())
+                                                )
+                                );
+                    }
+
+
+               /* else{
+                    List<HeadcountProjection> headcountVacantes =
+                            headcount.stream().filter(r->r.getPosition().equals(pos)).collect(Collectors.toList());
+                    for (Map.Entry<String, Object> entry : resp.entrySet()) {
+                        projection.getPaymentComponent()
+                                .stream()
+                                .filter(
+                                        t-> {
+                                            //log.debug("t.getName() {}",t.getName());
+                                            //log.debug("entry.getKey() {}",entry.getKey());
+                                            ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                            return  !entry.getKey().equals(HEADERPO) &&
+                                                    t.getName().equalsIgnoreCase(entry.getKey());
+                                        }
+                                )
+                                .findFirst()
+                                .ifPresentOrElse(t->
+                                        headcountVacantes.stream().filter(r->r.getComponent().equals(t.getComponent())).findFirst().ifPresent(
+                                                q-> q.setAmount(Double.parseDouble(resp.get(t.getName()).toString()))
+                                        ),()->
+                                        codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
+                                                r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(y->
+                                                nominal.stream().filter(r->r.getCodeNomina().equals(y.getCodeNomina())).findFirst().ifPresent(
+                                                        q-> q.setImporte(Double.parseDouble(resp.get(y.getName()).toString()))
+                                                )
+                                ));
+                    }
+
+
+                }*/
+            }
         }
         //log.debug("headcount -> {}", headcount);
         //log.debug("headcountTemporal -> {}",headcountTemporal);
@@ -1470,6 +1503,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
                                     //log.debug("filteredNominal: {}", filteredNominal);
+
+
                                     addNominal(projection,projectionsComponent,filteredNominal,codeNominals,list);
                                     //log.info("projectionsComponent {}",projectionsComponent);
                                     return new ProjectionDTO(
@@ -1490,6 +1525,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         )
                 ))
                 .values());
+
+
+
+
 
     }
 
