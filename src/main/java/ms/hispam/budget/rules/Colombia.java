@@ -671,11 +671,11 @@ public class Colombia {
         String category = findCategory(classEmployee);
         // Obtén los componentes necesarios para el cálculo
         List<String> vacationComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
-        log.info("vacationComponents -> {}", component);
+        //log.info("vacationComponents -> {}", component);
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
-        log.info("componentMap -> {}", componentMap);
+        //log.info("componentMap -> {}", componentMap);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         if (category.equals("P")){
             PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
@@ -704,7 +704,7 @@ public class Colombia {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 // Calcular el costo del Consolidado de Vacaciones
-                BigDecimal vacationCost = BigDecimal.valueOf(totalAmount.doubleValue() / 24);
+                BigDecimal vacationCost = BigDecimal.valueOf(totalAmount.doubleValue() / 30);
                 //log.debug("vacationCost -> {}", vacationCost);
                 // Crear una proyección para este mes
                 MonthProjection projection = new MonthProjection();
@@ -1511,7 +1511,7 @@ public class Colombia {
         //log.info("sodexoMap -> {}", period);
         ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
         double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
-        log.info("sodexoValueBase -> {}", sodexoValueBase);
+        //log.info("sodexoValueBase -> {}", sodexoValueBase);
         double sodexoValueExclusions =  findExcludedPositions(position, sodexoValueBase, excludedPositions);
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
@@ -1527,7 +1527,7 @@ public class Colombia {
                     String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
                     double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
                     double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoValue, excludedPositions);
-                    log.info("position -> {}, sodexoValueExclusionsProjection -> {}, moth -> {}", position, sodexoValueExclusionsProjection, primeProjection.getMonth());
+                    //log.info("position -> {}, sodexoValueExclusionsProjection -> {}, moth -> {}", position, sodexoValueExclusionsProjection, primeProjection.getMonth());
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
                             .filter(Objects::nonNull)
