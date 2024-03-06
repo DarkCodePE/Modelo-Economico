@@ -1212,68 +1212,6 @@ public class Colombia {
         component.add(riskContributionComponent);
         log.debug("component -> {}", "companyRiskContributionTrainee");
     }
-    public void companyRiskContributionTemporaries(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        String category = findCategory(classEmployee);
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        // Obtén los componentes necesarios para el cálculo
-        //TODO : CAMBIAR COMMISION POR COMMISSION TEMPORAL
-        List<String> riskComponents = Arrays.asList(TEMPORAL_SALARY, "HHEE", "SURCHARGES", "COMMISSION");
-        Map<String, PaymentComponentDTO> componentMap = component.stream()
-                .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
-        PaymentComponentDTO salaryComponent = componentMap.get(TEMPORAL_SALARY);
-        PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
-        PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
-        PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
-        double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
-        double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
-        double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
-        double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
-        double totalAmountBase = salary + overtime + surcharges + commission;
-        // Crear un nuevo PaymentComponentDTO para el Aporte Riesgo Empresa
-        PaymentComponentDTO riskContributionComponent = new PaymentComponentDTO();
-        riskContributionComponent.setPaymentComponent("APORTE_RIESGO_EMPRESA_TEMPORALES");
-        riskContributionComponent.setAmount(totalAmountBase > 25 * legalSalaryMinInternal ? BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.00881) : BigDecimal.valueOf(totalAmountBase * 0.00881));
-        if (category.equals("T")) {
-            // Calcular el Aporte Riesgo Empresa para cada proyección
-            List<MonthProjection> projections = new ArrayList<>();
-            if (salaryComponent != null && salaryComponent.getProjections() != null) {
-                for (MonthProjection riskProjection : salaryComponent.getProjections()) {
-                    double totalAmount = riskComponents.stream()
-                            .map(componentMap::get)
-                            .filter(Objects::nonNull)
-                            .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
-                            .filter(projection -> projection.getMonth().equals(riskProjection.getMonth()))
-                            .mapToDouble(projection -> projection.getAmount().doubleValue())
-                            .sum();
-
-                    // Calcular el Aporte Riesgo Empresa
-                    double riskContribution;
-                    if (totalAmount > 25 * legalSalaryMinInternal) {
-                        riskContribution = 25 * legalSalaryMinInternal * 0.00881;
-                    } else {
-                        riskContribution = totalAmount * 0.00881;
-                    }
-
-                    // Crear una proyección para este mes
-                    MonthProjection projection = new MonthProjection();
-                    projection.setMonth(riskProjection.getMonth());
-                    projection.setAmount(BigDecimal.valueOf(riskContribution));
-                    projections.add(projection);
-                }
-                riskContributionComponent.setProjections(projections);
-            }else {
-                riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-                riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
-            }
-        }else {
-            riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-            riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
-        }
-        component.add(riskContributionComponent);
-        log.debug("component -> {}", "companyRiskContributionTemporaries");
-    }
     public void icbfContribution(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
