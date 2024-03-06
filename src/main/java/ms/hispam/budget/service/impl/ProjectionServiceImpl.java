@@ -338,7 +338,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .rosseta(rosseta)
                     .tCambio(new BigDecimal(tCambio))
                     .build();
-        }catch (ConversionFailedException ex) {
+       }catch (ConversionFailedException ex) {
             log.debug("El valor proporcionado no es un número decimal válido: ", ex);
             throw new FormatAmountException("El valor proporcionado no es un número decimal válido");
         }catch (NumberFormatException ex){
@@ -347,6 +347,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             throw ex;
         } catch (Exception ex){
             log.error("Error al generar la proyección",ex);
+
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección", ex);
         }
     }
