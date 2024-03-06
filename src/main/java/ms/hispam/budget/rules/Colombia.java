@@ -113,7 +113,6 @@ public class Colombia {
         ////log.debug("period -> {}", period);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
-        yearMonth = yearMonth.plusMonths(1);
         period = yearMonth.format(formatter);
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(period) == null ? 0.0 : cacheCommission.get(period));
         if (!classEmployee.equals("T") && maxCommission != 0.0) {
@@ -224,7 +223,7 @@ public class Colombia {
         List<String> allMonths = new ArrayList<>();
         String currentYear = period.substring(0, 4);
         String currentMonth = period.substring(4, 6);
-        for (int i = 0; i < range + 1; i++) {
+        for (int i = 0; i < range ; i++) {
             allMonths.add(currentYear + currentMonth);
             int monthInt = Integer.parseInt(currentMonth);
             monthInt++;
@@ -356,7 +355,8 @@ public class Colombia {
             if (pc938001Component != null && pc938001Component.getAmount().doubleValue() != 0.0) {
                 double highestAmountSoFar = Math.max(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
                 PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryTemporalComponent(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue(), classEmployee, period, range, category, TEMPORAL_SALARY).get("salaryComponent");
-                if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
+
+                /*if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
                     if (paymentComponentDTO.getProjections() != null){
                         for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                             Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
@@ -373,7 +373,7 @@ public class Colombia {
                             }
                         }
                     }
-                }
+                }*/
                 component.add(paymentComponentDTO);
             }else {
                 PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
@@ -1839,28 +1839,14 @@ public class Colombia {
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
             PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
             PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
-            double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
-            double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
-            double maxCommission = Math.max(pc938003Amount, pc938012Amount);
-            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createTemporalCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
-            List<MonthProjection> projections = new ArrayList<>();
-            for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                projection.setMonth(projection.getMonth());
-                BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
-                if (commission.doubleValue() != 0.0){
-                    if (maxCommission != 0.0) {
-                        BigDecimal result = commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue()));
-                        projection.setAmount(result);
-                    } else {
-                        projection.setAmount(BigDecimal.valueOf(0));
-                    }
-                }else{
-                    projection.setAmount(BigDecimal.valueOf(0));
-                }
-                projections.add(projection);
-            }
-            paymentComponentDTO.setProjections(projections);
-            component.add(paymentComponentDTO);
+            PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
+            commissionComponent.setPaymentComponent(COMMISSION_TEMP);
+            double commission1 = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+            double commission2 = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            double maxCommission = Math.max(commission1, commission2);
+            commissionComponent.setAmount(BigDecimal.valueOf(maxCommission));
+            commissionComponent.setProjections(Shared.generateMonthProjection(period,range,commissionComponent.getAmount()));
+            component.add(commissionComponent);
         }else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("COMMISSION_TEMP");

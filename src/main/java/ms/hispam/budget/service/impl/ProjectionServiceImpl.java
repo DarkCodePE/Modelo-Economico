@@ -103,7 +103,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         this.mexicoService = mexicoService;
     }
     private static final String[] headers = {"po","idssff"};
-    private static final String HEADERPO="POXXXXXX";
+    private static final String HEADERPO="po";
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -757,6 +757,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
+
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
