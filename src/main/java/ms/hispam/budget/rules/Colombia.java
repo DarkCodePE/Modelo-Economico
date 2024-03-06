@@ -103,19 +103,21 @@ public class Colombia {
         result.put("commissionComponent", commissionComponent);
         return result;
     }
-    private Map<String, Object> createTemporalCommissionComponent(double pc938003Component, double pc938012Component, String classEmployee, String period, Integer range, Map<String, Double> cacheCommission, BigDecimal sumCommission) {
+    private Map<String, Object> createTemporalCommissionComponent(PaymentComponentDTO pc938003Component, PaymentComponentDTO pc938012Component, String classEmployee, String period, Integer range, Map<String, Double> cacheCommission, BigDecimal sumCommission) {
         PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
         commissionComponent.setPaymentComponent(COMMISSION_TEMP);
-        double maxCommission = Math.max(pc938003Component, pc938012Component);
-        //log.debug("maxCommission -> {}", maxCommission);
-        //log.debug("period -> {}", period);
+        double commission1 = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+        double commission2 = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+        double maxCommission = Math.max(commission1, commission2);
+        ////log.debug("maxCommission -> {}", maxCommission);
+        ////log.debug("period -> {}", period);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
         yearMonth = yearMonth.plusMonths(1);
         period = yearMonth.format(formatter);
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(period) == null ? 0.0 : cacheCommission.get(period));
         if (!classEmployee.equals("T") && maxCommission != 0.0) {
-            commissionComponent.setAmount(BigDecimal.valueOf(maxCommission));
+            commissionComponent.setAmount(commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue())));
         } else {
             commissionComponent.setAmount(BigDecimal.ZERO);
         }
@@ -342,43 +344,50 @@ public class Colombia {
                 }));
     }
     public void temporalSalary(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> legalSalaryMinList, List<ParametersDTO> revisionSalaryMinList, List<ParametersDTO> revisionSalaryMinEttList, List<ParametersDTO> legalSalaryIntegralMinList,  Map<String, Map<String, Object>> dataMapTemporal, String position){
-        Map<String, Object> positionMap = dataMapTemporal.get(position);
-        if (positionMap != null) {
-            int salaryBasico = (int) positionMap.get("Salario Básico Mensual Colombia");
-            int salarioIntegral = (int) positionMap.get("Salario Integral Mensual Colombia");
-            // Crear los mapas como variables locales
-            Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
-            Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
-            createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {
-            });
-            String category = findCategory(classEmployee);
-            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createSalaryTemporalComponent(salaryBasico, salarioIntegral, category, period, range, "T", TEMPORAL_SALARY).get("salaryComponent");
-            if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
-                double highestAmountSoFar = Math.max(salaryBasico, salarioIntegral);
-                if (paymentComponentDTO.getProjections() != null) {
-                    for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                        Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
-                        double salaryMin = salaryMinMap != null ? salaryMinMap : 0.0;
-                        if (salaryMin != 0.0) {
-                            if (projection.getAmount().doubleValue() <= salaryMin) {
-                                highestAmountSoFar = Math.max(highestAmountSoFar, salaryMin);
-                                projection.setAmount(BigDecimal.valueOf(salaryMin));
-                            } else {
+        // Crear los mapas como variables locales
+        Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
+        createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {});
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+        PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
+        PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
+        String category = findCategory(classEmployee);
+        if (category.equals("T")){
+            if (pc938001Component != null && pc938001Component.getAmount().doubleValue() != 0.0) {
+                double highestAmountSoFar = Math.max(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
+                PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryTemporalComponent(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue(), classEmployee, period, range, category, TEMPORAL_SALARY).get("salaryComponent");
+                if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
+                    if (paymentComponentDTO.getProjections() != null){
+                        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                            Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
+                            double salaryMin = salaryMinMap != null ? salaryMinMap : 0.0;
+                            if (salaryMin != 0.0){
+                                if (projection.getAmount().doubleValue() <= salaryMin) {
+                                    highestAmountSoFar = Math.max(highestAmountSoFar, salaryMin);
+                                    projection.setAmount(BigDecimal.valueOf(salaryMin));
+                                } else {
+                                    projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
+                                }
+                            }else{
                                 projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
                             }
-                        } else {
-                            projection.setAmount(BigDecimal.valueOf(highestAmountSoFar));
                         }
                     }
                 }
+                component.add(paymentComponentDTO);
+            }else {
+                PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
+                paymentComponentDTO.setPaymentComponent(TEMPORAL_SALARY);
+                paymentComponentDTO.setAmount(BigDecimal.ZERO);
+                paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
+                component.add(paymentComponentDTO);
             }
+        } else {
+            PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
+            paymentComponentDTO.setPaymentComponent(TEMPORAL_SALARY);
+            paymentComponentDTO.setAmount(BigDecimal.ZERO);
+            paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
-        }else {
-            PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
-            salaryComponent.setPaymentComponent(TEMPORAL_SALARY);
-            salaryComponent.setAmount(BigDecimal.ZERO);
-            salaryComponent.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.ZERO));
-            component.add(salaryComponent);
         }
         //log.debug("component -> {}", "temporalSalary");
     }
@@ -1823,27 +1832,24 @@ public class Colombia {
         }
     }
     public void commissionTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList, Map<String, Map<String, Object>> dataMapTemporal, String position) {
-        log.debug("commissionTemporal -> {}", dataMapTemporal);
         String category = findCategory(classEmployee);
         if (category.equals("T")) {
-            Map<String, Object> positionMap = dataMapTemporal.get(position);
-            log.debug("positionMap: " + positionMap);
-            int commissionBasicValue = positionMap != null ? (Integer) positionMap.get("Comisiones al 100% Salario Basico") : 0;
-            int commissionIntegralValue = positionMap != null ? (Integer) positionMap.get("Comisiones al 100% Salario Integral") : 0;
-            log.debug("commissionValue: " + commissionBasicValue + ", commissionIntegralValue: " + commissionIntegralValue);
             Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
             createCommissionCache(commissionList, period, range, cacheCommission);
-            //Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-            double maxCommission = Math.max(commissionBasicValue, commissionIntegralValue);
-            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createTemporalCommissionComponent(commissionBasicValue, commissionIntegralValue, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
+            PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
+            double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+            double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            double maxCommission = Math.max(pc938003Amount, pc938012Amount);
+            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createTemporalCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
             List<MonthProjection> projections = new ArrayList<>();
             for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                 projection.setMonth(projection.getMonth());
                 BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
                 if (commission.doubleValue() != 0.0){
                     if (maxCommission != 0.0) {
-                        BigDecimal result = BigDecimal.valueOf(maxCommission);
-                        //log.info("result: -> {} -  pos: -> {}", result, position);
+                        BigDecimal result = commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue()));
                         projection.setAmount(result);
                     } else {
                         projection.setAmount(BigDecimal.valueOf(0));
@@ -2493,11 +2499,11 @@ public class Colombia {
             double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue() : 0.0;
             // Calcular el valor de "Seguridad Social Bonificación Única"
             double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
-        PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
-        socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
-        socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
-        String category = findCategory(classEmployee);
-        if (category.equals("P")) {
+            PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
+            socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
+            socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
+            String category = findCategory(classEmployee);
+            if (category.equals("P")) {
             List<MonthProjection> projections = new ArrayList<>();
             for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
             // Crear el componente de pago "Seguridad Social Bonificación Única"

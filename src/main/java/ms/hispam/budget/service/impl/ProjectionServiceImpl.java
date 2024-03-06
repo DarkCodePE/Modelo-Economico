@@ -636,6 +636,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
         List<ParametersDTO> lifeInsuranceList = filterParametersByName(projection.getParameters(), "Seguro de Vida");
         List<ParametersDTO> mothProportionParam = filterParametersByName(projection.getParameters(), "Proporción Mensual");
+
         //%Aporte Cta SER empresa
         List<ParametersDTO> aportacionCtaSEREmpresa = filterParametersByName(projection.getParameters(), "Aportación Cta SER Empresa");
         //Calcular la suma total de todos los salarios de la plantilla
@@ -671,7 +672,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.trabajoGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.parteExentaFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
-                    methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
+                    //methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.primaDominicalGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.mudanza(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.vidaCara(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
@@ -681,7 +682,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 projection.getPeriod(),projection.getRange());
                     }
                 });
-                double totalSalarios = calcularTotalSalarios(headcount);
+                double totalSalarios = calcularTotalSalarios(headcount, "CP");
+                double totalSalariosNoCP = calcularTotalSalariosNoCp(headcount, "CP");
         headcount.stream()
                         .parallel()
                         .forEach(headcountData -> {
@@ -690,12 +692,23 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.seguroDental(component,dentalInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroVida(component, lifeInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.provisionSistemasComplementariosIAS(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
-                    methodsMexico.SGMM(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalarios);
+                    methodsMexico.SGMM(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
                 });
         //log.debug("headcount {}",headcount);
     }
-    public double calcularTotalSalarios(List<ProjectionDTO> headcount) {
+    public double calcularTotalSalarios(List<ProjectionDTO> headcount, String type) {
         return headcount.stream()
+                //.filter(h -> h.getPoName().contains(type))
+                .flatMap(h -> h.getComponents().stream())
+                .filter(c -> c.getPaymentComponent().equals("SALARY"))
+                .map(PaymentComponentDTO::getProjections)
+                .map(projections -> projections.get(projections.size() - 1))
+                .mapToDouble(p -> p.getAmount().doubleValue())
+                .sum();
+    }
+    public double calcularTotalSalariosNoCp(List<ProjectionDTO> headcount, String type) {
+        return headcount.stream()
+                .filter(h -> !h.getPoName().contains(type))
                 .flatMap(h -> h.getComponents().stream())
                 .filter(c -> c.getPaymentComponent().equals("SALARY"))
                 .map(PaymentComponentDTO::getProjections)
