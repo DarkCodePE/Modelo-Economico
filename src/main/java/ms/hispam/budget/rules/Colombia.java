@@ -2434,22 +2434,31 @@ public class Colombia {
             String nextPeriod = yearMonth.format(formatter);
             // Obtener el valor del parámetro {SS Bono}
             ParametersDTO ssBonusParameterBase = ssBonusMap.get(nextPeriod);
-            double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue() : 0.0;
-            // Calcular el valor de "Seguridad Social Bonificación Única"
+            double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue()/100 : 0.0;
+            log.info("ssBonus -> {}", ssBonus);
+            // Calcular el valor de "Seguridad Social Bonificación Única"7
             double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
             PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
             socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
             socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
             String category = findCategory(classEmployee);
+            BigDecimal lastValidSocialSecurityUniqueBonus = socialSecurityUniqueBonusComponent.getAmount();
             if (category.equals("P")) {
-            List<MonthProjection> projections = new ArrayList<>();
-            for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
-            // Crear el componente de pago "Seguridad Social Bonificación Única"
+                List<MonthProjection> projections = new ArrayList<>();
+                for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
+                // Crear el componente de pago "Seguridad Social Bonificación Única"
                     ParametersDTO bonusParameter = ssBonusMap.get(primeProjection.getMonth());
-                    double bonus = bonusParameter != null ? bonusParameter.getValue() : 0.0;
+                    double bonus = bonusParameter != null ? bonusParameter.getValue()/100 : 0.0;
+                    BigDecimal amount;
+                    if(bonusParameter != null){
+                        amount = BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus);
+                        lastValidSocialSecurityUniqueBonus = amount;
+                    }else{
+                        amount = lastValidSocialSecurityUniqueBonus;
+                    }
                     MonthProjection projection = new MonthProjection();
                     projection.setMonth(primeProjection.getMonth());
-                    projection.setAmount(BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus));
+                    projection.setAmount(amount);
                     projections.add(projection);
                 }
                 socialSecurityUniqueBonusComponent.setProjections(projections);
