@@ -102,7 +102,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         this.mexicoService = mexicoService;
     }
     private static final String[] headers = {"po","idssff"};
-    private static final String HEADERPO="POXXXXXX";
+    private static final String HEADERPO="po";
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -144,7 +144,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10039679"))
                     .collect(Collectors.toList());*/
            List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-           log.info("headcount {}",headcount);
+           //log.info("headcount {}",headcount);
             //log.debug("headcount {}",headcount) ;
             //log.debug("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
@@ -175,7 +175,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             //log.debug("headcount {}",headcount);
             List<ComponentAmount> groupedData = headcount.stream()
                     .flatMap(j -> {
-                        log.debug("j.getComponents() {}",j.getComponents());
+                       // log.debug("j.getComponents() {}",j.getComponents());
                         return  j.getComponents().stream();
                     })
                     .collect(Collectors.groupingBy(
@@ -202,7 +202,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                                     componente.setName(componente.getPaymentComponent());
                                 })
                                 .collect(Collectors.toList());
-                        log.debug("componentesValidosEnProyeccion {}",componentesValidosEnProyeccion);
+                       // log.debug("componentesValidosEnProyeccion {}",componentesValidosEnProyeccion);
                         // Crea una nueva proyección con los componentes válidos
                         return new ProjectionDTO(
                                 proyeccion.getIdssff(),
@@ -385,7 +385,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private List<ProjectionDTO> getHeadcount(ParametersByProjection projection, Map<String, AccountProjection> componentesMap){
         //Calll nomina
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-        log.info("headcount {}",headcount);
+        //log.info("headcount {}",headcount);
         //log.debug("headcount {}",headcount);
         if(headcount.isEmpty()){
             throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
