@@ -586,7 +586,7 @@ public class Mexico {
         double SGMM = SGMMParam == null ? 0.0 : SGMMParam.getValue();
 
         boolean isCp = poName != null && poName.contains("CP");
-        if (isCp) {
+        if (!isCp) {
             // Create a new PaymentComponentDTO for "SGMM"
             PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
             SGMMComponent.setPaymentComponent("SGMM");
@@ -1666,5 +1666,6 @@ public class Mexico {
         }
         component.add(primaDominicalExentaComponent);
     }
+
 }
 

@@ -288,7 +288,7 @@ public class XlsReportService {
         }
         int pstart =1;
         dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t->{
-                        Object obj = t.get("POXXXXXX");
+                        Object obj = t.get("po");
                         List<ComponentAmount> components = dataBase.getComponents().stream().map(k->
                                 ComponentAmount.builder()
                                         .component(k.getComponent())
