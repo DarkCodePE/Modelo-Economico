@@ -86,13 +86,13 @@ public class Colombia {
         double commission1 = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
         double commission2 = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
         double maxCommission = Math.max(commission1, commission2);
-        ////log.debug("maxCommission -> {}", maxCommission);
-        ////log.debug("period -> {}", period);
-        ////log.debug("sumCommission -> {}", sumCommission);
-        ////log.debug("period -> {}", period);
-        ////log.debug("cacheCommission -> {}", cacheCommission);
+        //log.debug("maxCommission -> {}", maxCommission);
+        //log.debug("period -> {}", period);
+        //log.debug("sumCommission -> {}", sumCommission);
+        //log.debug("period -> {}", period);
+        //log.debug("cacheCommission -> {}", cacheCommission);
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(period) == null ? 0.0 : cacheCommission.get(period));
-        ////log.debug("commission -> {}", commission);
+        //log.debug("commission -> {}", commission);
         if (!classEmployee.equals("T") && maxCommission != 0.0) {
             commissionComponent.setAmount(commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue())));
         } else {
@@ -107,8 +107,8 @@ public class Colombia {
         PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
         commissionComponent.setPaymentComponent(COMMISSION_TEMP);
         double maxCommission = Math.max(pc938003Component, pc938012Component);
-        ////log.debug("maxCommission -> {}", maxCommission);
-        ////log.debug("period -> {}", period);
+        //log.debug("maxCommission -> {}", maxCommission);
+        //log.debug("period -> {}", period);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
         yearMonth = yearMonth.plusMonths(1);
@@ -205,12 +205,12 @@ public class Colombia {
            value /= 12;
            int startMonth = Integer.parseInt(month);
            int endMonth = projectionRange;
-           // //log.debug("endMonth -> {}", endMonth);
+           // log.debug("endMonth -> {}", endMonth);
            for (int m = startMonth; m <= endMonth; m++) {
                int yearOffset = (m - 1) / 12;
                int monthOffset = (m - 1) % 12 + 1;
-               ////log.debug("yearOffset -> {}", yearOffset);
-               ////log.debug("monthOffset -> {}", monthOffset);
+               //log.debug("yearOffset -> {}", yearOffset);
+               //log.debug("monthOffset -> {}", monthOffset);
                String cachePeriod = String.format("%04d%02d", Integer.parseInt(year) + yearOffset, monthOffset);
                cache.put(cachePeriod, value);
            }
@@ -292,11 +292,11 @@ public class Colombia {
                 String salaryType = paymentComponentDTO.getSalaryType();
                 if (salaryType.equals("INTEGRAL")) {
                     for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                        ////log.debug("projection.getMonth() -> {}", projection.getMonth());
-                        ////log.debug("cacheSalaryIntegralMin.get(projection.getMonth()) -> {}", cacheSalaryIntegralMin.get(projection.getMonth()));
+                        //log.debug("projection.getMonth() -> {}", projection.getMonth());
+                        //log.debug("cacheSalaryIntegralMin.get(projection.getMonth()) -> {}", cacheSalaryIntegralMin.get(projection.getMonth()));
                         Double salaryIntegralMinMap = cacheSalaryIntegralMin.get(projection.getMonth());
                         double salaryIntegralMin = salaryIntegralMinMap != null ? salaryIntegralMinMap : 0.0;
-                        ////log.debug("salaryIntegralMin -> {}", salaryIntegralMin);
+                        //log.debug("salaryIntegralMin -> {}", salaryIntegralMin);
                         if (salaryIntegralMin != 0.0){
                             if (projection.getAmount().doubleValue() <= salaryIntegralMin) {
                                 highestAmountSoFar = Math.max(highestAmountSoFar, salaryIntegralMin);
@@ -331,7 +331,7 @@ public class Colombia {
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
         }
         component.add(paymentComponentDTO);
-        ////log.debug("component -> {}","salary");
+        //log.debug("component -> {}","salary");
     }
 
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
@@ -380,7 +380,7 @@ public class Colombia {
             salaryComponent.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.ZERO));
             component.add(salaryComponent);
         }
-        ////log.debug("component -> {}", "temporalSalary");
+        //log.debug("component -> {}", "temporalSalary");
     }
     public void salaryPra(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> legalSalaryMinList, List<ParametersDTO> salaryPraList){
         Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
@@ -435,7 +435,7 @@ public class Colombia {
             }
         }
         component.add(paymentComponentDTO);
-       // //log.debug("component -> {}", "salaryPra");
+       // log.debug("component -> {}", "salaryPra");
     }
 
     public void revisionSalary(List<PaymentComponentDTO> component,List<ParametersDTO> parameters,String period, Integer range, String classEmployee){
@@ -498,7 +498,7 @@ public class Colombia {
                                if (differPercent > 0) {
                                    // 9%
                                    if (differPercent <= percent) {
-                                       ////log.debug("differPercent si es menor -> {}", differPercent);
+                                       //log.debug("differPercent si es menor -> {}", differPercent);
                                        differPercent = percent - differPercent;
                                    } else {
                                        differPercent = 0;
@@ -506,9 +506,9 @@ public class Colombia {
                                } else {
                                    differPercent = percent;
                                }
-                               ////log.debug("differPercent -> {}", differPercent);
+                               //log.debug("differPercent -> {}", differPercent);
                                revisionSalaryAmount = amount * (1 + (differPercent));
-                               ////log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
+                               //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
                            }
                        }
@@ -551,9 +551,9 @@ public class Colombia {
                                } else {
                                    differPercent = percent;
                                }
-                               ////log.debug("differPercent -> {}", differPercent);
+                               //log.debug("differPercent -> {}", differPercent);
                                revisionSalaryAmount = amount * (1 + (differPercent));
-                               ////log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
+                               //log.debug("revisionSalaryAmount -> {}", revisionSalaryAmount);
                                paymentComponentDTO.getProjections().get(i).setAmount(BigDecimal.valueOf(revisionSalaryAmount));
                            }
                        }
@@ -568,25 +568,25 @@ public class Colombia {
                 .anyMatch(excludedPosition -> excludedPosition.equals(position));*/
         String category = findCategory(classEmployee);
         if (!category.equals("T") ) {
-            ////log.debug("sumCommission -> {}", sumCommission);
+            //log.debug("sumCommission -> {}", sumCommission);
             Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
             createCommissionCache(commissionList, period, range, cacheCommission);
-            ////log.debug("cacheCommission -> {}", cacheCommission);
+            //log.debug("cacheCommission -> {}", cacheCommission);
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
             PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
             PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
-            ////log.debug("pc938003Component -> {}", pc938003Component);
-            ////log.debug("pc938012Component -> {}", pc938012Component);
+            //log.debug("pc938003Component -> {}", pc938003Component);
+            //log.debug("pc938012Component -> {}", pc938012Component);
             //String category = findCategory(classEmployee);
             double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
             double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
             double maxCommission = Math.max(pc938003Amount, pc938012Amount);
             PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
-            ////log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
+            //log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
             List<MonthProjection> projections = new ArrayList<>();
             for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                 //SI($I5<>"T";//AJ$10/12*($M5/SUMA($M$4:$M$15));0)
-                // //log.debug("projection.getMonth() -> {}", projection.getMonth());
+                // log.debug("projection.getMonth() -> {}", projection.getMonth());
                 BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
                 projection.setMonth(projection.getMonth());
                 if (commission.doubleValue() != 0.0){
@@ -610,7 +610,7 @@ public class Colombia {
             commissionComponent.setProjections(Shared.generateMonthProjection(period,range,commissionComponent.getAmount()));
             component.add(commissionComponent);
         }
-        ////log.debug("component -> {}", "commission");
+        //log.debug("component -> {}", "commission");
     }
     public void prodMonthPrime(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -623,7 +623,7 @@ public class Colombia {
         double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
         double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
         double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
-        ////log.debug("surcharges -> {}", surcharges);
+        //log.debug("surcharges -> {}", surcharges);
         double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
         // Calcular la suma de los componentes
         double totalbase = salary + overtime + surcharges + commission;
@@ -664,7 +664,7 @@ public class Colombia {
             monthlyPrimeComponent.setProjections(Shared.generateMonthProjection(period,range,monthlyPrimeComponent.getAmount()));
         }
         component.add(monthlyPrimeComponent);
-       // //log.debug("component -> {}", "prodMonthPrime");
+       // log.debug("component -> {}", "prodMonthPrime");
     }
 
     public void consolidatedVacation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
@@ -705,7 +705,7 @@ public class Colombia {
 
                 // Calcular el costo del Consolidado de Vacaciones
                 BigDecimal vacationCost = BigDecimal.valueOf(totalAmount.doubleValue() / 24);
-                ////log.debug("vacationCost -> {}", vacationCost);
+                //log.debug("vacationCost -> {}", vacationCost);
                 // Crear una proyección para este mes
                 MonthProjection projection = new MonthProjection();
                 projection.setMonth(primeProjection.getMonth());
@@ -721,7 +721,7 @@ public class Colombia {
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
-        ////log.debug("component -> {}", "consolidatedVacation");
+        //log.debug("component -> {}", "consolidatedVacation");
     }
     public void consolidatedSeverance(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -774,7 +774,7 @@ public class Colombia {
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
-        ////log.debug("component -> {}", "consolidatedSeverance");
+        //log.debug("component -> {}", "consolidatedSeverance");
     }
     public void consolidatedSeveranceInterest(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -814,7 +814,7 @@ public class Colombia {
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
-        ////log.debug("component -> {}", "consolidatedSeveranceInterest");
+        //log.debug("component -> {}", "consolidatedSeveranceInterest");
     }
 
     public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> subsidyMinList) {
@@ -887,7 +887,7 @@ public class Colombia {
             transportSubsidyComponent.setProjections(Shared.generateMonthProjection(period,range,transportSubsidyComponent.getAmount()));
         }
         component.add(transportSubsidyComponent);
-        ////log.debug("component -> {}", "transportSubsidy");
+        //log.debug("component -> {}", "transportSubsidy");
     }
     public void contributionBox(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -943,7 +943,7 @@ public class Colombia {
             boxContributionComponent.setProjections(Shared.generateMonthProjection(period,range,boxContributionComponent.getAmount()));
         }
         component.add(boxContributionComponent);
-        ////log.debug("component -> {}", "contributionBox");
+        //log.debug("component -> {}", "contributionBox");
     }
     public void companyHealthContribution(List<PaymentComponentDTO> component, String classEmployee,  List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -968,7 +968,7 @@ public class Colombia {
         PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
         healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA");
         double totalAmountBase = salary + overtime + surcharges + commission;
-        ////log.debug("totalAmountBase -> {}", totalAmountBase);
+        //log.debug("totalAmountBase -> {}", totalAmountBase);
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
         BigDecimal healthContributionBase;
         if (category.equals("APR") || category.equals("PRA")) {
@@ -1054,7 +1054,7 @@ public class Colombia {
             healthContributionComponent.setProjections(Shared.generateMonthProjection(period,range,healthContributionComponent.getAmount()));
         }
         component.add(healthContributionComponent);
-        //log.debug("component -> {}", "companyHealthContribution");
+        log.debug("component -> {}", "companyHealthContribution");
     }
     public void companyRiskContribution(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1140,7 +1140,7 @@ public class Colombia {
             riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
         }
         component.add(riskContributionComponent);
-        //log.debug("component -> {}", "companyRiskContribution");
+        log.debug("component -> {}", "companyRiskContribution");
     }
     public void companyRiskContributionTrainee(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1201,7 +1201,7 @@ public class Colombia {
             riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
         }
         component.add(riskContributionComponent);
-        //log.debug("component -> {}", "companyRiskContributionTrainee");
+        log.debug("component -> {}", "companyRiskContributionTrainee");
     }
     public void companyRiskContributionTemporaries(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1263,7 +1263,7 @@ public class Colombia {
             riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
         }
         component.add(riskContributionComponent);
-        //log.debug("component -> {}", "companyRiskContributionTemporaries");
+        log.debug("component -> {}", "companyRiskContributionTemporaries");
     }
     public void icbfContribution(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1338,7 +1338,7 @@ public class Colombia {
             icbfContributionComponent.setProjections(Shared.generateMonthProjection(period,range,icbfContributionComponent.getAmount()));
         }
         component.add(icbfContributionComponent);
-        //log.debug("component -> {}", "icbfContribution");
+        log.debug("component -> {}", "icbfContribution");
     }
     public void senaContribution(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1405,7 +1405,7 @@ public class Colombia {
             senaContributionComponent.setProjections(Shared.generateMonthProjection(period,range,senaContributionComponent.getAmount()));
         }
         component.add(senaContributionComponent);
-        //log.debug("component -> {}", "senaContribution");
+        log.debug("component -> {}", "senaContribution");
     }
     public void companyPensionContribution(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1479,7 +1479,7 @@ public class Colombia {
             pensionContributionComponent.setProjections(Shared.generateMonthProjection(period,range,pensionContributionComponent.getAmount()));
         }
         component.add(pensionContributionComponent);
-        //log.debug("component -> {}", "companyPensionContribution");
+        log.debug("component -> {}", "companyPensionContribution");
     }
 
     public void sodexo(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, List<ParametersDTO> sodexoList, String position, List<RangeBuDetailDTO> excludedPositions) {
@@ -1562,7 +1562,7 @@ public class Colombia {
             sodexoComponent.setProjections(Shared.generateMonthProjection(period,range,sodexoComponent.getAmount()));
         }
         component.add(sodexoComponent);
-        //log.debug("component -> {}", "sodexo");
+        log.debug("component -> {}", "sodexo");
     }
     public void sena(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1652,66 +1652,7 @@ public class Colombia {
         }
         newComponent.setProjections(projections);
         component.add(newComponent);
-        //log.debug("component -> {}", "sena");
-    }
-    public void senaTemporales(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
-        String category = findCategory(classEmployee);
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
-
-        // Obtén los componentes necesarios para el cálculo
-        List<String> newComponents = Arrays.asList("SALARY_TEMP", "HHEE", "SURCHARGES", "COMMISSION_TEMP");
-        Map<String, PaymentComponentDTO> componentMap = component.stream()
-                .filter(c -> newComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
-
-        PaymentComponentDTO salaryComponent = componentMap.get("SALARY_TEMP");
-        PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
-        PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
-        PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION_TEMP");
-
-        double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
-        double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
-        double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
-        double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
-
-        double totalAmountBase = salary + overtime + surcharges + commission;
-
-        // Crear un nuevo PaymentComponentDTO para el nuevo componente
-        PaymentComponentDTO newComponent = new PaymentComponentDTO();
-        newComponent.setPaymentComponent("SENA_TEMP");
-        double amount = 0;
-        if (category.equals("T") && totalAmountBase >= 10 * legalSalaryMinInternal) {
-            amount = totalAmountBase * 0.02;
-        }
-        newComponent.setAmount(BigDecimal.valueOf(amount));
-        List<MonthProjection> projections = new ArrayList<>();
-
-        if (salaryComponent != null && salaryComponent.getProjections() != null && newComponent.getAmount().doubleValue() > 0) {
-            for (MonthProjection monthProjection : salaryComponent.getProjections()) {
-                double totalAmount = newComponents.stream()
-                        .map(componentMap::get)
-                        .filter(Objects::nonNull)
-                        .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
-                        .filter(projection -> projection.getMonth().equals(monthProjection.getMonth()))
-                        .mapToDouble(projection -> projection.getAmount().doubleValue())
-                        .sum();
-                MonthProjection projection = new MonthProjection();
-                projection.setMonth(monthProjection.getMonth());
-                if (category.equals("T") && totalAmount >= 10 * legalSalaryMinInternal) {
-                    projection.setAmount(BigDecimal.valueOf(totalAmount * 0.02));
-                }else {
-                    projection.setAmount(BigDecimal.valueOf(0));
-                }
-                projections.add(projection);
-            }
-            newComponent.setProjections(projections);
-        }else {
-            newComponent.setAmount(BigDecimal.valueOf(0));
-            newComponent.setProjections(Shared.generateMonthProjection(period,range,newComponent.getAmount()));
-        }
-        component.add(newComponent);
-        //log.debug("component -> {}", "senaTemporales");
+        log.debug("component -> {}", "sena");
     }
     public void uniqueBonus(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
@@ -1753,7 +1694,7 @@ public class Colombia {
             uniqueBonusComponent.setProjections(Shared.generateMonthProjection(period,range,uniqueBonusComponent.getAmount()));
         }
         component.add(uniqueBonusComponent);
-        //log.debug("component -> {}", "uniqueBonus");
+        log.debug("component -> {}", "uniqueBonus");
     }
 
     private double calculateUniqueBonus(String salaryType, double baseSalary, double bonusTarget) {
@@ -1761,7 +1702,7 @@ public class Colombia {
         bonusMultipliers.put("BASE", 14.12);
         bonusMultipliers.put("INTEGRAL", 12.0);
         double multiplier = bonusMultipliers.getOrDefault(salaryType, 0.0);
-        //log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
+        log.debug("salaryType: " + salaryType + ", baseSalary: " + baseSalary + ", bonusTarget: " + bonusTarget + ", multiplier: " + multiplier);
         if (bonusTarget == 0) {
             bonusTarget = 0.00;
         }
@@ -1830,7 +1771,7 @@ public class Colombia {
             transportSubsidyComponent.setProjections(Shared.generateMonthProjection(period,range,transportSubsidyComponent.getAmount()));
             component.add(transportSubsidyComponent);
         }
-        //log.debug("component -> {}", "AuxilioDeTransporteAprendizSena");
+        log.debug("component -> {}", "AuxilioDeTransporteAprendizSena");
     }
     public void AuxilioConectividadDigital(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range, String position, List<RangeBuDetailDTO> excludedPositions, List<ParametersDTO> digitalConnectivityList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
@@ -1874,7 +1815,7 @@ public class Colombia {
         // Verificar si la posición está en la lista de posiciones excluidas
         boolean isExcluded = excludedPositions.stream()
                 .anyMatch(excludedPosition -> excludedPosition.getRange().equals(position) && excludedPosition.getValue() == 0);
-        //log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
+        log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
         if (isExcluded) {
             return 0.0;
         } else {
@@ -1882,14 +1823,14 @@ public class Colombia {
         }
     }
     public void commissionTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, BigDecimal sumCommission, List<ParametersDTO> commissionList, Map<String, Map<String, Object>> dataMapTemporal, String position) {
-        //log.debug("commissionTemporal -> {}", dataMapTemporal);
+        log.debug("commissionTemporal -> {}", dataMapTemporal);
         String category = findCategory(classEmployee);
         if (category.equals("T")) {
             Map<String, Object> positionMap = dataMapTemporal.get(position);
-            //log.debug("positionMap: " + positionMap);
+            log.debug("positionMap: " + positionMap);
             int commissionBasicValue = positionMap != null ? (Integer) positionMap.get("Comisiones al 100% Salario Basico") : 0;
             int commissionIntegralValue = positionMap != null ? (Integer) positionMap.get("Comisiones al 100% Salario Integral") : 0;
-            //log.debug("commissionValue: " + commissionBasicValue + ", commissionIntegralValue: " + commissionIntegralValue);
+            log.debug("commissionValue: " + commissionBasicValue + ", commissionIntegralValue: " + commissionIntegralValue);
             Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
             createCommissionCache(commissionList, period, range, cacheCommission);
             //Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
@@ -1921,7 +1862,7 @@ public class Colombia {
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
-        //log.debug("component -> {}", "commissionTemporal");
+        log.debug("component -> {}", "commissionTemporal");
     }
     public void prodMonthPrimeTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1961,13 +1902,13 @@ public class Colombia {
             monthlyPrimeComponent.setProjections(Shared.generateMonthProjection(period,range,monthlyPrimeComponent.getAmount()));
             component.add(monthlyPrimeComponent);
         }
-        //log.debug("component -> {}", "prodMonthPrimeTemporal");
+        log.debug("component -> {}", "prodMonthPrimeTemporal");
     }
     public void consolidatedVacationTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
         if (category.equals("T")) {
             List<String> vacationComponents = Arrays.asList(TEMPORAL_SALARY, "HHEE", "SURCHARGES", COMMISSION_TEMP);
-            //log.debug("component: " + component);
+            log.debug("component: " + component);
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -2005,7 +1946,7 @@ public class Colombia {
             vacationComponent.setProjections(Shared.generateMonthProjection(period,range,vacationComponent.getAmount()));
             component.add(vacationComponent);
         }
-        //log.debug("component -> {}", "consolidatedVacationTemporal");
+        log.debug("component -> {}", "consolidatedVacationTemporal");
     }
     public void consolidatedSeveranceTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
     String category = findCategory(classEmployee);
@@ -2051,7 +1992,7 @@ public class Colombia {
             severanceComponent.setProjections(Shared.generateMonthProjection(period,range,severanceComponent.getAmount()));
             component.add(severanceComponent);
         }
-        //log.debug("component -> {}", "consolidatedSeveranceTemporal");
+        log.debug("component -> {}", "consolidatedSeveranceTemporal");
     }
     public void consolidatedSeveranceInterestTemporal(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2084,7 +2025,7 @@ public class Colombia {
             severanceInterestComponent.setProjections(Shared.generateMonthProjection(period,range,severanceInterestComponent.getAmount()));
             component.add(severanceInterestComponent);
         }
-        //log.debug("component -> {}", "consolidatedSeveranceInterestTemporal");
+        log.debug("component -> {}", "consolidatedSeveranceInterestTemporal");
     }
     public void transportSubsidyTemporaries(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
     String category = findCategory(classEmployee);
@@ -2132,7 +2073,7 @@ public class Colombia {
             transportSubsidyComponent.setProjections(Shared.generateMonthProjection(period,range,transportSubsidyComponent.getAmount()));
             component.add(transportSubsidyComponent);
         }
-        //log.debug("component -> {}", "transportSubsidyTemporaries");
+        log.debug("component -> {}", "transportSubsidyTemporaries");
     }
     public void companyHealthContributionTemporals(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2197,7 +2138,7 @@ public class Colombia {
             healthContributionComponent.setProjections(Shared.generateMonthProjection(period, range, healthContributionComponent.getAmount()));
             component.add(healthContributionComponent);
         }
-        //log.debug("component -> {}", "companyHealthContributionTemporals");
+        log.debug("component -> {}", "companyHealthContributionTemporals");
     }
     public void companyRiskContributionTemporals(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2264,7 +2205,7 @@ public class Colombia {
             riskContributionComponent.setProjections(Shared.generateMonthProjection(period, range, riskContributionComponent.getAmount()));
             component.add(riskContributionComponent);
         }
-        //log.debug("component -> {}", "companyRiskContributionTemporals");
+        log.debug("component -> {}", "companyRiskContributionTemporals");
     }
    public void contributionBoxTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2316,7 +2257,7 @@ public class Colombia {
               boxContributionComponent.setProjections(Shared.generateMonthProjection(period, range, boxContributionComponent.getAmount()));
               component.add(boxContributionComponent);
        }
-       //log.debug("component -> {}", "contributionBoxTemporaries");
+       log.debug("component -> {}", "contributionBoxTemporaries");
     }
     public void icbfContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2370,7 +2311,7 @@ public class Colombia {
             icbfContributionComponent.setProjections(Shared.generateMonthProjection(period, range, icbfContributionComponent.getAmount()));
             component.add(icbfContributionComponent);
         }
-        //log.debug("component -> {}", "icbfContributionTemporaries");
+        log.debug("component -> {}", "icbfContributionTemporaries");
     }
     public void senaContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2430,7 +2371,7 @@ public class Colombia {
             senaContributionComponent.setProjections(Shared.generateMonthProjection(period,range,senaContributionComponent.getAmount()));
             component.add(senaContributionComponent);
         }
-        //log.debug("component -> {}", "senaContributionTemporaries");
+        log.debug("component -> {}", "senaContributionTemporaries");
     }
     public void companyPensionContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2484,7 +2425,7 @@ public class Colombia {
             pensionContributionComponent.setProjections(Shared.generateMonthProjection(period,range,pensionContributionComponent.getAmount()));
             component.add(pensionContributionComponent);
         }
-        //log.debug("component -> {}", "companyPensionContributionTemporaries");
+        log.debug("component -> {}", "companyPensionContributionTemporaries");
     }
     public void feeTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -2533,7 +2474,7 @@ public class Colombia {
             feeComponent.setProjections(Shared.generateMonthProjection(period,range,feeComponent.getAmount()));
             component.add(feeComponent);
         }
-        //log.debug("component -> {}", "feeTemporaries");
+        log.debug("component -> {}", "feeTemporaries");
     }
     public void socialSecurityUniqueBonus(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range, List<ParametersDTO> ssBonusList) {
             Map<String, ParametersDTO> ssBonusMap = new ConcurrentHashMap<>();
@@ -2552,14 +2493,14 @@ public class Colombia {
             double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue() : 0.0;
             // Calcular el valor de "Seguridad Social Bonificación Única"
             double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
+        PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
+        socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
+        socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
+        String category = findCategory(classEmployee);
+        if (category.equals("P")) {
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
             // Crear el componente de pago "Seguridad Social Bonificación Única"
-            PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
-            socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
-            socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
-            String category = findCategory(classEmployee);
-            if (category.equals("P")) {
-                List<MonthProjection> projections = new ArrayList<>();
-                for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
                     ParametersDTO bonusParameter = ssBonusMap.get(primeProjection.getMonth());
                     double bonus = bonusParameter != null ? bonusParameter.getValue() : 0.0;
                     MonthProjection projection = new MonthProjection();

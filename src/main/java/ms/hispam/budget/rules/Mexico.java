@@ -408,6 +408,9 @@ public class Mexico {
         return false;
     }
     public void participacionTrabajadores(List<PaymentComponentDTO> component,  List<ParametersDTO>  employeeParticipationList, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        Map<String, ParametersDTO> employeeParticipationMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(employeeParticipationList, employeeParticipationMap, cache, (parameter, mapParameter) -> {});
         // Convierte la lista de componentes a un mapa
         Map<String, PaymentComponentDTO> componentMap = component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -417,20 +420,26 @@ public class Mexico {
         ParametersDTO participacionTrabajadoresParam = parameters.stream()
             .filter(p -> p.getParameter().getDescription().equals("Participacion de los trabajadores"))
             .findFirst().orElse(null);
-
-        double participacionTrabajadores = participacionTrabajadoresParam==null ? 0.0 : participacionTrabajadoresParam.getValue();
-
+        //double participacionTrabajadores = participacionTrabajadoresParam==null ? 0.0 : participacionTrabajadoresParam.getValue();
        // log.info("SALARY COMPONENT: {}", salaryComponent);
         // Crear un nuevo PaymentComponentDTO para "Participación de los Trabajadores"
         PaymentComponentDTO participacionComponent = new PaymentComponentDTO();
         participacionComponent.setPaymentComponent("PARTICIPACION");
-        participacionComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * participacionTrabajadores));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO participacionTrabajadoresParamNext = employeeParticipationMap.get(nextPeriod);
+        double participacionTrabajadoresNext = participacionTrabajadoresParamNext == null ? 0.0 : participacionTrabajadoresParamNext.getValue();
+        participacionComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * participacionTrabajadoresNext));
         // Aplicar la fórmula para cada mes de proyección
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : salaryComponent.getProjections()) {
+            ParametersDTO participacionTrabajadoresParamProj = employeeParticipationMap.get(projection.getMonth());
+            double participacionTrabajadoresProj = participacionTrabajadoresParamProj == null ? 0.0 : participacionTrabajadoresParamProj.getValue();
             //log.info("PROJECTION - AMOUNT: {}", projection.getAmount());
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double participacion = proportion * participacionTrabajadores;
+            double participacion = proportion * participacionTrabajadoresProj;
             //log.info("PROJECTION- PROPORTION: {}", proportion);
             //log.info("PROJECTION- PARTICIPATION: {}", participacion);
             MonthProjection participacionProjection = new MonthProjection();
@@ -444,26 +453,36 @@ public class Mexico {
         component.add(participacionComponent);
     }
 
-    public void seguroDental(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+    public void seguroDental(List<PaymentComponentDTO> component, List<ParametersDTO> dentalInsuranceList, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        Map<String, ParametersDTO> dentalInsuranceMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(dentalInsuranceList, dentalInsuranceMap, cache, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "Seguro Dental" amount from parameters
-        ParametersDTO seguroDentalParam = parameters.stream()
+        /*ParametersDTO seguroDentalParam = parameters.stream()
             .filter(p -> p.getParameter().getDescription().equals("Seguro Dental"))
             .findFirst()
-                .orElse(null);
-
-        double seguroDental = seguroDentalParam == null ? 0.0 : seguroDentalParam.getValue();
+                .orElse(null);*/
+        //double seguroDental = seguroDentalParam == null ? 0.0 : seguroDentalParam.getValue();
 
         // Create a new PaymentComponentDTO for "Seguro Dental"
         PaymentComponentDTO seguroDentalComponent = new PaymentComponentDTO();
         seguroDentalComponent.setPaymentComponent("SEGURO_DENTAL");
-        seguroDentalComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * seguroDental));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO seguroDentalParamNext = dentalInsuranceMap.get(nextPeriod);
+        double seguroDentalNext = seguroDentalParamNext == null ? 0.0 : seguroDentalParamNext.getValue();
+        seguroDentalComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * seguroDentalNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : salaryComponent.getProjections()) {
+            ParametersDTO seguroDentalParamProj = dentalInsuranceMap.get(projection.getMonth());
+            double seguroDentalProj = seguroDentalParamProj == null ? 0.0 : seguroDentalParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double seguroDentalAmount = proportion * seguroDental;
+            double seguroDentalAmount = proportion * seguroDentalProj;
             MonthProjection seguroDentalProjection = new MonthProjection();
             seguroDentalProjection.setMonth(projection.getMonth());
             seguroDentalProjection.setAmount(BigDecimal.valueOf(seguroDentalAmount));
@@ -474,26 +493,37 @@ public class Mexico {
         // Add the "Seguro Dental" component to the component list
         component.add(seguroDentalComponent);
     }
-    public void seguroVida(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+    public void seguroVida(List<PaymentComponentDTO> component, List<ParametersDTO> lifeInsuranceList, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+        Map<String, ParametersDTO> lifeInsuranceMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(lifeInsuranceList, lifeInsuranceMap, cache, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "Seguro Vida" amount from parameters
-        ParametersDTO seguroVidaParam = parameters.stream()
+        /*ParametersDTO seguroVidaParam = parameters.stream()
                 .filter(p -> p.getParameter().getDescription().equals("Seguro Vida"))
                 .findFirst()
                 .orElse(null);
 
-        double seguroVida = seguroVidaParam == null ? 0.0 : seguroVidaParam.getValue();
+        double seguroVida = seguroVidaParam == null ? 0.0 : seguroVidaParam.getValue();*/
 
         // Create a new PaymentComponentDTO for "Seguro Vida"
         PaymentComponentDTO seguroVidaComponent = new PaymentComponentDTO();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO seguroVidaParamNext = lifeInsuranceMap.get(nextPeriod);
+        double seguroVidaNext = seguroVidaParamNext == null ? 0.0 : seguroVidaParamNext.getValue();
         seguroVidaComponent.setPaymentComponent("SEGURO_VIDA");
-        seguroVidaComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * seguroVida));
+        seguroVidaComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * seguroVidaNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : salaryComponent.getProjections()) {
+            ParametersDTO seguroVidaParamProj = lifeInsuranceMap.get(projection.getMonth());
+            double seguroVidaProj = seguroVidaParamProj == null ? 0.0 : seguroVidaParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double seguroVidaAmount = proportion * seguroVida;
+            double seguroVidaAmount = proportion * seguroVidaProj;
             MonthProjection seguroVidaProjection = new MonthProjection();
             seguroVidaProjection.setMonth(projection.getMonth());
             seguroVidaProjection.setAmount(BigDecimal.valueOf(seguroVidaAmount));
@@ -506,25 +536,34 @@ public class Mexico {
     }
 
   public void provisionSistemasComplementariosIAS(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, double totalSalaries) {
+      Map<String, ParametersDTO> provisionSistemasComplementariosIASMap = new ConcurrentHashMap<>();
+      Map<String, Double> cache = new ConcurrentHashMap<>();
+      createCache(parameters, provisionSistemasComplementariosIASMap, cache, (parameter, mapParameter) -> {});
       Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
       PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "Prov Retiro (IAS)" amount from parameters
-        ParametersDTO provRetiroIASParam = parameters.stream()
+        /*ParametersDTO provRetiroIASParam = parameters.stream()
             .filter(p -> p.getParameter().getDescription().equals("Prov Retiro (IAS)"))
             .findFirst()
             .orElse(null);
-
-        double provRetiroIAS = provRetiroIASParam == null ? 0.0 : provRetiroIASParam.getValue();
-
+        double provRetiroIAS = provRetiroIASParam == null ? 0.0 : provRetiroIASParam.getValue();*/
         // Create a new PaymentComponentDTO for "Prov Retiro (IAS)"
         PaymentComponentDTO provRetiroIASComponent = new PaymentComponentDTO();
         provRetiroIASComponent.setPaymentComponent("PROV_RETIRO_IAS");
-        provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIAS));
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+      YearMonth yearMonth = YearMonth.parse(period, formatter);
+      yearMonth = yearMonth.plusMonths(1);
+      String nextPeriod = yearMonth.format(formatter);
+       ParametersDTO provRetiroIASParamNext = provisionSistemasComplementariosIASMap.get(nextPeriod);
+         double provRetiroIASNext = provRetiroIASParamNext == null ? 0.0 : provRetiroIASParamNext.getValue();
+        provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIASNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : salaryComponent.getProjections()) {
+            ParametersDTO provRetiroIASParamProj = provisionSistemasComplementariosIASMap.get(projection.getMonth());
+            double provRetiroIASProj = provRetiroIASParamProj == null ? 0.0 : provRetiroIASParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double provRetiroIASAmount = proportion * provRetiroIAS;
+            double provRetiroIASAmount = proportion * provRetiroIASProj;
             MonthProjection provRetiroIASProjection = new MonthProjection();
             provRetiroIASProjection.setMonth(projection.getMonth());
             provRetiroIASProjection.setAmount(BigDecimal.valueOf(provRetiroIASAmount));
