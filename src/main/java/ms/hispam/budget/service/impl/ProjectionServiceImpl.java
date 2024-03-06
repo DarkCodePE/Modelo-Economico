@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 @Slf4j(topic = "PROJECTION_SERVICE")
 public class ProjectionServiceImpl implements ProjectionService {
 
+    private static final int HHEE_ADJUSTMENT_FACTOR_ID = 71;
     @Autowired
     private ParametersRepository repository;
     @Autowired
@@ -144,7 +145,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10039679"))
                     .collect(Collectors.toList());*/
            List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-           log.info("headcount {}",headcount);
+           //log.info("headcount {}",headcount);
             //log.debug("headcount {}",headcount) ;
             //log.debug("headcount {}",headcount.size());
             List<ComponentProjection> components =sharedRepo.getComponentByBu(projection.getBu());
@@ -384,7 +385,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private List<ProjectionDTO> getHeadcount(ParametersByProjection projection, Map<String, AccountProjection> componentesMap){
         //Calll nomina
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-        log.info("headcount {}",headcount);
+        //log.info("headcount {}",headcount);
         //log.debug("headcount {}",headcount);
         if(headcount.isEmpty()){
             throw new BadRequestException("No existe informacion de la proyección para el periodo "+projection.getPeriod());
@@ -1469,7 +1470,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             .collect(Collectors.toList());
                                     //log.debug("filteredNominal: {}", filteredNominal);
                                     addNominal(projection,projectionsComponent,filteredNominal,codeNominals,list);
-                                    log.info("projectionsComponent {}",projectionsComponent);
+                                    //log.info("projectionsComponent {}",projectionsComponent);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
@@ -1571,73 +1572,32 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     paymentComponent("260").amount(BigDecimal.valueOf(guarderia))
                     .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(),BigDecimal.valueOf(guarderia))).build());
         }else if(projection.getBu().equalsIgnoreCase("T. URUGUAY") || projection.getBu().equalsIgnoreCase("T. COLOMBIA")){
-            //Nomina
-            double totalHHEE = 0.0;
-            double totalRecargo = 0.0;
-            double translation = 0.0;
-            double housing = 0.0;
-            double bearing = 0.0;
             //validate exist ssff
+            //param Factor ajuste de HHEE/Recargo
+            double hheeAdjustmentFactor = Optional.ofNullable(getParametersById(projection.getParameters(), HHEE_ADJUSTMENT_FACTOR_ID))
+                    .map(ParametersDTO::getValue)
+                    .map(v -> v / 100)
+                    .orElse(0.0);
             List<NominaProjection> nominalBySSFF = nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList());
             if (!nominalBySSFF.isEmpty()) {
-                for(NominaProjection h : nominalBySSFF) {
-                    log.info("h {}",h);
+                Map<String, Double> componentTotals = new HashMap<>();
+                for (NominaProjection h : nominalBySSFF) {
                     List<NominaPaymentComponentLink> nominaPaymentComponentLinks = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
-                    log.info("nominaPaymentComponentLinks {}",nominaPaymentComponentLinks);
                     if (nominaPaymentComponentLinks != null) {
-                        totalHHEE += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("HHEE"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        totalRecargo += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("SURCHARGES"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        translation = nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("AUXILIO_TRASLADO"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        housing = nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("AUXILIO_VIVIENDA"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        bearing = nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("AUXILIO_RODAMIENTO"))
-                                .mapToDouble(n -> h.getImporte()).sum();
+                        for (NominaPaymentComponentLink link : nominaPaymentComponentLinks) {
+                            String component = link.getPaymentComponent().getPaymentComponent();
+                            double importe = h.getImporte();
+                            componentTotals.put(component, componentTotals.getOrDefault(component, 0.0) + importe);
+                        }
                     }
-                    PaymentComponentDTO transferAssistanceComponent = PaymentComponentDTO.builder()
-                            .type(16)
-                            .paymentComponent("AUXILIO_TRASLADO")
-                            .amount(BigDecimal.valueOf(translation))
-                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(translation)))
-                            .build();
-                    PaymentComponentDTO hheeComponent = PaymentComponentDTO.builder()
-                            .type(16)
-                            .paymentComponent("HHEE")
-                            .amount(BigDecimal.valueOf(totalHHEE))
-                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalHHEE)))
-                            .build();
-                    PaymentComponentDTO recargoComponent = PaymentComponentDTO.builder()
-                            .type(16)
-                            .paymentComponent("SURCHARGES")
-                            .amount(BigDecimal.valueOf(totalRecargo))
-                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalRecargo)))
-                            .build();
-                    PaymentComponentDTO housingComponent = PaymentComponentDTO.builder()
-                            .type(16)
-                            .paymentComponent("AUXILIO_VIVIENDA")
-                            .amount(BigDecimal.valueOf(housing))
-                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(housing)))
-                            .build();
-                    PaymentComponentDTO bearingComponent = PaymentComponentDTO.builder()
-                            .type(16)
-                            .paymentComponent("AUXILIO_RODAMIENTO")
-                            .amount(BigDecimal.valueOf(bearing))
-                            .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(bearing)))
-                            .build();
-                    projectionsComponent.add(hheeComponent);
-                    projectionsComponent.add(recargoComponent);
-                    projectionsComponent.add(transferAssistanceComponent);
-                    projectionsComponent.add(housingComponent);
-                    projectionsComponent.add(bearingComponent);
-                    //log.info("projectionsComponent {}",projectionsComponent);
+                }
+                for (Map.Entry<String, Double> entry : componentTotals.entrySet()) {
+                    String component = entry.getKey();
+                    double total = entry.getValue();
+                    if (total > 0) {
+                        projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
+                    }
                 }
             }else {
                 PaymentComponentDTO transferAssistanceComponent = PaymentComponentDTO.builder()
@@ -2039,6 +1999,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         dto.setDivisionname(projection.getDivisionname());
         dto.setCc(projection.getCc());
         return dto;
+    }
+    private ParametersDTO getParametersById(List<ParametersDTO> parameters, int id) {
+        return parameters.stream()
+                .filter(p -> p.getParameter().getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
+    private PaymentComponentDTO buildPaymentComponentDTO(String component, double amount, String period, Integer range) {
+        return PaymentComponentDTO.builder()
+                .type(16)
+                .paymentComponent(component)
+                .amount(BigDecimal.valueOf(amount))
+                .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(amount)))
+                .build();
     }
     private PaymentComponentDTO createPaymentComponentDTO(NominaPaymentComponentLink link, NominaProjection h, ParametersByProjection projection) {
         PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
