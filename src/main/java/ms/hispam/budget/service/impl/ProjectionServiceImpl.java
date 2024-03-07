@@ -1609,6 +1609,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 for (Map.Entry<String, Double> entry : componentTotals.entrySet()) {
                     String component = entry.getKey();
                     double total = entry.getValue();
+                    if(component.equalsIgnoreCase("HHEE") || component.equalsIgnoreCase("SURCHARGES")){
+                        total = total * hheeAdjustmentFactor;
+                    }
                     if (total > 0) {
                         projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
                     }
