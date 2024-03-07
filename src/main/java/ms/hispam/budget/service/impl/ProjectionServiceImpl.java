@@ -751,6 +751,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> digitalConnectivityList = filterParametersByName(projection.getParameters(), "Auxilio Conectividad Digital");
         //SSBono
         List<ParametersDTO> ssBonoList = filterParametersByName(projection.getParameters(), "SSBono");
+        //Días vacaciones provisionados
+        List<ParametersDTO> vacationDaysProvisioned = filterParametersByName(projection.getParameters(), "Dias vacaciones provisionados");
         //log.debug("commissionList {}",commissionList);
         //log.debug("revisionEttList {}",revisionEttList);
         //log.debug("revisionList {}",revisionList);
@@ -767,7 +769,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     //methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList);
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList, excludedPositionsBC, headcountData.getPoName());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), vacationDaysProvisioned);
                     methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceInterest(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.contributionBox(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
