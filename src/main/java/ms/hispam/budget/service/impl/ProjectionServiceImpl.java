@@ -103,7 +103,8 @@ public class ProjectionServiceImpl implements ProjectionService {
         this.mexicoService = mexicoService;
     }
     private static final String[] headers = {"po","idssff"};
-    private static final String HEADERPO="POXXXXXX";
+    private static final String HEADERPO="po";
+    private static final String[]  HEADERNAME={"po","typeEmployee"};
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -176,7 +177,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             //log.debug("headcount {}",headcount);
             List<ComponentAmount> groupedData = headcount.stream()
                     .flatMap(j -> {
-                        log.debug("j.getComponents() {}",j.getComponents());
+                       // log.debug("j.getComponents() {}",j.getComponents());
                         return  j.getComponents().stream();
                     })
                     .collect(Collectors.groupingBy(
@@ -203,7 +204,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                                     componente.setName(componente.getPaymentComponent());
                                 })
                                 .collect(Collectors.toList());
-                        log.debug("componentesValidosEnProyeccion {}",componentesValidosEnProyeccion);
+                       // log.debug("componentesValidosEnProyeccion {}",componentesValidosEnProyeccion);
                         // Crea una nueva proyección con los componentes válidos
                         return new ProjectionDTO(
                                 proyeccion.getIdssff(),
@@ -339,7 +340,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .rosseta(rosseta)
                     .tCambio(new BigDecimal(tCambio))
                     .build();
-        }catch (ConversionFailedException ex) {
+       }catch (ConversionFailedException ex) {
             log.debug("El valor proporcionado no es un número decimal válido: ", ex);
             throw new FormatAmountException("El valor proporcionado no es un número decimal válido");
         }catch (NumberFormatException ex){
@@ -348,6 +349,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             throw ex;
         } catch (Exception ex){
             log.error("Error al generar la proyección",ex);
+
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección", ex);
         }
     }
@@ -1037,14 +1039,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             bc.setHeaders(componentProjections.stream().filter(ComponentProjection::getIscomponent)
                     .map(ComponentProjection::getName).collect(Collectors.toList()));
             bc.getHeaders().addAll(nomina.stream().map(CodeNomina::getName).collect(Collectors.toList()));
-            bc.getHeaders().add(HEADERPO);
+            bc.getHeaders().addAll(List.of(HEADERNAME));
             List<Map<String,Object>> data = new ArrayList<>();
             businessCaseHistorials.forEach(t-> data.stream().filter(e->e.get(HEADERPO).equals(t.getPo())).findFirst().ifPresentOrElse(r->
-                            r.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())))
+                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                                    Double.parseDouble(Shared.desencriptar(t.getNvalue())))
                     ,()->{
                         Map<String, Object> map = new HashMap<>();
                         map.put(HEADERPO,t.getPo());
-                        map.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())));
+                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                                Double.parseDouble(Shared.desencriptar(t.getNvalue())));
                         data.add(map);
                     }));
             bc.setData(data);
@@ -1388,45 +1392,78 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 Map<String,Object> resp = projection.getBc().getData().get(i);
                 String pos = resp.get(HEADERPO).toString();
                 dataMapTemporal.put(pos, new HashMap<>(resp));
-                for (Map.Entry<String, Object> entry : resp.entrySet()) {
-                    int finalI = i;
-                    projection.getPaymentComponent()
-                            .stream()
-                            .filter(
-                                    t-> {
-                                        //log.debug("t.getName() {}",t.getName());
-                                        //log.debug("entry.getKey() {}",entry.getKey());
-                                        ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
-                                        return  !entry.getKey().equals(HEADERPO) &&
-                                                t.getName().equalsIgnoreCase(entry.getKey());
-                                    }
-                            )
-                            .findFirst()
-                            .ifPresentOrElse(t->
-                            {
-                                String position = resp.get(HEADERPO).toString();
-                                headcount.add(HeadcountProjection.builder()
-                                        .position(position)
-                                        .idssff(String.valueOf(finalI))
-                                        .poname("")
-                                        .classEmp(resp.get("typeEmployee").toString())
-                                        .component(t.getComponent())
-                                        .amount(Double.parseDouble(resp.get(t.getName()).toString()))
-                                        .build());
-                                excludedPositionsBC.add(position);
-                            },()->
-                      codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
-                              r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
-                          nominal.add(NominaProjection.builder()
-                                          .idssff(String.valueOf(finalI))
-                                          .codeNomina(q.getCodeNomina())
-                                        .importe(Double.parseDouble(resp.get(q.getName()).toString()))
-                                  .build())
-                      )
-                  );
-                }
-            }
+                headcount.stream().filter(e->e.getPosition().equals(pos)).findFirst().ifPresent(headcount::remove);
+                    //List<String> excludedPositionsBC = new ArrayList<>();
+                    for (Map.Entry<String, Object> entry : resp.entrySet()) {
+                        int finalI = i;
+                        projection.getPaymentComponent()
+                                .stream()
+                                .filter(
+                                        t-> {
+                                            //log.debug("t.getName() {}",t.getName());
+                                            //log.debug("entry.getKey() {}",entry.getKey());
+                                            ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                            return  !entry.getKey().equals(HEADERPO) &&
+                                                    t.getName().equalsIgnoreCase(entry.getKey());
+                                        }
+                                )
+                                .findFirst()
+                                .ifPresentOrElse(t->
+                                        {
+                                            String position = resp.get(HEADERPO).toString();
+                                            headcount.add(HeadcountProjection.builder()
+                                                    .position(position)
+                                                    .idssff(String.valueOf(finalI))
+                                                    .poname(resp.get("name").toString())
+                                                    .classEmp(resp.get("typeEmployee").toString())
+                                                    .component(t.getComponent())
+                                                    .amount(Double.parseDouble(resp.get(t.getName()).toString()))
+                                                    .build());
+                                            excludedPositionsBC.add(position);
+                                        },()->
+                                                codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
+                                                        r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
+                                                        nominal.add(NominaProjection.builder()
+                                                                .idssff(String.valueOf(finalI))
+                                                                .codeNomina(q.getCodeNomina())
+                                                                .importe(Double.parseDouble(resp.get(q.getName()).toString()))
+                                                                .build())
+                                                )
+                                );
+                    }
 
+
+               /* else{
+                    List<HeadcountProjection> headcountVacantes =
+                            headcount.stream().filter(r->r.getPosition().equals(pos)).collect(Collectors.toList());
+                    for (Map.Entry<String, Object> entry : resp.entrySet()) {
+                        projection.getPaymentComponent()
+                                .stream()
+                                .filter(
+                                        t-> {
+                                            //log.debug("t.getName() {}",t.getName());
+                                            //log.debug("entry.getKey() {}",entry.getKey());
+                                            ///log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                            return  !entry.getKey().equals(HEADERPO) &&
+                                                    t.getName().equalsIgnoreCase(entry.getKey());
+                                        }
+                                )
+                                .findFirst()
+                                .ifPresentOrElse(t->
+                                        headcountVacantes.stream().filter(r->r.getComponent().equals(t.getComponent())).findFirst().ifPresent(
+                                                q-> q.setAmount(Double.parseDouble(resp.get(t.getName()).toString()))
+                                        ),()->
+                                        codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
+                                                r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(y->
+                                                nominal.stream().filter(r->r.getCodeNomina().equals(y.getCodeNomina())).findFirst().ifPresent(
+                                                        q-> q.setImporte(Double.parseDouble(resp.get(y.getName()).toString()))
+                                                )
+                                ));
+                    }
+
+
+                }*/
+            }
         }
         //log.debug("headcount -> {}", headcount);
         //log.debug("headcountTemporal -> {}",headcountTemporal);
@@ -1483,6 +1520,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
                                     //log.debug("filteredNominal: {}", filteredNominal);
+
+
                                     addNominal(projection,projectionsComponent,filteredNominal,codeNominals,list);
                                     //log.info("projectionsComponent {}",projectionsComponent);
                                     return new ProjectionDTO(
@@ -1503,6 +1542,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         )
                 ))
                 .values());
+
+
+
+
 
     }
 

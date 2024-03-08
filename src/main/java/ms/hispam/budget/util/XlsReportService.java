@@ -288,16 +288,21 @@ public class XlsReportService {
         }
         int pstart =1;
         dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t->{
-                        Object obj = t.get("POXXXXXX");
+                        Object obj = t.get("po");
                         List<ComponentAmount> components = dataBase.getComponents().stream().map(k->
                                 ComponentAmount.builder()
                                         .component(k.getComponent())
                                         .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
                                         .build()).collect(Collectors.toList());
+                    components.addAll(dataBase.getNominas().stream().map(k->
+                            ComponentAmount.builder()
+                                    .component(k.getCodeNomina())
+                                    .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
+                                    .build()).collect(Collectors.toList()));
                         return  DataBaseResponse.builder()
                                 .po(obj.toString())
                                 .idssff("NUEVO")
-                                .poName("NUEVA POSICION")
+                                .poName(t.get("name").toString())
                                 .components(components)
                                 .build();
                     }
@@ -309,7 +314,7 @@ public class XlsReportService {
                             .filter(h->h.get("po").equals(r.getPo()) ).findFirst();
                         return ComponentAmount.builder()
                                 .component(k)
-                                .amount(d.map(stringObjectMap -> new BigDecimal(stringObjectMap.get(k).toString())).orElse(BigDecimal.ZERO))
+                                .amount(d.map(stringObjectMap -> stringObjectMap.get(k)!=null?new BigDecimal(stringObjectMap.get(k).toString()): BigDecimal.ZERO).orElse(BigDecimal.ZERO))
                                 .build();
                     }).collect(Collectors.toList());
             r.getComponents().addAll(bex);

@@ -113,7 +113,6 @@ public class Colombia {
         ////log.debug("period -> {}", period);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
-        yearMonth = yearMonth.plusMonths(1);
         period = yearMonth.format(formatter);
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(period) == null ? 0.0 : cacheCommission.get(period));
         if (!classEmployee.equals("T") && maxCommission != 0.0) {
@@ -224,7 +223,7 @@ public class Colombia {
         List<String> allMonths = new ArrayList<>();
         String currentYear = period.substring(0, 4);
         String currentMonth = period.substring(4, 6);
-        for (int i = 0; i < range + 1; i++) {
+        for (int i = 0; i < range +1; i++) {
             allMonths.add(currentYear + currentMonth);
             int monthInt = Integer.parseInt(currentMonth);
             monthInt++;
@@ -356,7 +355,8 @@ public class Colombia {
             if (pc938001Component != null && pc938001Component.getAmount().doubleValue() != 0.0) {
                 double highestAmountSoFar = Math.max(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
                 PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryTemporalComponent(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue(), classEmployee, period, range, category, TEMPORAL_SALARY).get("salaryComponent");
-                if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
+
+                /*if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
                     if (paymentComponentDTO.getProjections() != null){
                         for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                             Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
@@ -373,7 +373,7 @@ public class Colombia {
                             }
                         }
                     }
-                }
+                }*/
                 component.add(paymentComponentDTO);
             }else {
                 PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
@@ -1478,7 +1478,8 @@ public class Colombia {
         ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
         double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
         //log.info("sodexoValueBase -> {}", sodexoValueBase);
-        double sodexoValueExclusions =  findExcludedPositions(position, sodexoValueBase, excludedPositions);
+        ParametersDTO sodexoCercano=calculateSodexoCercano(sodexoMap, period);
+        double sodexoValueExclusions =  findExcludedPositions(position, sodexoCercano != null ? sodexoCercano.getValue():0.0, excludedPositions);
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
         sodexoComponent.setPaymentComponent("SODEXO");
@@ -1486,11 +1487,9 @@ public class Colombia {
         if (category.equals("P")) {
             // Calcular el valor de Sodexo para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
-            double lastValidSodexoValue = sodexoComponent.getAmount().doubleValue();
             if (salaryComponent != null && salaryComponent.getProjections() != null){
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
-                    ParametersDTO sodexo = sodexoMap.get(primeProjection.getMonth());
-                    String periodSodexo = sodexo != null ? sodexo.getPeriod() : "";
+                    ParametersDTO sodexo =calculateSodexoCercano(sodexoMap, primeProjection.getMonth());
                     double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
                     double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoValue, excludedPositions);
                     //log.info("position -> {}, sodexoValueExclusionsProjection -> {}, moth -> {}", position, sodexoValueExclusionsProjection, primeProjection.getMonth());
@@ -1502,16 +1501,13 @@ public class Colombia {
                             .mapToDouble(projection -> projection.getAmount().doubleValue())
                             .sum();
                     double sodexoContribution = 0.0;
-                    if (sodexo != null) {
+
                         if (totalAmount < 2 * legalSalaryMinInternal) {
                             sodexoContribution = sodexoValueExclusionsProjection;
-                            lastValidSodexoValue = sodexoContribution;
-                        } else {
+                        } /*else {
                             sodexoContribution = lastValidSodexoValue;
-                        }
-                    } else {
-                        sodexoContribution = lastValidSodexoValue;
-                    }
+                        }*/
+
                     // Crear una proyección para este mes
                     MonthProjection projection = new MonthProjection();
                     projection.setMonth(primeProjection.getMonth());
@@ -1530,6 +1526,32 @@ public class Colombia {
         component.add(sodexoComponent);
         log.debug("component -> {}", "sodexo");
     }
+
+    public ParametersDTO calculateSodexoCercano(Map<String, ParametersDTO> sodexoMap, String periodo) {
+        // Si el mapa está vacío, devolvemos null
+        if (sodexoMap.isEmpty()) {
+            return null;
+        }
+
+
+        int periodoActual = Integer.parseInt(periodo); // Convertimos el periodo dado a entero para facilitar la comparación
+        String periodoCercano = null;
+
+        // Iteramos sobre las claves del mapa
+        for (String clave : sodexoMap.keySet()) {
+            int periodoClave = Integer.parseInt(clave); // Convertimos la clave a entero para comparar
+
+            // Si el periodo de la clave del mapa es menor o igual al periodo dado y es mayor que el periodo más cercano hacia atrás
+            if (periodoClave <= periodoActual && (periodoCercano == null || periodoClave > Integer.parseInt(periodoCercano))) {
+                periodoCercano = clave; // Actualizamos el periodo más cercano hacia atrás
+            }
+        }
+        if(periodoCercano== null){return null;}
+
+        // Devolvemos el objeto correspondiente a la clave más cercana hacia atrás
+        return sodexoMap.get(periodoCercano);
+    }
+
     public void sena(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
         ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
@@ -1796,28 +1818,14 @@ public class Colombia {
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
             PaymentComponentDTO pc938003Component = componentMap.get(PC938003);
             PaymentComponentDTO pc938012Component = componentMap.get(PC938012);
-            double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
-            double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
-            double maxCommission = Math.max(pc938003Amount, pc938012Amount);
-            PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO) createTemporalCommissionComponent(pc938003Component, pc938012Component, category, period, range, cacheCommission, sumCommission).get("commissionComponent");
-            List<MonthProjection> projections = new ArrayList<>();
-            for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                projection.setMonth(projection.getMonth());
-                BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth()));
-                if (commission.doubleValue() != 0.0){
-                    if (maxCommission != 0.0) {
-                        BigDecimal result = commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue()));
-                        projection.setAmount(result);
-                    } else {
-                        projection.setAmount(BigDecimal.valueOf(0));
-                    }
-                }else{
-                    projection.setAmount(BigDecimal.valueOf(0));
-                }
-                projections.add(projection);
-            }
-            paymentComponentDTO.setProjections(projections);
-            component.add(paymentComponentDTO);
+            PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
+            commissionComponent.setPaymentComponent(COMMISSION_TEMP);
+            double commission1 = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
+            double commission2 = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            double maxCommission = Math.max(commission1, commission2);
+            commissionComponent.setAmount(BigDecimal.valueOf(maxCommission));
+            commissionComponent.setProjections(Shared.generateMonthProjection(period,range,commissionComponent.getAmount()));
+            component.add(commissionComponent);
         }else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("COMMISSION_TEMP");
@@ -2437,7 +2445,7 @@ public class Colombia {
             feeComponent.setProjections(Shared.generateMonthProjection(period,range,feeComponent.getAmount()));
             component.add(feeComponent);
         }
-        log.debug("component -> {}", "feeTemporaries");
+        //log.debug("component -> {}", "feeTemporaries");
     }
     public void socialSecurityUniqueBonus(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range, List<ParametersDTO> ssBonusList) {
             Map<String, ParametersDTO> ssBonusMap = new ConcurrentHashMap<>();
@@ -2454,7 +2462,7 @@ public class Colombia {
             // Obtener el valor del parámetro {SS Bono}
             ParametersDTO ssBonusParameterBase = ssBonusMap.get(nextPeriod);
             double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue()/100 : 0.0;
-            log.info("ssBonus -> {}", ssBonus);
+            //log.info("ssBonus -> {}", ssBonus);
             // Calcular el valor de "Seguridad Social Bonificación Única"7
             double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
             PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
