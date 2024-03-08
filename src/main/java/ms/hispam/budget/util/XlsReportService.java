@@ -287,18 +287,25 @@ public class XlsReportService {
             hstart++;
         }
         int pstart =1;
-        dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t->{
+       /* dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t->{
                         Object obj = t.get("po");
-                        List<ComponentAmount> components = dataBase.getComponents().stream().map(k->
-                                ComponentAmount.builder()
+                        //Map<po, components>
+                        List<ComponentAmount> components = dataBase.getComponents()
+                                .stream()
+                                .map(k->
+                                        ComponentAmount.builder()
                                         .component(k.getComponent())
                                         .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
-                                        .build()).collect(Collectors.toList());
-                    components.addAll(dataBase.getNominas().stream().map(k->
-                            ComponentAmount.builder()
-                                    .component(k.getCodeNomina())
-                                    .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
-                                    .build()).collect(Collectors.toList()));
+                                        .build()
+                                )
+                                .collect(Collectors.toList());
+
+                        components.addAll(dataBase.getNominas().stream().map(k->
+                                ComponentAmount.builder()
+                                        .component(k.getCodeNomina())
+                                        .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
+                                        .build()).collect(Collectors.toList()));
+
                         return  DataBaseResponse.builder()
                                 .po(obj.toString())
                                 .idssff("NUEVO")
@@ -306,7 +313,41 @@ public class XlsReportService {
                                 .components(components)
                                 .build();
                     }
-                    ).collect(Collectors.toList()));
+                    ).collect(Collectors.toList())); */
+
+        Map<String, List<ComponentAmount>> positionMap = new HashMap<>();
+
+        dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t -> {
+            String position = t.get("po").toString();
+            List<ComponentAmount> components = dataBase.getComponents()
+                    .stream()
+                    .map(k ->
+                            ComponentAmount.builder()
+                                    .component(k.getComponent())
+                                    .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
+                                    .build()
+                    )
+                    .collect(Collectors.toList());
+
+            components.addAll(dataBase.getNominas().stream().map(k ->
+                    ComponentAmount.builder()
+                            .component(k.getCodeNomina())
+                            .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
+                            .build()).collect(Collectors.toList()));
+
+            if (positionMap.containsKey(position)) {
+                positionMap.get(position).addAll(components);
+            } else {
+                positionMap.put(position, components);
+            }
+
+            return DataBaseResponse.builder()
+                    .po(position)
+                    .idssff("NUEVO")
+                    .poName(t.get("name").toString())
+                    .components(positionMap.get(position))
+                    .build();
+        }).collect(Collectors.toList()));
 
         dataBase.getData().forEach(r->{
             List<ComponentAmount> bex = headers.stream().map(k->{

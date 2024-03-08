@@ -1385,7 +1385,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .codeNomina(e.getCodigoNomina())
                         .importe(e.getImporte())
                             .build()).collect(Collectors.toList());
-        log.debug("nominal {}",nominal);
+        //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
             for (int i = 0; i < projection.getBc().getData().size() ; i++) {
