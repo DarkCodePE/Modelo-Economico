@@ -104,6 +104,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="po";
+    private static final String[]  HEADERNAME={"po","typeEmployee"};
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -1036,14 +1037,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             bc.setHeaders(componentProjections.stream().filter(ComponentProjection::getIscomponent)
                     .map(ComponentProjection::getName).collect(Collectors.toList()));
             bc.getHeaders().addAll(nomina.stream().map(CodeNomina::getName).collect(Collectors.toList()));
-            bc.getHeaders().add(HEADERPO);
+            bc.getHeaders().addAll(List.of(HEADERNAME));
             List<Map<String,Object>> data = new ArrayList<>();
             businessCaseHistorials.forEach(t-> data.stream().filter(e->e.get(HEADERPO).equals(t.getPo())).findFirst().ifPresentOrElse(r->
-                            r.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())))
+                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                                    Double.parseDouble(Shared.desencriptar(t.getNvalue())))
                     ,()->{
                         Map<String, Object> map = new HashMap<>();
                         map.put(HEADERPO,t.getPo());
-                        map.put(t.getComponent(),Double.parseDouble(Shared.desencriptar(t.getNvalue())));
+                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                                Double.parseDouble(Shared.desencriptar(t.getNvalue())));
                         data.add(map);
                     }));
             bc.setData(data);
@@ -1409,7 +1412,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             headcount.add(HeadcountProjection.builder()
                                                     .position(position)
                                                     .idssff(String.valueOf(finalI))
-                                                    .poname("")
+                                                    .poname(resp.get("name").toString())
                                                     .classEmp(resp.get("typeEmployee").toString())
                                                     .component(t.getComponent())
                                                     .amount(Double.parseDouble(resp.get(t.getName()).toString()))

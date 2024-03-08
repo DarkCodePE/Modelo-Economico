@@ -302,7 +302,7 @@ public class XlsReportService {
                         return  DataBaseResponse.builder()
                                 .po(obj.toString())
                                 .idssff("NUEVO")
-                                .poName("NUEVA POSICION")
+                                .poName(t.get("name").toString())
                                 .components(components)
                                 .build();
                     }
