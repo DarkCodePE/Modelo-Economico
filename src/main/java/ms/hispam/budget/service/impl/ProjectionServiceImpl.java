@@ -1040,12 +1040,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             bc.getHeaders().addAll(List.of(HEADERNAME));
             List<Map<String,Object>> data = new ArrayList<>();
             businessCaseHistorials.forEach(t-> data.stream().filter(e->e.get(HEADERPO).equals(t.getPo())).findFirst().ifPresentOrElse(r->
-                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee") ||t.getComponent().equals("name")
+                                    ?Shared.desencriptar(t.getNvalue()):
                                     Double.parseDouble(Shared.desencriptar(t.getNvalue())))
                     ,()->{
                         Map<String, Object> map = new HashMap<>();
                         map.put(HEADERPO,t.getPo());
-                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")||t.getComponent().equals("name")?Shared.desencriptar(t.getNvalue()):
                                 Double.parseDouble(Shared.desencriptar(t.getNvalue())));
                         data.add(map);
                     }));
