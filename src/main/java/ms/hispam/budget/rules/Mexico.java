@@ -536,14 +536,22 @@ public class Mexico {
         provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIASNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
+        double lastProvRetiroIAS = provRetiroIASComponent.getAmount().doubleValue();
         for (MonthProjection projection : salaryComponent.getProjections()) {
             ParametersDTO provRetiroIASParamProj = provisionSistemasComplementariosIASMap.get(projection.getMonth());
             double provRetiroIASProj = provRetiroIASParamProj == null ? 0.0 : provRetiroIASParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double provRetiroIASAmount = proportion * provRetiroIASProj;
+            //double provRetiroIASAmount = proportion * provRetiroIASProj;
+            double provRetiroIASAmountAcc;
+            if(provRetiroIASParamProj != null){
+                provRetiroIASAmountAcc = proportion * provRetiroIASProj;
+                lastProvRetiroIAS = provRetiroIASAmountAcc;
+            }else {
+                provRetiroIASAmountAcc = lastProvRetiroIAS;
+            }
             MonthProjection provRetiroIASProjection = new MonthProjection();
             provRetiroIASProjection.setMonth(projection.getMonth());
-            provRetiroIASProjection.setAmount(BigDecimal.valueOf(provRetiroIASAmount));
+            provRetiroIASProjection.setAmount(BigDecimal.valueOf(provRetiroIASAmountAcc));
             projections.add(provRetiroIASProjection);
         }
         provRetiroIASComponent.setProjections(projections);
@@ -574,11 +582,18 @@ public class Mexico {
             SGMMComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * SGMM));
             // Apply the formula for each month of projection
             List<MonthProjection> projections = new ArrayList<>();
+            double lastSGMM = SGMMComponent.getAmount().doubleValue();
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 ParametersDTO SGMMParamProj = SGMMMap.get(projection.getMonth());
                 double SGMMProj = SGMMParamProj == null ? 0.0 : SGMMParamProj.getValue();
                 double proportion = projection.getAmount().doubleValue() / totalSalaries;
-                double SGMMAmount = proportion * SGMMProj;
+                double SGMMAmount;
+                if(SGMMParamProj != null) {
+                    SGMMAmount = proportion * SGMMProj;
+                    lastSGMM = SGMMAmount;
+                }else {
+                    SGMMAmount = lastSGMM;
+                }
                 MonthProjection SGMMProjection = new MonthProjection();
                 SGMMProjection.setMonth(projection.getMonth());
                 SGMMProjection.setAmount(BigDecimal.valueOf(SGMMAmount));
@@ -897,12 +912,19 @@ public class Mexico {
 
             List<MonthProjection> projections = new ArrayList<>();
             // Calcular la prima vacacional para cada mes de la proyección
+            double lastPrimaVacacional = primaVacacionalBase;
             for (MonthProjection projection : provisionVacacionesComponent.getProjections()) {
                 ParametersDTO provisionPrimaVacacionalParamProj = provisionPrimaVacacionalMap.get(projection.getMonth());
                 double provisionPrimaVacacionalProj = provisionPrimaVacacionalParamProj == null ? 0.0 : provisionPrimaVacacionalParamProj.getValue() / 100.0;
                 double provisionVacaciones = projection.getAmount().doubleValue();
-                double primaVacacional = provisionVacaciones * provisionPrimaVacacionalProj;
-
+                //double primaVacacional = provisionVacaciones * provisionPrimaVacacionalProj;
+                double primaVacacional;
+                if (provisionPrimaVacacionalParamProj != null) {
+                    primaVacacional = provisionVacaciones * provisionPrimaVacacionalProj;
+                    lastPrimaVacacional = primaVacacional;
+                }else {
+                    primaVacacional = lastPrimaVacacional;
+                }
                 MonthProjection primaVacacionalProjection = new MonthProjection();
                 primaVacacionalProjection.setMonth(projection.getMonth());
                 primaVacacionalProjection.setAmount(BigDecimal.valueOf(primaVacacional));
@@ -1759,6 +1781,7 @@ public class Mexico {
         stateTaxComponent.setAmount(stateTaxCost);
 
         List<MonthProjection> projections = new ArrayList<>();
+        double lastStateTax = stateTaxCost.doubleValue();
         for (MonthProjection stateTaxProjection : salaryComponent.getProjections()) {
             ParametersDTO monthlyProportion = stateTaxParameterMap.get(stateTaxProjection.getMonth());
             double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
@@ -1769,9 +1792,16 @@ public class Mexico {
                     .filter(p -> p.getMonth().equals(stateTaxProjection.getMonth()))
                     .mapToDouble(p -> p.getAmount().doubleValue())
                     .sum();
+            double stateTax;
+            if (monthlyProportion != null) {
+                stateTax = totalAmountValue * monthlyProportionValue;
+                lastStateTax = stateTax;
+            }else {
+                stateTax = lastStateTax;
+            }
             MonthProjection stateTaxProjectionMonth = new MonthProjection();
             stateTaxProjectionMonth.setMonth(stateTaxProjection.getMonth());
-            stateTaxProjectionMonth.setAmount(BigDecimal.valueOf(totalAmountValue * monthlyProportionValue));
+            stateTaxProjectionMonth.setAmount(BigDecimal.valueOf(stateTax));
             projections.add(stateTaxProjectionMonth);
         }
         stateTaxComponent.setProjections(projections);
