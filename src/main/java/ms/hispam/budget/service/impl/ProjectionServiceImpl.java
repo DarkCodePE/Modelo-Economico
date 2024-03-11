@@ -104,7 +104,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="po";
-    private static final String[]  HEADERNAME={"po","typeEmployee"};
+    private static final String[]  HEADERNAME={"po","typeEmployee","name"};
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -744,7 +744,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .findFirst()
                 .orElse(null);
         //log.debug("rangeBuByBU {}",rangeBuByBU);
-        List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : null;
+        List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : new ArrayList<>();
         //log.debug("rangeBuDetail {}",rangeBuDetail);
         //log.debug("excludedPositions {}",excludedPositions);
         Colombia methodsColombia = new Colombia();
@@ -780,7 +780,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
-                .parallel()
+
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
