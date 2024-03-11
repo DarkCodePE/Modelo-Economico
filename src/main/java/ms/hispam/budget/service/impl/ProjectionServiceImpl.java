@@ -112,7 +112,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     public List<DaysVacationOfTime> getAllDaysVacation() {
         return daysVacationOfTimeRepository.findAll();
     }
-
+    private Map<String, ConvenioBono> convenioBonoCache;
+    private Map<String, Convenio> convenioCache;
     @PostConstruct
     public void init() {
         operations = new ArrayList<>();
@@ -130,6 +131,18 @@ public class ProjectionServiceImpl implements ProjectionService {
         operations.add(new HousingOperation());
         operations.add(new ExpatriateseOperation());
         operations.add(new AFPOperation());
+        List<ConvenioBono> convenioBonos = convenioBonoRepository.findAll();
+        convenioBonoCache = new HashMap<>();
+        for (ConvenioBono convenioBono : convenioBonos) {
+            String key = convenioBono.getConvenioNivel();
+            convenioBonoCache.put(key, convenioBono);
+        }
+        List<Convenio> convenios = convenioRepository.findAll();
+        convenioCache = new HashMap<>();
+        for (Convenio convenio : convenios) {
+            String key = convenio.getConvenioName();
+            convenioCache.put(key, convenio);
+        }
     }
 
     @Override
@@ -638,9 +651,24 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
         List<ParametersDTO> lifeInsuranceList = filterParametersByName(projection.getParameters(), "Seguro de Vida");
         List<ParametersDTO> mothProportionParam = filterParametersByName(projection.getParameters(), "Proporción Mensual");
-
+        //Prima Vacacional
+        List<ParametersDTO> primaVacacionalParam = filterParametersByName(projection.getParameters(), "Prima Vacacional");
         //%Aporte Cta SER empresa
         List<ParametersDTO> aportacionCtaSEREmpresa = filterParametersByName(projection.getParameters(), "Aportación Cta SER Empresa");
+        //Dias prov aguinaldo
+        List<ParametersDTO> diasProvAguinaldo = filterParametersByName(projection.getParameters(), "Dias Prov Aguinaldo");
+        //Provision Prima Vacacional SER
+        List<ParametersDTO> provisionPrimaVacacionalSER = filterParametersByName(projection.getParameters(), "Provision Prima Vacacional SER");
+        //Tope mensual - Fondo Ahorro
+        List<ParametersDTO> topeMensualFondoAhorro = filterParametersByName(projection.getParameters(), "Tope Mensual - Fondo Ahorro");
+        //Tope sueldo - Fondo Ahorro
+        List<ParametersDTO> topeSueldoFondoAhorro = filterParametersByName(projection.getParameters(), "Tope Sueldo - Fondo Ahorro");
+        //UMA mensual
+        List<ParametersDTO> umaMensual = filterParametersByName(projection.getParameters(), "UMA Mensual");
+        //% Provisión Fondo de Ahorro
+        List<ParametersDTO> provisionFondoAhorro = filterParametersByName(projection.getParameters(), "Provisión Fondo de Ahorro");
+        //%Impuesto Estatal
+        List<ParametersDTO> stateTax = filterParametersByName(projection.getParameters(), "Impuesto Estatal");
         //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
                 .parallel()
@@ -656,15 +684,15 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.performanceBonus(component, headcountData.getPoName(), convenioNivel, projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocial(component, convenioNivel, projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocialRetiro(component, convenioNivel, projection.getPeriod(), projection.getRange());
-                    methodsMexico.seguroSocialInfonavit(component, convenioNivel, projection.getPeriod(), projection.getRange());
-                    methodsMexico.primaVacacional(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.aportacionCtaSEREmpresa(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
-                    methodsMexico.provisionAguinaldoCtaSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.provisionPrimaVacacionalSER(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsMexico.provisionFondoAhorro(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsMexico.performanceBonus(component, headcountData.getPoName(), convenioNivel, projection.getPeriod(), projection.getRange(), convenioBonoCache);
+                    methodsMexico.seguroSocial(component, convenioNivel, projection.getPeriod(), projection.getRange(),convenioCache);
+                    methodsMexico.seguroSocialRetiro(component, convenioNivel, projection.getPeriod(), projection.getRange(), convenioCache);
+                    methodsMexico.seguroSocialInfonavit(component, convenioNivel, projection.getPeriod(), projection.getRange(), convenioCache);
+                    methodsMexico.primaVacacional(component, primaVacacionalParam, projection.getPeriod(), projection.getRange());
+                    methodsMexico.aportacionCtaSEREmpresa(component, aportacionCtaSEREmpresa, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
+                    methodsMexico.provisionAguinaldoCtaSER(component, diasProvAguinaldo, projection.getPeriod(), projection.getRange());
+                    methodsMexico.provisionPrimaVacacionalSER(component, provisionPrimaVacacionalSER, projection.getPeriod(), projection.getRange());
+                    methodsMexico.provisionFondoAhorro(component, topeMensualFondoAhorro, topeSueldoFondoAhorro, umaMensual, provisionFondoAhorro, projection.getPeriod(), projection.getRange());
                     methodsMexico.compensacion(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
                     methodsMexico.disponibilidad(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
                     methodsMexico.disponibilidad(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), mothProportionParam);
@@ -679,13 +707,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.mudanza(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.vidaCara(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.primaDominicalExenta(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
+                    methodsMexico.calculateStateTax(component, stateTax, projection.getPeriod(), projection.getRange());
                     if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                         addBaseExtern(headcountData,projection.getBaseExtern(),
                                 projection.getPeriod(),projection.getRange());
                     }
                 });
-                double totalSalarios = calcularTotalSalarios(headcount, "CP");
-                double totalSalariosNoCP = calcularTotalSalariosNoCp(headcount, "CP");
+                double totalSalarios = calcularTotalSalarios(headcount, "CP", true);
+                double totalSalariosNoCP = calcularTotalSalarios(headcount, "CP", false);
         headcount.stream()
                         .parallel()
                         .forEach(headcountData -> {
@@ -694,23 +723,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.seguroDental(component,dentalInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroVida(component, lifeInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.provisionSistemasComplementariosIAS(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
-                    methodsMexico.SGMM(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
+                    methodsMexico.SGMM(component, sgmmList, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
                 });
         //log.debug("headcount {}",headcount);
     }
-    public double calcularTotalSalarios(List<ProjectionDTO> headcount, String type) {
+    public double calcularTotalSalarios(List<ProjectionDTO> headcount, String type, boolean includeType) {
         return headcount.stream()
-                //.filter(h -> h.getPoName().contains(type))
-                .flatMap(h -> h.getComponents().stream())
-                .filter(c -> c.getPaymentComponent().equals("SALARY"))
-                .map(PaymentComponentDTO::getProjections)
-                .map(projections -> projections.get(projections.size() - 1))
-                .mapToDouble(p -> p.getAmount().doubleValue())
-                .sum();
-    }
-    public double calcularTotalSalariosNoCp(List<ProjectionDTO> headcount, String type) {
-        return headcount.stream()
-                .filter(h -> !h.getPoName().contains(type))
+                .filter(h -> includeType ? h.getPoName().contains(type) : !h.getPoName().contains(type))
                 .flatMap(h -> h.getComponents().stream())
                 .filter(c -> c.getPaymentComponent().equals("SALARY"))
                 .map(PaymentComponentDTO::getProjections)
@@ -753,6 +772,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> digitalConnectivityList = filterParametersByName(projection.getParameters(), "Auxilio Conectividad Digital");
         //SSBono
         List<ParametersDTO> ssBonoList = filterParametersByName(projection.getParameters(), "SSBono");
+        //Días vacaciones provisionados
+        List<ParametersDTO> vacationDaysProvisioned = filterParametersByName(projection.getParameters(), "Dias vacaciones provisionados");
         //log.debug("commissionList {}",commissionList);
         //log.debug("revisionEttList {}",revisionEttList);
         //log.debug("revisionList {}",revisionList);
@@ -769,7 +790,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     //methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList);
                     methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList, excludedPositionsBC, headcountData.getPoName());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), vacationDaysProvisioned);
                     methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceInterest(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.contributionBox(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
@@ -1384,7 +1405,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .codeNomina(e.getCodigoNomina())
                         .importe(e.getImporte())
                             .build()).collect(Collectors.toList());
-        log.debug("nominal {}",nominal);
+        //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
             for (int i = 0; i < projection.getBc().getData().size() ; i++) {
@@ -1605,8 +1626,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
                             List<NominaProjection> nominal , List<CodeNomina> codeNominas ,
                             List<HeadcountProjection> list ){
-        if (projection.getBu().equalsIgnoreCase("T. ECUADOR"))
-        {
+        if (projection.getBu().equalsIgnoreCase("T. ECUADOR")) {
             //Nomina
             double hhee = 0.0;
             double guarderia =0.0;
@@ -1651,6 +1671,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 for (Map.Entry<String, Double> entry : componentTotals.entrySet()) {
                     String component = entry.getKey();
                     double total = entry.getValue();
+                    if(component.equalsIgnoreCase("HHEE") || component.equalsIgnoreCase("SURCHARGES")){
+                        total = total * hheeAdjustmentFactor;
+                    }
                     if (total > 0) {
                         projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
                     }
@@ -1695,173 +1718,30 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             //log.info("projectionsComponent {}",projectionsComponent);
         } // else if mexico
         else if (projection.getBu().equalsIgnoreCase("T. MEXICO")) {
-            log.debug("nominal {}",nominal);
-            //Bono de Disponibilidad
-            double totalDisponibilidad = 0.0;
-            double totalCompensation = 0.0;
-            double totalGratification = 0.0;
-            //Gratificacion Extraordinaria
-            double gratificacionExtraordinaria = 0.0;
-            //Descanso Trabajado Exento
-            double totalTrabajoExtenso = 0.0;
-            //Descanso Trabajado Gravable
-            double totalTrabajoGravable = 0.0;
-            //Parte Exenta del Festivo Laborado
-            double parteExentaFestivoLaborado = 0.0;
-            //Parte Gravable del Festivo Laborado
-            double parteGravableFestivoLaborado = 0.0;
-            //Prima Dominical Gravable
-            double primaDominicalGravable = 0.0;
-            //Prima Dominical Exenta
-            double primaDominicalExenta = 0.0;
-            //Ayuda Mudanza
-            double ayudaMudanza = 0.0;
-            //Importe vida cara
-            double importeVidaCara = 0.0;
           /*  List<NominaProjection> nominalBySSFF = nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase("1001906")).collect(Collectors.toList());*/
             List<NominaProjection> nominalBySSFF = nominal.stream().filter(g->g.getIdssff()
                     .equalsIgnoreCase(list.get(0).getIdssff())).collect(Collectors.toList());
             //log.info("ssff {}",list.get(0).getIdssff());
             if (!nominalBySSFF.isEmpty()) {
+                Map<String, Double> componentTotals = new HashMap<>();
                 for (NominaProjection h : nominalBySSFF) {
                     List<NominaPaymentComponentLink> nominaPaymentComponentLinks = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
                     if (nominaPaymentComponentLinks != null) {
-                        totalDisponibilidad += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("DISPONIBILIDAD"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        totalCompensation += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("COMPENSACION"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        totalGratification += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("GRATIFICACION"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        gratificacionExtraordinaria = nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("GRATIFICACION_EXTRAORDINARIA"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        totalTrabajoExtenso += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("TRABAJO_EXTENSO"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        totalTrabajoGravable += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("TRABAJO_GRAVABLE"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        parteExentaFestivoLaborado += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PARTE_EXENTA_FESTIVO_LABORADO"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        parteGravableFestivoLaborado += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PARTE_GRAVABLE_FESTIVO_LABORADO"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        primaDominicalGravable += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PRIMA_DOMINICAL_GRAVABLE"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        ayudaMudanza += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("MUDANZA"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        importeVidaCara += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("VIDA_CARA"))
-                                .mapToDouble(n -> h.getImporte()).sum();
-                        primaDominicalExenta += nominaPaymentComponentLinks.stream()
-                                .filter(n -> n.getPaymentComponent().getPaymentComponent().equalsIgnoreCase("PRIMA_DOMINICAL_EXENTA"))
-                                .mapToDouble(n -> h.getImporte()).sum();
+                        for (NominaPaymentComponentLink link : nominaPaymentComponentLinks) {
+                            String component = link.getPaymentComponent().getPaymentComponent();
+                            double importe = h.getImporte();
+                            componentTotals.put(component, componentTotals.getOrDefault(component, 0.0) + importe);
+                        }
                     }
                 }
-                PaymentComponentDTO disponibilidadComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("DISPONIBILIDAD_BASE")
-                        .amount(BigDecimal.valueOf(totalDisponibilidad))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalDisponibilidad)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO compensationComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("COMPENSACION_BASE")
-                        .amount(BigDecimal.valueOf(totalCompensation))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalCompensation)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO gratificationComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("GRATIFICACION_BASE")
-                        .amount(BigDecimal.valueOf(totalGratification))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalGratification)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO gratificacionExtraordinariaComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("GRATIFICACION_EXTRAORDINARIA_BASE")
-                        .amount(BigDecimal.valueOf(gratificacionExtraordinaria))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(gratificacionExtraordinaria)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO trabajoExtensoComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("TRABAJO_EXTENSO_BASE")
-                        .amount(BigDecimal.valueOf(totalTrabajoExtenso))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalTrabajoExtenso)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO trabajoGravableComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("TRABAJO_GRAVABLE_BASE")
-                        .amount(BigDecimal.valueOf(totalTrabajoGravable))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(totalTrabajoGravable)))
-                        .show(true)
-                        .build();
-
-                PaymentComponentDTO parteExentaFestivoLaboradoComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("PARTE_EXENTA_FESTIVO_LABORADO_BASE")
-                        .amount(BigDecimal.valueOf(parteExentaFestivoLaborado))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(parteExentaFestivoLaborado)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO parteGravableFestivoLaboradoComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("PARTE_GRAVABLE_FESTIVO_LABORADO_BASE")
-                        .amount(BigDecimal.valueOf(parteGravableFestivoLaborado))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(parteGravableFestivoLaborado)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO primaDominicalGravableComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("PRIMA_DOMINICAL_GRAVABLE_BASE")
-                        .amount(BigDecimal.valueOf(primaDominicalGravable))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(primaDominicalGravable)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO ayudaMudanzaComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("MUDANZA_BASE")
-                        .amount(BigDecimal.valueOf(ayudaMudanza))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(ayudaMudanza)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO importeVidaCaraComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("VIDA_CARA_BASE")
-                        .amount(BigDecimal.valueOf(importeVidaCara))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(importeVidaCara)))
-                        .show(true)
-                        .build();
-                PaymentComponentDTO primaDominicalExentaComponent = PaymentComponentDTO.builder()
-                        .type(16)
-                        .paymentComponent("PRIMA_DOMINICAL_EXENTA_BASE")
-                        .amount(BigDecimal.valueOf(primaDominicalExenta))
-                        .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(primaDominicalExenta)))
-                        .show(true)
-                        .build();
-                projectionsComponent.add(disponibilidadComponent);
-                projectionsComponent.add(compensationComponent);
-                projectionsComponent.add(gratificationComponent);
-                projectionsComponent.add(gratificacionExtraordinariaComponent);
-                projectionsComponent.add(trabajoExtensoComponent);
-                projectionsComponent.add(trabajoGravableComponent);
-                projectionsComponent.add(parteExentaFestivoLaboradoComponent);
-                projectionsComponent.add(parteGravableFestivoLaboradoComponent);
-                projectionsComponent.add(primaDominicalGravableComponent);
-                projectionsComponent.add(ayudaMudanzaComponent);
-                projectionsComponent.add(importeVidaCaraComponent);
-                projectionsComponent.add(primaDominicalExentaComponent);
+                for (Map.Entry<String, Double> entry : componentTotals.entrySet()) {
+                    String component = entry.getKey();
+                    double total = entry.getValue();
+                    if (total > 0) {
+                        projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
+                    }
+                }
             }else {
                 PaymentComponentDTO disponibilidadComponent = PaymentComponentDTO.builder()
                         .type(16)
@@ -1960,16 +1840,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 projectionsComponent.add(importeVidaCaraComponent);
                 projectionsComponent.add(primaDominicalExentaComponent);
             }
-            /*for (NominaProjection h : nominal) {
-                List<NominaPaymentComponentLink> nominaPaymentComponentLinks = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
-                for (NominaPaymentComponentLink link : nominaPaymentComponentLinks) {
-                    if (link.getNominaConcept().getCodeNomina().equals(h.getCodeNomina())) {
-                        PaymentComponentDTO paymentComponentDTO = createPaymentComponentDTO(link, h, projection);
-                        projectionsComponent.add(paymentComponentDTO);
-                    }
-                }
-            }*/
-            //log.info("projectionsComponent {}",projectionsComponent);
         } else if (projection.getBu().equalsIgnoreCase("T. PERU")){
             String nominalCodeMoving="1247";
             String nominalCodeHousing="1212";

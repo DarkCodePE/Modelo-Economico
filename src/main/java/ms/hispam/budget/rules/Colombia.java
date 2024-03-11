@@ -676,7 +676,10 @@ public class Colombia {
        // log.debug("component -> {}", "prodMonthPrime");
     }
 
-    public void consolidatedVacation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void consolidatedVacation(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, List<ParametersDTO> consolidatedVacationList) {
+        Map<String, ParametersDTO> consolidatedVacationMap = new ConcurrentHashMap<>();
+        Map<String, Double> cacheConsolidatedVacation = new ConcurrentHashMap<>();
+        createCache(consolidatedVacationList, consolidatedVacationMap, cacheConsolidatedVacation, (parameter, mapParameter) -> {});
         String category = findCategory(classEmployee);
         // Obtén los componentes necesarios para el cálculo
         List<String> vacationComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION");
@@ -695,14 +698,23 @@ public class Colombia {
             BigDecimal surcharges = BigDecimal.valueOf(surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue());
             BigDecimal commission = BigDecimal.valueOf(commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue());
             // Crear un nuevo PaymentComponentDTO para el Consolidado de Vacaciones
+
             PaymentComponentDTO vacationComponent = new PaymentComponentDTO();
             vacationComponent.setPaymentComponent("CONSOLIDADO_VACACIONES");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
             //double totalAmountBase = salary + overtime + surcharges + commission;
-            BigDecimal totalAmountBase = salary.add(overtime).add(surcharges).add(commission);
-            BigDecimal result = totalAmountBase.divide(BigDecimal.valueOf(24), 2, RoundingMode.HALF_UP);
+            ParametersDTO consolidateVacationBase = consolidatedVacationMap.get(nextPeriod);
+            double consolidateVacationAmountBase = consolidateVacationBase != null ? consolidateVacationBase.getValue() / 12 : 0.0;
+            BigDecimal totalAmountBase = BigDecimal.valueOf((salary.doubleValue() + overtime.doubleValue() + surcharges.doubleValue() + commission.doubleValue())/30);
+            BigDecimal result = BigDecimal.valueOf(totalAmountBase.doubleValue() * consolidateVacationAmountBase);
             vacationComponent.setAmount(result);
             // Calcular el Consolidado de Vacaciones para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
+            //last vacation amount
+            double lastVacationAmount = vacationComponent.getAmount().doubleValue();
             for (MonthProjection primeProjection : componentMap.get("SALARY").getProjections()) {
                 BigDecimal totalAmount = vacationComponents.stream()
                         .map(componentMap::get)
@@ -711,9 +723,16 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+                ParametersDTO consolidateVacation = consolidatedVacationMap.get(primeProjection.getMonth());
+                double  consolidateVacationAmount = consolidateVacation != null ? consolidateVacation.getValue() / 12 : 0.0;
                 // Calcular el costo del Consolidado de Vacaciones
-                BigDecimal vacationCost = BigDecimal.valueOf(totalAmount.doubleValue() / 30);
+                BigDecimal vacationCost;
+                if (consolidateVacation != null){
+                    vacationCost = BigDecimal.valueOf((totalAmount.doubleValue() / 30) * consolidateVacationAmount);
+                    lastVacationAmount = vacationCost.doubleValue();
+                }else {
+                    vacationCost = BigDecimal.valueOf(lastVacationAmount);
+                }
                 //log.debug("vacationCost -> {}", vacationCost);
                 // Crear una proyección para este mes
                 MonthProjection projection = new MonthProjection();

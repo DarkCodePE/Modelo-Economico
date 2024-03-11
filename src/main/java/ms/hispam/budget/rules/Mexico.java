@@ -53,10 +53,7 @@ public class Mexico {
     private static final String  PC320002 = "PC320002";
     private List<RangeBuDetailDTO> allDaysVacation;
     private List<String> sortedSalaryRevisions;
-    private final ConvenioRepository convenioRepository;
-    private final  ConvenioBonoRepository convenioBonoRepository;
-    private Map<String, Convenio> convenioCache;
-    private Map<String, ConvenioBono> convenioBonoCache;
+
     private static final List<DaysVacationInfo> daysVacationList = Arrays.asList(
             new DaysVacationInfo(1, 1, 12),
             new DaysVacationInfo(2, 2, 14),
@@ -74,26 +71,6 @@ public class Mexico {
     @Autowired
     public Mexico(MexicoService mexicoService, ConvenioRepository convenioRepository, ConvenioBonoRepository convenioBonoRepository) {
         this.mexicoService = mexicoService;
-        this.convenioRepository = convenioRepository;
-        this.convenioBonoRepository = convenioBonoRepository;
-    }
-
-    @PostConstruct
-    public void init() {
-        List<Convenio> convenios = convenioRepository.findAll();
-        convenioCache = new HashMap<>();
-        for (Convenio convenio : convenios) {
-            String key = convenio.getConvenioName();
-            convenioCache.put(key, convenio);
-        }
-        List<ConvenioBono> convenioBonos = convenioBonoRepository.findAll();
-        convenioBonoCache = new HashMap<>();
-        for (ConvenioBono convenioBono : convenioBonos) {
-            String key = convenioBono.getConvenioNivel();
-            convenioBonoCache.put(key, convenioBono);
-        }
-       // log.info("ConvenioCache: {}", convenioCache);
-       // log.info("ConvenioBonoCache: {}", convenioBonoCache);
     }
 
     public List<RangeBuDetailDTO> getAllDaysVacation(List<RangeBuDetailDTO> rangeBu, Integer idBu) {
@@ -575,44 +552,46 @@ public class Mexico {
         component.add(provRetiroIASComponent);
     }
     public void SGMM (List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, String poName, double totalSalaries) {
+        Map<String, ParametersDTO> SGMMMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(parameters, SGMMMap, cache, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
         // Get the "SGMM" amount from parameters
-        ParametersDTO SGMMParam = parameters.stream()
-                .filter(p -> p.getParameter().getDescription().equals("SGMM"))
-                .findFirst()
-                .orElse(null);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO SGMMParam = SGMMMap.get(nextPeriod);
 
         double SGMM = SGMMParam == null ? 0.0 : SGMMParam.getValue();
-
         boolean isCp = poName != null && poName.contains("CP");
+
+        PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
+        SGMMComponent.setPaymentComponent("SGMM");
         if (!isCp) {
             // Create a new PaymentComponentDTO for "SGMM"
-            PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
-            SGMMComponent.setPaymentComponent("SGMM");
-            SGMMComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * SGMM));
+            SGMMComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * SGMM));
             // Apply the formula for each month of projection
             List<MonthProjection> projections = new ArrayList<>();
             for (MonthProjection projection : salaryComponent.getProjections()) {
+                ParametersDTO SGMMParamProj = SGMMMap.get(projection.getMonth());
+                double SGMMProj = SGMMParamProj == null ? 0.0 : SGMMParamProj.getValue();
                 double proportion = projection.getAmount().doubleValue() / totalSalaries;
-                double SGMMAmount = proportion * SGMM;
+                double SGMMAmount = proportion * SGMMProj;
                 MonthProjection SGMMProjection = new MonthProjection();
                 SGMMProjection.setMonth(projection.getMonth());
                 SGMMProjection.setAmount(BigDecimal.valueOf(SGMMAmount));
                 projections.add(SGMMProjection);
             }
             SGMMComponent.setProjections(projections);
-
             // Add the "SGMM" component to the component list
-            component.add(SGMMComponent);
         }else {
             //ZERO
-            PaymentComponentDTO SGMMComponent = new PaymentComponentDTO();
-            SGMMComponent.setPaymentComponent("SGMM");
             SGMMComponent.setAmount(BigDecimal.valueOf(0.0));
             SGMMComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
-            component.add(SGMMComponent);
         }
+        component.add(SGMMComponent);
     }
 
     public void valesDeDespensa(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
@@ -675,12 +654,13 @@ public class Mexico {
             component.add(valesDeDespensaComponent);
         }
     }
-    public void performanceBonus(List<PaymentComponentDTO> component, String poName, String convenioBono, String period, Integer range) {
-        //log.debug("ConvenioBono: {}", convenioBono);
-        //log.debug("ConvenioBonoCache: {}", convenioBonoCache);
-        //ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
+    public void performanceBonus(List<PaymentComponentDTO> component, String poName, String convenioBono, String period, Integer range, Map<String, ConvenioBono> convenioBonoCache) {
+        /*log.debug("ConvenioBono: {}", convenioBono);
+        log.debug("ConvenioBonoCache: {}", convenioBonoCache);*/
+        ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
+        /*log.debug("ConvenioBono: {}", convenioBonoData);*/
         //log.debug("ConvenioBono: {}", convenioBonoData);
-        //if (convenioBonoData != null) {
+        if (convenioBonoData != null) {
             // Convert the component list to a map
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -691,19 +671,19 @@ public class Mexico {
             // If the level is 'V', no bonus is applied
             if (isV) {
                 // Get the bonus percentage from the ConvenioBono object
-               // double bonusPercent = convenioBonoData.getBonoPercentage();
-                double bonusPercent = 8.33;
-                double monthlyBonus = (salaryComponent.getAmount().doubleValue() * bonusPercent / 100) / 12;
+                double bonusPercent = convenioBonoData.getBonoPercentage() / 100.0;
+                double monthlyBonusBase = (salaryComponent.getAmount().doubleValue() * bonusPercent) / 12;
 
                 // Create a new PaymentComponentDTO for the bonus
                 PaymentComponentDTO bonusComponent = new PaymentComponentDTO();
                 bonusComponent.setPaymentComponent("PERFORMANCE_BONUS");
-                bonusComponent.setAmount(BigDecimal.valueOf(monthlyBonus));
+                bonusComponent.setAmount(BigDecimal.valueOf(monthlyBonusBase));
 
                 // Apply the formula for each month of projection
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
                     MonthProjection bonusProjection = new MonthProjection();
+                    double monthlyBonus = (projection.getAmount().doubleValue() * bonusPercent) / 12;
                     bonusProjection.setMonth(projection.getMonth());
                     bonusProjection.setAmount(BigDecimal.valueOf(monthlyBonus));
                     projections.add(bonusProjection);
@@ -720,23 +700,22 @@ public class Mexico {
                 bonusComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(bonusComponent);
             }
-        /*}else {
+        }else {
             //ZERO
             PaymentComponentDTO bonusComponent = new PaymentComponentDTO();
             bonusComponent.setPaymentComponent("PERFORMANCE_BONUS");
             bonusComponent.setAmount(BigDecimal.valueOf(0.0));
             bonusComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(bonusComponent);
-        }*/
+        }
     }
-    public void seguroSocial(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
+    public void seguroSocial(List<PaymentComponentDTO> component, String convenioName, String period, Integer range, Map<String, Convenio> convenioCache) {
         // Obtén el convenio de la posición
-        //Convenio convenio = convenioCache.get(convenioName);
+        Convenio convenio = convenioCache.get(convenioName);
         //log.debug("Convenio: {}", convenio);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social
-        //if (convenio != null) {
-            //double seguroSocial = convenio.getImssPercentage();
-            double seguroSocial = 8.33;
+        if (convenio != null) {
+            double seguroSocial = convenio.getImssPercentage() / 100.0;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
 
@@ -748,11 +727,11 @@ public class Mexico {
                 // Crea un nuevo PaymentComponentDTO para el Seguro Social
                 PaymentComponentDTO seguroSocialComponent = new PaymentComponentDTO();
                 seguroSocialComponent.setPaymentComponent("IMSS");
-
+                seguroSocialComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * seguroSocial));
                 // Aplica la fórmula para cada mes de proyección
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
-                    double seguroSocialCost = projection.getAmount().doubleValue() * seguroSocial / 100;
+                    double seguroSocialCost = projection.getAmount().doubleValue() * seguroSocial;
                     MonthProjection seguroSocialProjection = new MonthProjection();
                     seguroSocialProjection.setMonth(projection.getMonth());
                     seguroSocialProjection.setAmount(BigDecimal.valueOf(seguroSocialCost));
@@ -770,22 +749,21 @@ public class Mexico {
                 seguroSocialComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialComponent);
             }
-        /*}else {
+        }else {
             //ZERO
             PaymentComponentDTO seguroSocialComponent = new PaymentComponentDTO();
             seguroSocialComponent.setPaymentComponent("IMSS");
             seguroSocialComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialComponent);
-        }*/
+        }
     }
-    public void seguroSocialRetiro(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
+    public void seguroSocialRetiro(List<PaymentComponentDTO> component, String convenioName, String period, Integer range, Map<String, Convenio> convenioCache) {
         // Obtén el convenio de la posición
-        //Convenio convenio = convenioCache.get(convenioName);
+        Convenio convenio = convenioCache.get(convenioName);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social (Retiro)
-        //if (convenio != null) {
-            //double seguroSocialRetiro = convenio.getRetiroPercentage();
-             double seguroSocialRetiro = 8.33;
+        if (convenio != null) {
+            double seguroSocialRetiro = convenio.getRetiroPercentage() / 100.0;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -798,11 +776,11 @@ public class Mexico {
                 // Crea un nuevo PaymentComponentDTO para el Seguro Social (Retiro)
                 PaymentComponentDTO seguroSocialRetiroComponent = new PaymentComponentDTO();
                 seguroSocialRetiroComponent.setPaymentComponent("IMSS_RETIRO");
-
+                seguroSocialRetiroComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * seguroSocialRetiro));
                 // Aplica la fórmula para cada mes de proyección
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
-                    double seguroSocialRetiroCost = projection.getAmount().doubleValue() * seguroSocialRetiro / 100;
+                    double seguroSocialRetiroCost = projection.getAmount().doubleValue() * seguroSocialRetiro;
                     MonthProjection seguroSocialRetiroProjection = new MonthProjection();
                     seguroSocialRetiroProjection.setMonth(projection.getMonth());
                     seguroSocialRetiroProjection.setAmount(BigDecimal.valueOf(seguroSocialRetiroCost));
@@ -820,22 +798,22 @@ public class Mexico {
                 seguroSocialRetiroComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialRetiroComponent);
             }
-        /*} else {
+        } else {
             //ZERO
             PaymentComponentDTO seguroSocialRetiroComponent = new PaymentComponentDTO();
             seguroSocialRetiroComponent.setPaymentComponent("IMSS_RETIRO");
             seguroSocialRetiroComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialRetiroComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialRetiroComponent);
-        }*/
+        }
     }
-    public void seguroSocialInfonavit(List<PaymentComponentDTO> component, String convenioName, String period, Integer range) {
+    public void seguroSocialInfonavit(List<PaymentComponentDTO> component, String convenioName, String period, Integer range, Map<String, Convenio> convenioCache) {
         // Obtén el convenio de la posición
-        //Convenio convenio = convenioCache.get(convenioName);
+        Convenio convenio = convenioCache.get(convenioName);
         // Si el convenio no se encuentra en el caché, no se puede calcular el Seguro Social (Infonavit)
-        //if (convenio != null) {
+        if (convenio != null) {
             //double seguroSocialInfonavit = convenio.getInfonavitPercentage();
-            double seguroSocialInfonavit = 8.33;
+            double seguroSocialInfonavit = convenio.getInfonavitPercentage() / 100.0;
             // Convertir la lista de componentes en un mapa para facilitar la búsqueda
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -848,11 +826,11 @@ public class Mexico {
                 // Crea un nuevo PaymentComponentDTO para el Seguro Social (Infonavit)
                 PaymentComponentDTO seguroSocialInfonavitComponent = new PaymentComponentDTO();
                 seguroSocialInfonavitComponent.setPaymentComponent("IMSS_INFONAVIT");
-
+                seguroSocialInfonavitComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * seguroSocialInfonavit));
                 // Aplica la fórmula para cada mes de proyección
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
-                    double seguroSocialInfonavitCost = projection.getAmount().doubleValue() * seguroSocialInfonavit / 100;
+                    double seguroSocialInfonavitCost = projection.getAmount().doubleValue() * seguroSocialInfonavit;
                     MonthProjection seguroSocialInfonavitProjection = new MonthProjection();
                     seguroSocialInfonavitProjection.setMonth(projection.getMonth());
                     seguroSocialInfonavitProjection.setAmount(BigDecimal.valueOf(seguroSocialInfonavitCost));
@@ -870,14 +848,14 @@ public class Mexico {
                 seguroSocialInfonavitComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
                 component.add(seguroSocialInfonavitComponent);
             }
-        /*} else {
+        } else {
             //ZERO
             PaymentComponentDTO seguroSocialInfonavitComponent = new PaymentComponentDTO();
             seguroSocialInfonavitComponent.setPaymentComponent("IMSS_INFONAVIT");
             seguroSocialInfonavitComponent.setAmount(BigDecimal.valueOf(0.0));
             seguroSocialInfonavitComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
             component.add(seguroSocialInfonavitComponent);
-        }*/
+        }
     }
 
     /**
@@ -891,6 +869,9 @@ public class Mexico {
      * @param range : number of months to projected in the simulation
         */
     public void primaVacacional(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+        Map<String, ParametersDTO> provisionPrimaVacacionalMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(parameters, provisionPrimaVacacionalMap, cache, (parameter, mapParameter) -> {});
         // Crear el mapa de componentes
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
 
@@ -900,11 +881,12 @@ public class Mexico {
         // Verificar si el componente de 'Provisión Vacaciones' existe
         if (provisionVacacionesComponent != null) {
             // Obtener el parámetro '{%Provision Prima Vacacional}'
-            ParametersDTO provisionPrimaVacacionalParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Prima Vacacional"))
-                    .findFirst()
-                    .orElse(null);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
 
+            ParametersDTO provisionPrimaVacacionalParam = provisionPrimaVacacionalMap.get(nextPeriod) ;
             double provisionPrimaVacacionalBase = provisionPrimaVacacionalParam == null ? 0.0 : provisionPrimaVacacionalParam.getValue() / 100.0;
             double primaVacacionalBase = provisionVacacionesComponent.getAmount().doubleValue() * provisionPrimaVacacionalBase;
 
@@ -916,8 +898,10 @@ public class Mexico {
             List<MonthProjection> projections = new ArrayList<>();
             // Calcular la prima vacacional para cada mes de la proyección
             for (MonthProjection projection : provisionVacacionesComponent.getProjections()) {
+                ParametersDTO provisionPrimaVacacionalParamProj = provisionPrimaVacacionalMap.get(projection.getMonth());
+                double provisionPrimaVacacionalProj = provisionPrimaVacacionalParamProj == null ? 0.0 : provisionPrimaVacacionalParamProj.getValue() / 100.0;
                 double provisionVacaciones = projection.getAmount().doubleValue();
-                double primaVacacional = provisionVacaciones * provisionPrimaVacacionalBase;
+                double primaVacacional = provisionVacaciones * provisionPrimaVacacionalProj;
 
                 MonthProjection primaVacacionalProjection = new MonthProjection();
                 primaVacacionalProjection.setMonth(projection.getMonth());
@@ -939,6 +923,8 @@ public class Mexico {
     }
     public void aportacionCtaSEREmpresa(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range, String poName, LocalDate birthDate, LocalDate hiringDate) {
         Map<String, ParametersDTO>  parametersMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(parameters, parametersMap, cache, (parameter, mapParameter) -> {});
        // //log.debug("birthDate: {}", birthDate);
         // Crear el mapa de componentes
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
@@ -948,13 +934,14 @@ public class Mexico {
 
         // Verificar si el componente de 'SALARY' existe
         if (salaryComponent != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
             // Obtener el parámetro '{%Aporte Cta SER empresa}'
-            ParametersDTO aporteCtaSEREmpresaParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Aporte Cta SER empresa"))
-                    .findFirst()
-                    .orElse(null);
-
-            double aporteCtaSEREmpresaBase = 0.0;
+            ParametersDTO aporteCtaSEREmpresaParamBase = parametersMap.get(nextPeriod);
+            double aporteCtaSEREmpresaBase = aporteCtaSEREmpresaParamBase == null ? 0.0 : aporteCtaSEREmpresaParamBase.getValue() / 100.0;
+            double aporteCtaSEREmpresaAmountBase = 0.0;
             int age = 0;
             if (birthDate != null) {
                 age = Period.between(birthDate, LocalDate.now()).getYears();
@@ -968,21 +955,23 @@ public class Mexico {
                 boolean isCp = poName != null && poName.contains("CP");
                 // Verificar el título del puesto y la edad del empleado
                 if (!isCp && (age >= 30 || seniority >= 3)) {
-                    aporteCtaSEREmpresaBase = salaryComponent.getAmount().doubleValue() * (aporteCtaSEREmpresaParam == null ? 0.0 : aporteCtaSEREmpresaParam.getValue() / 100.0);
+                    aporteCtaSEREmpresaAmountBase = salaryComponent.getAmount().doubleValue() * aporteCtaSEREmpresaBase;
                 }
 
                 // Crear un nuevo PaymentComponentDTO para 'APORTACION_CTA_SER_EMPRESA'
                 PaymentComponentDTO aportacionCtaSEREmpresaComponent = new PaymentComponentDTO();
                 aportacionCtaSEREmpresaComponent.setPaymentComponent("APORTACION_CTA_SER_EMPRESA");
-                aportacionCtaSEREmpresaComponent.setAmount(BigDecimal.valueOf(aporteCtaSEREmpresaBase));
+                aportacionCtaSEREmpresaComponent.setAmount(BigDecimal.valueOf(aporteCtaSEREmpresaAmountBase));
                 List<MonthProjection> projections = new ArrayList<>();
                 // Calcular la aportación a la cuenta SER de la empresa para cada mes de la proyección
                 for (MonthProjection projection : salaryComponent.getProjections()) {
                     double baseSalary = projection.getAmount().doubleValue();
-                    double aportacionCtaSEREmpresa = baseSalary * (aporteCtaSEREmpresaParam == null ? 0.0 : aporteCtaSEREmpresaParam.getValue() / 100.0);
+                    ParametersDTO aporteCtaSEREmpresaParam = parametersMap.get(projection.getMonth());
+                    double aportacionCtaSEREmpresa = aporteCtaSEREmpresaParam == null ? 0.0 : aporteCtaSEREmpresaParam.getValue() / 100.0;
+                    double amount = baseSalary * aportacionCtaSEREmpresa;
                     MonthProjection aportacionCtaSEREmpresaProjection = new MonthProjection();
                     aportacionCtaSEREmpresaProjection.setMonth(projection.getMonth());
-                    aportacionCtaSEREmpresaProjection.setAmount(BigDecimal.valueOf(aportacionCtaSEREmpresa));
+                    aportacionCtaSEREmpresaProjection.setAmount(BigDecimal.valueOf(amount));
                     projections.add(aportacionCtaSEREmpresaProjection);
                 }
                 aportacionCtaSEREmpresaComponent.setProjections(projections);
@@ -1005,46 +994,67 @@ public class Mexico {
             component.add(aportacionCtaSEREmpresaComponent);
         }
     }
+    /* Para el cálculo del concepto Provisión Aguinaldo Cta SER se requiere el monto mensual calculado en el Concepto 'Aportación Cta SER empresa', el salario base mensual de la posición y los días indicados en el parámetro {Días Provisión aguinaldo}.
+        Los {Días Provisión aguinaldo} ingresados en parámetros, se mantiene invariable hasta que se actualiza el valor de estos desde el periodo que se indique.
 
-    public void provisionAguinaldoCtaSER(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+        Cuando el costo mensual del concepto 'Aportación Cta SER empresa' de la posición es > 0:
+        El costo para la posición equivale al salario base mensual dividido en 30 para llevarlo a un valor diario, y multiplicarlo por la cantidad de días indicados en {Días Provisión aguinaldo}.
+        Si el costo del concepto 'Aportación Cta SER empresa' es = 0, el costo para la posición es 0. */
+    public void provisionAguinaldoCtaSER(List<PaymentComponentDTO> component, List<ParametersDTO> diasProvAguinaldo, String period, Integer range) {
+        Map<String, ParametersDTO> provisionAguinaldoCtaSERMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(diasProvAguinaldo, provisionAguinaldoCtaSERMap, cache, (parameter, mapParameter) -> {});
 
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
 
         if (salaryComponent != null) {
-            ParametersDTO diasProvisionAguinaldoParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Dias prov aguinaldo"))
-                    .findFirst()
-                    .orElse(null);
-            ////log.debug("diasProvisionAguinaldoParam: {}", diasProvisionAguinaldoParam);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO diasProvisionAguinaldoParam = provisionAguinaldoCtaSERMap.get(nextPeriod);
+            double diasProvisionAguinaldoBase = diasProvisionAguinaldoParam == null ? 0.0 : diasProvisionAguinaldoParam.getValue();
+            //log.debug("diasProvisionAguinaldoParam: {}", diasProvisionAguinaldoParam);
             PaymentComponentDTO aportacionCtaSEREmpresaComponent = componentMap.get("APORTACION_CTA_SER_EMPRESA");
+            double provisionAguinaldoCtaSERBase = aportacionCtaSEREmpresaComponent != null ? aportacionCtaSEREmpresaComponent.getAmount().doubleValue() : 0.0;
 
-            double provisionAguinaldoCtaSERBase = 0.0;
-            if (aportacionCtaSEREmpresaComponent != null && aportacionCtaSEREmpresaComponent.getAmount().doubleValue() > 0) {
-                double dailyBaseSalary = salaryComponent.getAmount().doubleValue() / 30;
-                provisionAguinaldoCtaSERBase = dailyBaseSalary * (diasProvisionAguinaldoParam == null ? 0.0 : diasProvisionAguinaldoParam.getValue());
-                PaymentComponentDTO provisionAguinaldoCtaSERComponent = new PaymentComponentDTO();
-                provisionAguinaldoCtaSERComponent.setPaymentComponent("PROVISION_AGUINALDO_CTA_SER");
-                provisionAguinaldoCtaSERComponent.setAmount(BigDecimal.valueOf(provisionAguinaldoCtaSERBase));
-                List<MonthProjection> projections = new ArrayList<>();
+            double dailyBaseSalary = salaryComponent.getAmount().doubleValue() / 30;
+            double provisionAguinaldoCtaSERAmountBase = dailyBaseSalary * diasProvisionAguinaldoBase;
+            PaymentComponentDTO provisionAguinaldoCtaSERComponent = new PaymentComponentDTO();
+            provisionAguinaldoCtaSERComponent.setPaymentComponent("PROVISION_AGUINALDO_CTA_SER");
+            provisionAguinaldoCtaSERComponent.setAmount(BigDecimal.valueOf(aportacionCtaSEREmpresaComponent != null && provisionAguinaldoCtaSERBase > 0 ? provisionAguinaldoCtaSERAmountBase : 0.0));
+            List<MonthProjection> projections = new ArrayList<>();
+            if (aportacionCtaSEREmpresaComponent != null && provisionAguinaldoCtaSERBase > 0) {
                 for (MonthProjection projection : salaryComponent.getProjections()) {
-                    double baseSalary = projection.getAmount().doubleValue();
-                    double provisionAguinaldoCtaSER = baseSalary / 30 * (diasProvisionAguinaldoParam == null ? 0.0 : diasProvisionAguinaldoParam.getValue());
-                    MonthProjection provisionAguinaldoCtaSERProjection = new MonthProjection();
-                    provisionAguinaldoCtaSERProjection.setMonth(projection.getMonth());
-                    provisionAguinaldoCtaSERProjection.setAmount(BigDecimal.valueOf(provisionAguinaldoCtaSER));
-                    projections.add(provisionAguinaldoCtaSERProjection);
+                    //APORTACION_CTA_SER_EMPRESA per month
+                    double aportacionCtaSEREmpresa = aportacionCtaSEREmpresaComponent.getProjections().stream()
+                            .filter(p -> p.getMonth().equals(projection.getMonth()))
+                            .findFirst()
+                            .map(MonthProjection::getAmount)
+                            .orElse(BigDecimal.valueOf(0.0))
+                            .doubleValue();
+                    if (aportacionCtaSEREmpresa > 0) {
+                        ParametersDTO provisionAguinaldoCtaSERParam = provisionAguinaldoCtaSERMap.get(projection.getMonth());
+                        double provisionAguinaldoCtaSER = provisionAguinaldoCtaSERParam == null ? 0.0 : provisionAguinaldoCtaSERParam.getValue();
+                        double baseSalary = projection.getAmount().doubleValue();
+                        double provisionAguinaldoCtaSERAmount = (baseSalary / 30) * provisionAguinaldoCtaSER;
+                        MonthProjection provisionAguinaldoCtaSERProjection = new MonthProjection();
+                        provisionAguinaldoCtaSERProjection.setMonth(projection.getMonth());
+                        provisionAguinaldoCtaSERProjection.setAmount(BigDecimal.valueOf(provisionAguinaldoCtaSERAmount));
+                        projections.add(provisionAguinaldoCtaSERProjection);
+                    }else {
+                        MonthProjection provisionAguinaldoCtaSERProjection = new MonthProjection();
+                        provisionAguinaldoCtaSERProjection.setMonth(projection.getMonth());
+                        provisionAguinaldoCtaSERProjection.setAmount(BigDecimal.valueOf(0.0));
+                        projections.add(provisionAguinaldoCtaSERProjection);
+                    }
                 }
-                provisionAguinaldoCtaSERComponent.setProjections(projections);
-                component.add(provisionAguinaldoCtaSERComponent);
             }else {
-                //ZERO
-                PaymentComponentDTO provisionAguinaldoCtaSERComponent = new PaymentComponentDTO();
-                provisionAguinaldoCtaSERComponent.setPaymentComponent("PROVISION_AGUINALDO_CTA_SER");
-                provisionAguinaldoCtaSERComponent.setAmount(BigDecimal.valueOf(0.0));
-                provisionAguinaldoCtaSERComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
-                component.add(provisionAguinaldoCtaSERComponent);
+                projections = Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0));
             }
+            provisionAguinaldoCtaSERComponent.setProjections(projections);
+            component.add(provisionAguinaldoCtaSERComponent);
         }else {
             //ZERO
             PaymentComponentDTO provisionAguinaldoCtaSERComponent = new PaymentComponentDTO();
@@ -1055,15 +1065,20 @@ public class Mexico {
         }
     }
     public void provisionPrimaVacacionalSER(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+        Map<String, ParametersDTO> provisionPrimaVacacionalSERMap = new ConcurrentHashMap<>();
+        Map<String, Double> cache = new ConcurrentHashMap<>();
+        createCache(parameters, provisionPrimaVacacionalSERMap, cache, (parameter, mapParameter) -> {});
+
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO provisionAguinaldoCtaSERComponent = componentMap.get("PROVISION_AGUINALDO_CTA_SER");
         PaymentComponentDTO provisionVacacionesComponent = componentMap.get("VACACIONES");
 
         if (provisionAguinaldoCtaSERComponent != null) {
-            ParametersDTO provisionPrimaVacacionalSERParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Provision Prima Vacacional SER"))
-                    .findFirst()
-                    .orElse(null);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO provisionPrimaVacacionalSERParam = provisionPrimaVacacionalSERMap.get(nextPeriod);
 
             double provisionPrimaVacacionalSERBase = 0.0;
             if (provisionAguinaldoCtaSERComponent.getAmount().doubleValue() > 0) {
@@ -1076,8 +1091,10 @@ public class Mexico {
             List<MonthProjection> projections = new ArrayList<>();
             // Calculate the contribution for each month of the projection
             for (MonthProjection projection : provisionAguinaldoCtaSERComponent.getProjections()) {
+                ParametersDTO provisionPrimaVacacionalSERParamProj = provisionPrimaVacacionalSERMap.get(projection.getMonth());
+                double provisionPrimaVacacionalSERProj = provisionPrimaVacacionalSERParamProj == null ? 0.0 : provisionPrimaVacacionalSERParamProj.getValue() / 100.0;
                 double provisionAguinaldoCtaSER = projection.getAmount().doubleValue();
-                double provisionPrimaVacacionalSER = provisionAguinaldoCtaSER * (provisionPrimaVacacionalSERParam == null ? 0.0 : provisionPrimaVacacionalSERParam.getValue() / 100.0);
+                double provisionPrimaVacacionalSER = provisionAguinaldoCtaSER * provisionPrimaVacacionalSERProj;
                 MonthProjection provisionPrimaVacacionalSERProjection = new MonthProjection();
                 provisionPrimaVacacionalSERProjection.setMonth(projection.getMonth());
                 provisionPrimaVacacionalSERProjection.setAmount(BigDecimal.valueOf(provisionPrimaVacacionalSER));
@@ -1085,47 +1102,72 @@ public class Mexico {
             }
             provisionPrimaVacacionalSERComponent.setProjections(projections);
             component.add(provisionPrimaVacacionalSERComponent);
+        }else {
+            //ZERO
+            PaymentComponentDTO provisionPrimaVacacionalSERComponent = new PaymentComponentDTO();
+            provisionPrimaVacacionalSERComponent.setPaymentComponent("PROVISION_PRIMA_VACACIONAL_SER");
+            provisionPrimaVacacionalSERComponent.setAmount(BigDecimal.valueOf(0.0));
+            provisionPrimaVacacionalSERComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(0.0)));
+            component.add(provisionPrimaVacacionalSERComponent);
         }
     }
-    public void provisionFondoAhorro(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String period, Integer range) {
+    public void provisionFondoAhorro(List<PaymentComponentDTO> component, List<ParametersDTO> topeMensualFondoAhorro, List<ParametersDTO> topeSueldoFondoAhorro, List<ParametersDTO> umaMensual, List<ParametersDTO> provisionFondoAhorro, String period, Integer range) {
+        Map<String, ParametersDTO> topeMensualFondoAhorroMap = new ConcurrentHashMap<>();
+        Map<String, Double> topeMensualFondoAhorroCache = new ConcurrentHashMap<>();
+        createCache(topeMensualFondoAhorro, topeMensualFondoAhorroMap, topeMensualFondoAhorroCache, (parameter, mapParameter) -> {});
+        Map<String, ParametersDTO> topeSueldoFondoAhorroMap = new ConcurrentHashMap<>();
+        Map<String, Double> topeSueldoFondoAhorroCache = new ConcurrentHashMap<>();
+        createCache(topeSueldoFondoAhorro, topeSueldoFondoAhorroMap, topeSueldoFondoAhorroCache, (parameter, mapParameter) -> {});
+        Map<String, ParametersDTO> umaMensualMap = new ConcurrentHashMap<>();
+        Map<String, Double> umaMensualCache = new ConcurrentHashMap<>();
+        createCache(umaMensual, umaMensualMap, umaMensualCache, (parameter, mapParameter) -> {});
+        Map<String, ParametersDTO> provisionFondoAhorroMap = new ConcurrentHashMap<>();
+        Map<String, Double> provisionFondoAhorroCache = new ConcurrentHashMap<>();
+        createCache(provisionFondoAhorro, provisionFondoAhorroMap, provisionFondoAhorroCache, (parameter, mapParameter) -> {});
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+            PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
 
         if (salaryComponent != null) {
-            ParametersDTO umaMensualParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("UMA mensual"))
-                    .findFirst()
-                    .orElse(null);
-            ParametersDTO topeMensualFondoParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Tope mensual fondo"))
-                    .findFirst()
-                    .orElse(null);
-            ParametersDTO topeSueldoMensualFondoParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("Tope sueldo mensual - fondo"))
-                    .findFirst()
-                    .orElse(null);
-            ParametersDTO provisionFondoAhorroParam = parameters.stream()
-                    .filter(p -> p.getParameter().getDescription().equals("% Provisión Fondo de Ahorro"))
-                    .findFirst()
-                    .orElse(null);
-
-            double umaMensual = umaMensualParam == null ? 0.0 : umaMensualParam.getValue();
-            double topeMensualFondo = topeMensualFondoParam == null ? (umaMensual / 30) * 1.3 * 30 : topeMensualFondoParam.getValue();
-            double topeSueldoMensualFondo = topeSueldoMensualFondoParam == null ? topeMensualFondo / 1.3 : topeSueldoMensualFondoParam.getValue();
-            double provisionFondoAhorro = provisionFondoAhorroParam == null ? 0.0 : provisionFondoAhorroParam.getValue() / 100;
-
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO umaMensualParam = umaMensualMap.get(nextPeriod);
+            ParametersDTO topeMensualFondoParam = topeMensualFondoAhorroMap.get(nextPeriod);
+            ParametersDTO topeSueldoMensualFondoParam = topeSueldoFondoAhorroMap.get(nextPeriod);
+            ParametersDTO provisionFondoAhorroParam = provisionFondoAhorroMap.get(nextPeriod);
+            double salary = salaryComponent.getAmount().doubleValue();
+            double umaMensualBase = umaMensualParam == null ? 0.0 : umaMensualParam.getValue();
+            double topeMensualFondoBase = topeMensualFondoParam == null ? (umaMensualBase / 30) * 1.3 * 30 : topeMensualFondoParam.getValue();
+            double topeSueldoMensualFondoBase = topeSueldoMensualFondoParam == null ? topeMensualFondoBase / 1.3 : topeSueldoMensualFondoParam.getValue();
+            double provisionFondoAhorroBase = provisionFondoAhorroParam == null ? 0.0 : provisionFondoAhorroParam.getValue() / 100;
+            double provisionFondoAhorroAmountBase;
             PaymentComponentDTO provisionFondoAhorroComponent = new PaymentComponentDTO();
             provisionFondoAhorroComponent.setPaymentComponent("PROVISION_FONDO_AHORRO");
+            if (salary > topeMensualFondoBase) {
+                provisionFondoAhorroAmountBase = topeSueldoMensualFondoBase;
+            } else {
+                provisionFondoAhorroAmountBase = salary * provisionFondoAhorroBase;
+            }
+            provisionFondoAhorroComponent.setAmount(BigDecimal.valueOf(provisionFondoAhorroAmountBase));
+
             List<MonthProjection> projections = new ArrayList<>();
-
             for (MonthProjection projection : salaryComponent.getProjections()) {
-                double baseSalary = projection.getAmount().doubleValue();
-                double provisionFondoAhorroAmount;
+                ParametersDTO umaMensualParamProj = umaMensualMap.get(projection.getMonth());
+                double umaMensualProj = umaMensualParamProj == null ? 0.0 : umaMensualParamProj.getValue();
+                ParametersDTO topeMensualFondoParamProj = topeMensualFondoAhorroMap.get(projection.getMonth());
+                double topeMensualFondoProj = topeMensualFondoParamProj == null ? (umaMensualProj / 30) * 1.3 * 30 : topeMensualFondoParamProj.getValue();
+                ParametersDTO topeSueldoMensualFondoParamProj = topeSueldoFondoAhorroMap.get(projection.getMonth());
+                double topeMensualFondoSueldoProj = topeSueldoMensualFondoParamProj == null ? topeMensualFondoProj / 1.3 : topeSueldoMensualFondoParamProj.getValue();
+                ParametersDTO provisionFondoAhorroParamProj = provisionFondoAhorroMap.get(projection.getMonth());
+                double provisionFondoAhorroProj = provisionFondoAhorroParamProj == null ? 0.0 : provisionFondoAhorroParamProj.getValue() / 100.0;
+                double salaryProj = projection.getAmount().doubleValue();
 
-                if (baseSalary > topeSueldoMensualFondo) {
-                    provisionFondoAhorroAmount = topeMensualFondo;
+                double provisionFondoAhorroAmount;
+                if (salaryProj > topeMensualFondoProj) {
+                    provisionFondoAhorroAmount = topeMensualFondoSueldoProj;
                 } else {
-                    provisionFondoAhorroAmount = baseSalary * provisionFondoAhorro;
+                    provisionFondoAhorroAmount = salaryProj * provisionFondoAhorroProj;
                 }
 
                 MonthProjection provisionFondoAhorroProjection = new MonthProjection();
@@ -1169,18 +1211,19 @@ public class Mexico {
         if (salaryComponent != null) {
             compensacionComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * proporciónMensualBase));
             List<MonthProjection> projections = new ArrayList<>();
-            double lastCompensation = salaryComponent.getAmount().doubleValue();
+            /*double lastCompensation = salaryComponent.getAmount().doubleValue();*/
             for (MonthProjection compeProjection : salaryComponent.getProjections()) {
                 double monthlyCompensation = compeProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(compeProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double compensation;
-                if(monthlyProportion != null){
+                double compensation = monthlyCompensation * monthlyProportionValue;
+              /*  if(monthlyProportion != null){
                     compensation = monthlyCompensation * monthlyProportionValue;
                     lastCompensation = compensation;
                 }else {
                     compensation = lastCompensation;
-                }
+                    compensation = 0.0;
+                }*/
                 MonthProjection compensationProjection = new MonthProjection();
                 compensationProjection.setMonth(compeProjection.getMonth());
                 compensationProjection.setAmount(BigDecimal.valueOf(compensation));
@@ -1217,13 +1260,14 @@ public class Mexico {
                 double monthlyDisponibilidad = dispoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(dispoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double disponibilidad;
+                double disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
+               /* double disponibilidad;
                 if (monthlyProportion != null) {
                     disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
                     lastDisponibilidad = disponibilidad;
                 } else {
                     disponibilidad = lastDisponibilidad;
-                }
+                }*/
                 MonthProjection disponibilidadProjection = new MonthProjection();
                 disponibilidadProjection.setMonth(dispoProjection.getMonth());
                 disponibilidadProjection.setAmount(BigDecimal.valueOf(disponibilidad));
@@ -1260,13 +1304,14 @@ public class Mexico {
                 double monthlyGratificacion = gratProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double gratificacion;
+                double gratificacion = monthlyGratificacion * monthlyProportionValue;
+               /* double gratificacion;
                 if (monthlyProportion != null) {
                     gratificacion = monthlyGratificacion * monthlyProportionValue;
                     lastGratificacion = gratificacion;
                 } else {
                     gratificacion = lastGratificacion;
-                }
+                }*/
                 MonthProjection gratificacionProjection = new MonthProjection();
                 gratificacionProjection.setMonth(gratProjection.getMonth());
                 gratificacionProjection.setAmount(BigDecimal.valueOf(gratificacion));
@@ -1303,13 +1348,14 @@ public class Mexico {
                 double monthlyGratificacionExtraordinaria = gratExtraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratExtraProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double gratificacionExtraordinaria;
+                double gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
+               /* double gratificacionExtraordinaria;
                 if (monthlyProportion != null) {
                     gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
                     lastGratificacionExtraordinaria = gratificacionExtraordinaria;
                 } else {
                     gratificacionExtraordinaria = lastGratificacionExtraordinaria;
-                }
+                }*/
                 MonthProjection gratificacionExtraordinariaProjection = new MonthProjection();
                 gratificacionExtraordinariaProjection.setMonth(gratExtraProjection.getMonth());
                 gratificacionExtraordinariaProjection.setAmount(BigDecimal.valueOf(gratificacionExtraordinaria));
@@ -1346,13 +1392,14 @@ public class Mexico {
                 double monthlyTrabajoExtenso = trabajoExtensoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoExtensoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double trabajoExtenso;
+                double trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
+                /*double trabajoExtenso;
                 if (monthlyProportion != null) {
                     trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
                     lastTrabajoExtenso = trabajoExtenso;
                 } else {
                     trabajoExtenso = lastTrabajoExtenso;
-                }
+                }*/
                 MonthProjection trabajoExtProjection = new MonthProjection();
                 trabajoExtProjection.setMonth(trabajoExtensoProjection.getMonth());
                 trabajoExtProjection.setAmount(BigDecimal.valueOf(trabajoExtenso));
@@ -1389,13 +1436,14 @@ public class Mexico {
                 double monthlyTrabajoGravable = trabajoGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoGravableProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double trabajoGravable;
+                double trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
+                /*double trabajoGravable;
                 if (monthlyProportion != null) {
                     trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
                     lastTrabajoGravable = trabajoGravable;
                 } else {
                     trabajoGravable = lastTrabajoGravable;
-                }
+                }*/
                 MonthProjection trabajoGravProjection = new MonthProjection();
                 trabajoGravProjection.setMonth(trabajoGravableProjection.getMonth());
                 trabajoGravProjection.setAmount(BigDecimal.valueOf(trabajoGravable));
@@ -1432,13 +1480,14 @@ public class Mexico {
                 double monthlyParteExentaFestivoLaborado = parteExentaFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteExentaFestivoLaboradoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double parteExentaFestivoLaborado;
+                double parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
+               /* double parteExentaFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
                     lastParteExentaFestivoLaborado = parteExentaFestivoLaborado;
                 } else {
                     parteExentaFestivoLaborado = lastParteExentaFestivoLaborado;
-                }
+                }*/
                 MonthProjection parteExentaFestLaboradoProjection = new MonthProjection();
                 parteExentaFestLaboradoProjection.setMonth(parteExentaFestivoLaboradoProjection.getMonth());
                 parteExentaFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteExentaFestivoLaborado));
@@ -1475,13 +1524,14 @@ public class Mexico {
                 double monthlyParteGravableFestivoLaborado = parteGravableFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteGravableFestivoLaboradoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double parteGravableFestivoLaborado;
+                double parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
+                /*double parteGravableFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
                     lastParteGravableFestivoLaborado = parteGravableFestivoLaborado;
                 } else {
                     parteGravableFestivoLaborado = lastParteGravableFestivoLaborado;
-                }
+                }*/
                 MonthProjection parteGravFestLaboradoProjection = new MonthProjection();
                 parteGravFestLaboradoProjection.setMonth(parteGravableFestivoLaboradoProjection.getMonth());
                 parteGravFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteGravableFestivoLaborado));
@@ -1518,13 +1568,14 @@ public class Mexico {
                 double monthlyPrimaDominicalGravable = primaDominicalGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(primaDominicalGravableProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double primaDominicalGravable;
+                double primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
+                /*double primaDominicalGravable;
                 if (monthlyProportion != null) {
                     primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
                     lastPrimaDominicalGravable = primaDominicalGravable;
                 } else {
                     primaDominicalGravable = lastPrimaDominicalGravable;
-                }
+                }*/
                 MonthProjection primaDominicalGravProjection = new MonthProjection();
                 primaDominicalGravProjection.setMonth(primaDominicalGravableProjection.getMonth());
                 primaDominicalGravProjection.setAmount(BigDecimal.valueOf(primaDominicalGravable));
@@ -1561,13 +1612,14 @@ public class Mexico {
                 double monthlyMudanza = mudanzaProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(mudanzaProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double mudanza;
+                double mudanza = monthlyMudanza * monthlyProportionValue;
+                /*double mudanza;
                 if (monthlyProportion != null) {
                     mudanza = monthlyMudanza * monthlyProportionValue;
                     lastMudanza = mudanza;
                 } else {
                     mudanza = lastMudanza;
-                }
+                }*/
                 MonthProjection mudanzaProjectionMonth = new MonthProjection();
                 mudanzaProjectionMonth.setMonth(mudanzaProjection.getMonth());
                 mudanzaProjectionMonth.setAmount(BigDecimal.valueOf(mudanza));
@@ -1604,13 +1656,14 @@ public class Mexico {
                 double monthlyVidaCara = vidaCaraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(vidaCaraProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double vidaCara;
+                double vidaCara = monthlyVidaCara * monthlyProportionValue;
+                /*double vidaCara;
                 if (monthlyProportion != null) {
                     vidaCara = monthlyVidaCara * monthlyProportionValue;
                     lastVidaCara = vidaCara;
                 } else {
                     vidaCara = lastVidaCara;
-                }
+                }*/
                 MonthProjection vidaCaraProjectionMonth = new MonthProjection();
                 vidaCaraProjectionMonth.setMonth(vidaCaraProjection.getMonth());
                 vidaCaraProjectionMonth.setAmount(BigDecimal.valueOf(vidaCara));
@@ -1647,13 +1700,14 @@ public class Mexico {
                 double monthlyPrimaDominicalExenta = primaDominicalExentaProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(primaDominicalExentaProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double primaDominicalExenta;
+                double primaDominicalExenta = monthlyPrimaDominicalExenta * monthlyProportionValue;
+               /* double primaDominicalExenta;
                 if (monthlyProportion != null) {
                     primaDominicalExenta = monthlyPrimaDominicalExenta * monthlyProportionValue;
                     lastPrimaDominicalExenta = primaDominicalExenta;
                 } else {
                     primaDominicalExenta = lastPrimaDominicalExenta;
-                }
+                }*/
                 MonthProjection primaDominicalExentaProjectionMonth = new MonthProjection();
                 primaDominicalExentaProjectionMonth.setMonth(primaDominicalExentaProjection.getMonth());
                 primaDominicalExentaProjectionMonth.setAmount(BigDecimal.valueOf(primaDominicalExenta));
@@ -1666,6 +1720,63 @@ public class Mexico {
         }
         component.add(primaDominicalExentaComponent);
     }
+    public void calculateStateTax(List<PaymentComponentDTO> component, List<ParametersDTO> stateTaxParameter, String period, Integer range) {
+        Map<String, ParametersDTO> stateTaxParameterMap = new HashMap<>();
+        Map<String, Double> stateTaxParameterCache = new HashMap<>();
+        createCache(stateTaxParameter, stateTaxParameterMap, stateTaxParameterCache, (parameter, mapParameter) -> {});
+        // Crear una lista de los componentes necesarios para el cálculo
+        List<String> taxComponents = Arrays.asList("SALARY", "PROVISION_AGUINALDO", "PROVISION_VACATION", "PERFORMANCE_BONUS",
+                "VACATION_PRIME", "PROVISION_AGUINALDO_CTA_SER", "PROVISION_PRIMA_VACACIONAL_SER", "AVAILABILITY_BONUS",
+                "COMPENSATION", "GRATIFICATION", "EXTRAORDINARY_GRATIFICATION", "EXEMPT_WORKED_REST", "TAXABLE_WORKED_REST",
+                "EXEMPT_PART_OF_WORKED_HOLIDAY", "TAXABLE_PART_OF_WORKED_HOLIDAY", "EXEMPT_SUNDAY_PRIME", "TAXABLE_SUNDAY_PRIME",
+                "MOVING_HELP", "EXPENSIVE_LIFE_AMOUNT");
 
+        // Recoger los componentes de la lista de componentes pasada al método
+        Map<String, PaymentComponentDTO> componentMap = component.stream()
+                .filter(c -> taxComponents.contains(c.getPaymentComponent()))
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
+        PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
+
+        // Calcular la suma de los montos de cada componente
+        BigDecimal totalAmount = taxComponents.stream()
+                .map(componentMap::get)
+                .filter(Objects::nonNull)
+                .map(PaymentComponentDTO::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO stateTaxParameterBase = stateTaxParameterMap.get(nextPeriod);
+        double stateTaxParameterAmountBase = stateTaxParameterBase == null ? 0.0 : stateTaxParameterBase.getValue();
+        // Multiplicar la suma total por el parámetro de impuesto estatal
+        BigDecimal stateTaxCost = totalAmount.multiply(BigDecimal.valueOf(stateTaxParameterAmountBase));
+
+        // Crear un nuevo PaymentComponentDTO para el Impuesto Estatal
+        PaymentComponentDTO stateTaxComponent = new PaymentComponentDTO();
+        stateTaxComponent.setPaymentComponent("STATE_TAX");
+        stateTaxComponent.setAmount(stateTaxCost);
+
+        List<MonthProjection> projections = new ArrayList<>();
+        for (MonthProjection stateTaxProjection : salaryComponent.getProjections()) {
+            ParametersDTO monthlyProportion = stateTaxParameterMap.get(stateTaxProjection.getMonth());
+            double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
+            double totalAmountValue = taxComponents.stream()
+                    .map(componentMap::get)
+                    .filter(Objects::nonNull)
+                    .flatMap(c -> c.getProjections().stream())
+                    .filter(p -> p.getMonth().equals(stateTaxProjection.getMonth()))
+                    .mapToDouble(p -> p.getAmount().doubleValue())
+                    .sum();
+            MonthProjection stateTaxProjectionMonth = new MonthProjection();
+            stateTaxProjectionMonth.setMonth(stateTaxProjection.getMonth());
+            stateTaxProjectionMonth.setAmount(BigDecimal.valueOf(totalAmountValue * monthlyProportionValue));
+            projections.add(stateTaxProjectionMonth);
+        }
+        stateTaxComponent.setProjections(projections);
+        // Añadir el componente de impuesto estatal a la lista de componentes
+        component.add(stateTaxComponent);
+    }
 }
 
