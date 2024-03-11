@@ -411,14 +411,22 @@ public class Mexico {
         participacionComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * participacionTrabajadoresNext));
         // Aplicar la fórmula para cada mes de proyección
         List<MonthProjection> projections = new ArrayList<>();
+        double lastParticipacionTrabajadores = participacionComponent.getAmount().doubleValue();
         for (MonthProjection projection : salaryComponent.getProjections()) {
             ParametersDTO participacionTrabajadoresParamProj = employeeParticipationMap.get(projection.getMonth());
             double participacionTrabajadoresProj = participacionTrabajadoresParamProj == null ? 0.0 : participacionTrabajadoresParamProj.getValue();
             //log.info("PROJECTION - AMOUNT: {}", projection.getAmount());
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double participacion = proportion * participacionTrabajadoresProj;
+            //double participacion = proportion * participacionTrabajadoresProj;
             //log.info("PROJECTION- PROPORTION: {}", proportion);
             //log.info("PROJECTION- PARTICIPATION: {}", participacion);
+            double participacion;
+            if (participacionTrabajadoresParamProj != null) {
+                participacion = proportion * participacionTrabajadoresProj;
+                lastParticipacionTrabajadores = participacion;
+            } else {
+                participacion = lastParticipacionTrabajadores;
+            }
             MonthProjection participacionProjection = new MonthProjection();
             participacionProjection.setMonth(projection.getMonth());
             participacionProjection.setAmount(BigDecimal.valueOf(participacion));
@@ -986,11 +994,19 @@ public class Mexico {
                 aportacionCtaSEREmpresaComponent.setAmount(BigDecimal.valueOf(aporteCtaSEREmpresaAmountBase));
                 List<MonthProjection> projections = new ArrayList<>();
                 // Calcular la aportación a la cuenta SER de la empresa para cada mes de la proyección
+                double lastAportacionCtaSEREmpresa = aporteCtaSEREmpresaAmountBase;
                 for (MonthProjection projection : salaryComponent.getProjections()) {
                     double baseSalary = projection.getAmount().doubleValue();
                     ParametersDTO aporteCtaSEREmpresaParam = parametersMap.get(projection.getMonth());
                     double aportacionCtaSEREmpresa = aporteCtaSEREmpresaParam == null ? 0.0 : aporteCtaSEREmpresaParam.getValue() / 100.0;
-                    double amount = baseSalary * aportacionCtaSEREmpresa;
+                    //double amount = baseSalary * aportacionCtaSEREmpresa;
+                    double amount;
+                    if(aporteCtaSEREmpresaParam != null){
+                        amount = baseSalary * aportacionCtaSEREmpresa;
+                        lastAportacionCtaSEREmpresa = amount;
+                    }else {
+                        amount = lastAportacionCtaSEREmpresa;
+                    }
                     MonthProjection aportacionCtaSEREmpresaProjection = new MonthProjection();
                     aportacionCtaSEREmpresaProjection.setMonth(projection.getMonth());
                     aportacionCtaSEREmpresaProjection.setAmount(BigDecimal.valueOf(amount));
@@ -1233,19 +1249,18 @@ public class Mexico {
         if (salaryComponent != null) {
             compensacionComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * proporciónMensualBase));
             List<MonthProjection> projections = new ArrayList<>();
-            /*double lastCompensation = salaryComponent.getAmount().doubleValue();*/
+            double lastCompensation = salaryComponent.getAmount().doubleValue();
             for (MonthProjection compeProjection : salaryComponent.getProjections()) {
                 double monthlyCompensation = compeProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(compeProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double compensation = monthlyCompensation * monthlyProportionValue;
-              /*  if(monthlyProportion != null){
+                double compensation;
+                if(monthlyProportion != null){
                     compensation = monthlyCompensation * monthlyProportionValue;
                     lastCompensation = compensation;
                 }else {
                     compensation = lastCompensation;
-                    compensation = 0.0;
-                }*/
+                }
                 MonthProjection compensationProjection = new MonthProjection();
                 compensationProjection.setMonth(compeProjection.getMonth());
                 compensationProjection.setAmount(BigDecimal.valueOf(compensation));
@@ -1282,14 +1297,14 @@ public class Mexico {
                 double monthlyDisponibilidad = dispoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(dispoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
-               /* double disponibilidad;
+                //double disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
+                double disponibilidad;
                 if (monthlyProportion != null) {
                     disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
                     lastDisponibilidad = disponibilidad;
                 } else {
                     disponibilidad = lastDisponibilidad;
-                }*/
+                }
                 MonthProjection disponibilidadProjection = new MonthProjection();
                 disponibilidadProjection.setMonth(dispoProjection.getMonth());
                 disponibilidadProjection.setAmount(BigDecimal.valueOf(disponibilidad));
@@ -1326,14 +1341,14 @@ public class Mexico {
                 double monthlyGratificacion = gratProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double gratificacion = monthlyGratificacion * monthlyProportionValue;
-               /* double gratificacion;
+                //double gratificacion = monthlyGratificacion * monthlyProportionValue;
+                double gratificacion;
                 if (monthlyProportion != null) {
                     gratificacion = monthlyGratificacion * monthlyProportionValue;
                     lastGratificacion = gratificacion;
                 } else {
                     gratificacion = lastGratificacion;
-                }*/
+                }
                 MonthProjection gratificacionProjection = new MonthProjection();
                 gratificacionProjection.setMonth(gratProjection.getMonth());
                 gratificacionProjection.setAmount(BigDecimal.valueOf(gratificacion));
