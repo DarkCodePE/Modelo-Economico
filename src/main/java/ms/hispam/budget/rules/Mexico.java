@@ -463,11 +463,19 @@ public class Mexico {
         seguroDentalComponent.setAmount(BigDecimal.valueOf((component.get(0).getAmount().doubleValue() / totalSalaries) * seguroDentalNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
+        double lastSeguroDental = seguroDentalComponent.getAmount().doubleValue();
         for (MonthProjection projection : salaryComponent.getProjections()) {
             ParametersDTO seguroDentalParamProj = dentalInsuranceMap.get(projection.getMonth());
             double seguroDentalProj = seguroDentalParamProj == null ? 0.0 : seguroDentalParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double seguroDentalAmount = proportion * seguroDentalProj;
+            //double seguroDentalAmount = proportion * seguroDentalProj;
+            double seguroDentalAmount;
+            if(seguroDentalParamProj != null){
+                seguroDentalAmount = proportion * seguroDentalProj;
+                lastSeguroDental = seguroDentalAmount;
+            }else {
+                seguroDentalAmount = lastSeguroDental;
+            }
             MonthProjection seguroDentalProjection = new MonthProjection();
             seguroDentalProjection.setMonth(projection.getMonth());
             seguroDentalProjection.setAmount(BigDecimal.valueOf(seguroDentalAmount));
@@ -504,11 +512,19 @@ public class Mexico {
         seguroVidaComponent.setAmount(BigDecimal.valueOf((salaryComponent.getAmount().doubleValue() / totalSalaries) * seguroVidaNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
+        double lastSeguroVida = seguroVidaComponent.getAmount().doubleValue();
         for (MonthProjection projection : salaryComponent.getProjections()) {
             ParametersDTO seguroVidaParamProj = lifeInsuranceMap.get(projection.getMonth());
             double seguroVidaProj = seguroVidaParamProj == null ? 0.0 : seguroVidaParamProj.getValue();
             double proportion = projection.getAmount().doubleValue() / totalSalaries;
-            double seguroVidaAmount = proportion * seguroVidaProj;
+            //double seguroVidaAmount = proportion * seguroVidaProj;
+            double seguroVidaAmount;
+            if(seguroVidaParamProj != null){
+                seguroVidaAmount = proportion * seguroVidaProj;
+                lastSeguroVida = seguroVidaAmount;
+            }else {
+                seguroVidaAmount = lastSeguroVida;
+            }
             MonthProjection seguroVidaProjection = new MonthProjection();
             seguroVidaProjection.setMonth(projection.getMonth());
             seguroVidaProjection.setAmount(BigDecimal.valueOf(seguroVidaAmount));
@@ -1063,6 +1079,7 @@ public class Mexico {
             provisionAguinaldoCtaSERComponent.setPaymentComponent("PROVISION_AGUINALDO_CTA_SER");
             provisionAguinaldoCtaSERComponent.setAmount(BigDecimal.valueOf(aportacionCtaSEREmpresaComponent != null && provisionAguinaldoCtaSERBase > 0 ? provisionAguinaldoCtaSERAmountBase : 0.0));
             List<MonthProjection> projections = new ArrayList<>();
+            double lastProvisionAguinaldoCtaSER = provisionAguinaldoCtaSERAmountBase;
             if (aportacionCtaSEREmpresaComponent != null && provisionAguinaldoCtaSERBase > 0) {
                 for (MonthProjection projection : salaryComponent.getProjections()) {
                     //APORTACION_CTA_SER_EMPRESA per month
@@ -1076,7 +1093,14 @@ public class Mexico {
                         ParametersDTO provisionAguinaldoCtaSERParam = provisionAguinaldoCtaSERMap.get(projection.getMonth());
                         double provisionAguinaldoCtaSER = provisionAguinaldoCtaSERParam == null ? 0.0 : provisionAguinaldoCtaSERParam.getValue();
                         double baseSalary = projection.getAmount().doubleValue();
-                        double provisionAguinaldoCtaSERAmount = (baseSalary / 30) * provisionAguinaldoCtaSER;
+                        //double provisionAguinaldoCtaSERAmount = (baseSalary / 30) * provisionAguinaldoCtaSER;
+                        double provisionAguinaldoCtaSERAmount;
+                        if(provisionAguinaldoCtaSERParam != null){
+                            provisionAguinaldoCtaSERAmount = (baseSalary / 30) * provisionAguinaldoCtaSER;
+                            lastProvisionAguinaldoCtaSER = provisionAguinaldoCtaSERAmount;
+                        }else {
+                            provisionAguinaldoCtaSERAmount = lastProvisionAguinaldoCtaSER;
+                        }
                         MonthProjection provisionAguinaldoCtaSERProjection = new MonthProjection();
                         provisionAguinaldoCtaSERProjection.setMonth(projection.getMonth());
                         provisionAguinaldoCtaSERProjection.setAmount(BigDecimal.valueOf(provisionAguinaldoCtaSERAmount));
@@ -1128,11 +1152,19 @@ public class Mexico {
             provisionPrimaVacacionalSERComponent.setAmount(BigDecimal.valueOf(provisionPrimaVacacionalSERBase));
             List<MonthProjection> projections = new ArrayList<>();
             // Calculate the contribution for each month of the projection
+            double lastProvisionPrimaVacacionalSER = provisionPrimaVacacionalSERBase;
             for (MonthProjection projection : provisionAguinaldoCtaSERComponent.getProjections()) {
                 ParametersDTO provisionPrimaVacacionalSERParamProj = provisionPrimaVacacionalSERMap.get(projection.getMonth());
                 double provisionPrimaVacacionalSERProj = provisionPrimaVacacionalSERParamProj == null ? 0.0 : provisionPrimaVacacionalSERParamProj.getValue() / 100.0;
                 double provisionAguinaldoCtaSER = projection.getAmount().doubleValue();
-                double provisionPrimaVacacionalSER = provisionAguinaldoCtaSER * provisionPrimaVacacionalSERProj;
+                //double provisionPrimaVacacionalSER = provisionAguinaldoCtaSER * provisionPrimaVacacionalSERProj;
+                double provisionPrimaVacacionalSER;
+                if(provisionPrimaVacacionalSERParamProj != null){
+                    provisionPrimaVacacionalSER = provisionAguinaldoCtaSER * provisionPrimaVacacionalSERProj;
+                    lastProvisionPrimaVacacionalSER = provisionPrimaVacacionalSER;
+                }else {
+                    provisionPrimaVacacionalSER = lastProvisionPrimaVacacionalSER;
+                }
                 MonthProjection provisionPrimaVacacionalSERProjection = new MonthProjection();
                 provisionPrimaVacacionalSERProjection.setMonth(projection.getMonth());
                 provisionPrimaVacacionalSERProjection.setAmount(BigDecimal.valueOf(provisionPrimaVacacionalSER));

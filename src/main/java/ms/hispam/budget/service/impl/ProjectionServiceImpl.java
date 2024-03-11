@@ -657,6 +657,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> aportacionCtaSEREmpresa = filterParametersByName(projection.getParameters(), "Aportación Cta SER Empresa");
         //Dias prov aguinaldo
         List<ParametersDTO> diasProvAguinaldo = filterParametersByName(projection.getParameters(), "Dias Prov Aguinaldo");
+        log.info("diasProvAguinaldo {}",diasProvAguinaldo);
         //Provision Prima Vacacional SER
         List<ParametersDTO> provisionPrimaVacacionalSER = filterParametersByName(projection.getParameters(), "Provision Prima Vacacional SER");
         //Tope mensual - Fondo Ahorro
@@ -678,6 +679,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     //log.debug("getPo {} - Salary {}",  headcountData.getConvent());
                     //log.debug("getPo {} - Salary {}",  headcountData.getLevel());
                     String convenioNivel = headcountData.getConvent() + headcountData.getLevel();
+                    String convenio = headcountData.getConvent();
                     //log.debug("convenioNivel {}",convenioNivel);
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
@@ -685,9 +687,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
                     methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.performanceBonus(component, headcountData.getPoName(), convenioNivel, projection.getPeriod(), projection.getRange(), convenioBonoCache);
-                    methodsMexico.seguroSocial(component, convenioNivel, projection.getPeriod(), projection.getRange(),convenioCache);
-                    methodsMexico.seguroSocialRetiro(component, convenioNivel, projection.getPeriod(), projection.getRange(), convenioCache);
-                    methodsMexico.seguroSocialInfonavit(component, convenioNivel, projection.getPeriod(), projection.getRange(), convenioCache);
+                    methodsMexico.seguroSocial(component, convenio, projection.getPeriod(), projection.getRange(),convenioCache);
+                    methodsMexico.seguroSocialRetiro(component, convenio, projection.getPeriod(), projection.getRange(), convenioCache);
+                    methodsMexico.seguroSocialInfonavit(component, convenio, projection.getPeriod(), projection.getRange(), convenioCache);
                     methodsMexico.primaVacacional(component, primaVacacionalParam, projection.getPeriod(), projection.getRange());
                     methodsMexico.aportacionCtaSEREmpresa(component, aportacionCtaSEREmpresa, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), headcountData.getFNac(), headcountData.getFContra());
                     methodsMexico.provisionAguinaldoCtaSER(component, diasProvAguinaldo, projection.getPeriod(), projection.getRange());
