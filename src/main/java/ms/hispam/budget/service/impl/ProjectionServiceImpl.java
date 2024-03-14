@@ -793,7 +793,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     // LOG PON NAME
-                    log.info("getPoName {}",headcountData.getPoName());
+                    //log.info("getPoName {}",headcountData.getPoName());
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList,  dataMapTemporal, headcountData.getPo());
                     methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
@@ -1424,7 +1424,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             for (int i = 0; i < projection.getBc().getData().size() ; i++) {
                 Map<String,Object> resp = projection.getBc().getData().get(i);
                 String pos = resp.get(HEADERPO).toString();
-                dataMapTemporal.put(pos, new HashMap<>(resp));
+                //dataMapTemporal.put(pos, new HashMap<>(resp));
                 headcount.stream().filter(e->e.getPosition().equals(pos)).findFirst().ifPresent(headcount::remove);
                     //List<String> excludedPositionsBC = new ArrayList<>();
                     for (Map.Entry<String, Object> entry : resp.entrySet()) {

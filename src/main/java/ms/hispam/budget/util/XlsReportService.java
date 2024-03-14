@@ -375,8 +375,8 @@ public class XlsReportService {
 
             DataBaseResponse newResponse = DataBaseResponse.builder()
                     .po(position)
-                    .idssff("NUEVO")
-                    .poName(t.get("name").toString())
+                    .idssff(dataBase.getData().get(0).getIdssff())
+                    .poName(dataBase.getData().get(0).getPoName())
                     .components(positionMap.get(position))
                     .build();
 
