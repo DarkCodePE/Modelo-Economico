@@ -1417,14 +1417,14 @@ public class Mexico {
                 double monthlyGratificacionExtraordinaria = gratExtraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratExtraProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
-               /* double gratificacionExtraordinaria;
+                //double gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
+                double gratificacionExtraordinaria;
                 if (monthlyProportion != null) {
                     gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
                     lastGratificacionExtraordinaria = gratificacionExtraordinaria;
                 } else {
                     gratificacionExtraordinaria = lastGratificacionExtraordinaria;
-                }*/
+                }
                 MonthProjection gratificacionExtraordinariaProjection = new MonthProjection();
                 gratificacionExtraordinariaProjection.setMonth(gratExtraProjection.getMonth());
                 gratificacionExtraordinariaProjection.setAmount(BigDecimal.valueOf(gratificacionExtraordinaria));
@@ -1461,14 +1461,14 @@ public class Mexico {
                 double monthlyTrabajoExtenso = trabajoExtensoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoExtensoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
-                /*double trabajoExtenso;
+                //double trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
+                double trabajoExtenso;
                 if (monthlyProportion != null) {
                     trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
                     lastTrabajoExtenso = trabajoExtenso;
                 } else {
                     trabajoExtenso = lastTrabajoExtenso;
-                }*/
+                }
                 MonthProjection trabajoExtProjection = new MonthProjection();
                 trabajoExtProjection.setMonth(trabajoExtensoProjection.getMonth());
                 trabajoExtProjection.setAmount(BigDecimal.valueOf(trabajoExtenso));
@@ -1505,14 +1505,14 @@ public class Mexico {
                 double monthlyTrabajoGravable = trabajoGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoGravableProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
-                /*double trabajoGravable;
+                //double trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
+                double trabajoGravable;
                 if (monthlyProportion != null) {
                     trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
                     lastTrabajoGravable = trabajoGravable;
                 } else {
                     trabajoGravable = lastTrabajoGravable;
-                }*/
+                }
                 MonthProjection trabajoGravProjection = new MonthProjection();
                 trabajoGravProjection.setMonth(trabajoGravableProjection.getMonth());
                 trabajoGravProjection.setAmount(BigDecimal.valueOf(trabajoGravable));
@@ -1549,14 +1549,14 @@ public class Mexico {
                 double monthlyParteExentaFestivoLaborado = parteExentaFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteExentaFestivoLaboradoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
-               /* double parteExentaFestivoLaborado;
+                //double parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
+                double parteExentaFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
                     lastParteExentaFestivoLaborado = parteExentaFestivoLaborado;
                 } else {
                     parteExentaFestivoLaborado = lastParteExentaFestivoLaborado;
-                }*/
+                }
                 MonthProjection parteExentaFestLaboradoProjection = new MonthProjection();
                 parteExentaFestLaboradoProjection.setMonth(parteExentaFestivoLaboradoProjection.getMonth());
                 parteExentaFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteExentaFestivoLaborado));
@@ -1593,14 +1593,14 @@ public class Mexico {
                 double monthlyParteGravableFestivoLaborado = parteGravableFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteGravableFestivoLaboradoProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
-                /*double parteGravableFestivoLaborado;
+                //double parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
+                double parteGravableFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
                     lastParteGravableFestivoLaborado = parteGravableFestivoLaborado;
                 } else {
                     parteGravableFestivoLaborado = lastParteGravableFestivoLaborado;
-                }*/
+                }
                 MonthProjection parteGravFestLaboradoProjection = new MonthProjection();
                 parteGravFestLaboradoProjection.setMonth(parteGravableFestivoLaboradoProjection.getMonth());
                 parteGravFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteGravableFestivoLaborado));
@@ -1637,14 +1637,14 @@ public class Mexico {
                 double monthlyPrimaDominicalGravable = primaDominicalGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(primaDominicalGravableProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
-                /*double primaDominicalGravable;
+                //double primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
+                double primaDominicalGravable;
                 if (monthlyProportion != null) {
                     primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
                     lastPrimaDominicalGravable = primaDominicalGravable;
                 } else {
                     primaDominicalGravable = lastPrimaDominicalGravable;
-                }*/
+                }
                 MonthProjection primaDominicalGravProjection = new MonthProjection();
                 primaDominicalGravProjection.setMonth(primaDominicalGravableProjection.getMonth());
                 primaDominicalGravProjection.setAmount(BigDecimal.valueOf(primaDominicalGravable));
@@ -1681,14 +1681,14 @@ public class Mexico {
                 double monthlyMudanza = mudanzaProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(mudanzaProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double mudanza = monthlyMudanza * monthlyProportionValue;
-                /*double mudanza;
+                //double mudanza = monthlyMudanza * monthlyProportionValue;
+                double mudanza;
                 if (monthlyProportion != null) {
                     mudanza = monthlyMudanza * monthlyProportionValue;
                     lastMudanza = mudanza;
                 } else {
                     mudanza = lastMudanza;
-                }*/
+                }
                 MonthProjection mudanzaProjectionMonth = new MonthProjection();
                 mudanzaProjectionMonth.setMonth(mudanzaProjection.getMonth());
                 mudanzaProjectionMonth.setAmount(BigDecimal.valueOf(mudanza));
@@ -1725,14 +1725,14 @@ public class Mexico {
                 double monthlyVidaCara = vidaCaraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(vidaCaraProjection.getMonth());
                 double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double vidaCara = monthlyVidaCara * monthlyProportionValue;
-                /*double vidaCara;
+                //double vidaCara = monthlyVidaCara * monthlyProportionValue;
+                double vidaCara;
                 if (monthlyProportion != null) {
                     vidaCara = monthlyVidaCara * monthlyProportionValue;
                     lastVidaCara = vidaCara;
                 } else {
                     vidaCara = lastVidaCara;
-                }*/
+                }
                 MonthProjection vidaCaraProjectionMonth = new MonthProjection();
                 vidaCaraProjectionMonth.setMonth(vidaCaraProjection.getMonth());
                 vidaCaraProjectionMonth.setAmount(BigDecimal.valueOf(vidaCara));

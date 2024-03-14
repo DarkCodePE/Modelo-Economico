@@ -317,7 +317,7 @@ public class XlsReportService {
 
         Map<String, List<ComponentAmount>> positionMap = new HashMap<>();
 
-        dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t -> {
+        /*dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t -> {
             String position = t.get("po").toString();
             List<ComponentAmount> components = dataBase.getComponents()
                     .stream()
@@ -347,7 +347,54 @@ public class XlsReportService {
                     .poName(t.get("name").toString())
                     .components(positionMap.get(position))
                     .build();
-        }).collect(Collectors.toList()));
+        }).collect(Collectors.toList()));*/
+
+        //List<DataBaseResponse> data = dataBase.getData();
+        for (Map<String, Object> t : dataBase2.getBc().getData()) {
+            String position = t.get("po").toString();
+            List<ComponentAmount> components = dataBase.getComponents()
+                    .stream()
+                    .map(k -> ComponentAmount.builder()
+                            .component(k.getComponent())
+                            .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
+                            .build()
+                    )
+                    .collect(Collectors.toList());
+
+            components.addAll(dataBase.getNominas().stream().map(k ->
+                    ComponentAmount.builder()
+                            .component(k.getCodeNomina())
+                            .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
+                            .build()).collect(Collectors.toList()));
+
+            if (positionMap.containsKey(position)) {
+                positionMap.get(position).addAll(components);
+            } else {
+                positionMap.put(position, components);
+            }
+
+            DataBaseResponse newResponse = DataBaseResponse.builder()
+                    .po(position)
+                    .idssff(dataBase.getData().get(0).getIdssff())
+                    .poName(dataBase.getData().get(0).getPoName())
+                    .components(positionMap.get(position))
+                    .build();
+
+            int index = -1;
+            for (int i = 0; i < dataBase.getData().size(); i++) {
+                if (dataBase.getData().get(i).getPo().equals(position)) {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index != -1) {
+                dataBase.getData().remove(index);
+                dataBase.getData().add(index, newResponse);
+            } else {
+                dataBase.getData().add(newResponse);
+            }
+        }
 
         dataBase.getData().forEach(r->{
             List<ComponentAmount> bex = headers.stream().map(k->{
