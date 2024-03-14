@@ -399,9 +399,7 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     private List<ProjectionDTO> getHeadcount(ParametersByProjection projection, Map<String, AccountProjection> componentesMap){
         //Calll nomina
-        List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection).stream()
-                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10016310"))
-                .collect(Collectors.toList());
+        List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         //log.info("headcount {}",headcount);
         //log.debug("headcount {}",headcount);
         if(headcount.isEmpty()){
@@ -791,7 +789,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
-                //.parallel()
+                .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     // LOG PON NAME

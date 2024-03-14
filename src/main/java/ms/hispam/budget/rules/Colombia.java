@@ -1958,13 +1958,17 @@ public class Colombia {
             double lastDigitalConnectivityAidValueProjection = digitalConnectivityAidValue;
             for (MonthProjection monthProjection : salaryComponent.getProjections()) {
                 ParametersDTO digitalConnectivity = digitalConnectivityMap.get(monthProjection.getMonth());
+                double digitalConnectivityAmount;
                 if (digitalConnectivity != null) {
                     double digitalConnectivityValue = digitalConnectivity.getValue();
-                    lastDigitalConnectivityAidValueProjection = findExcludedPositions(position, digitalConnectivityValue, excludedPositions);
+                    digitalConnectivityAmount = findExcludedPositions(position, digitalConnectivityValue, excludedPositions);
+                    lastDigitalConnectivityAidValueProjection = digitalConnectivityAmount;
+                }else {
+                    digitalConnectivityAmount = lastDigitalConnectivityAidValueProjection;
                 }
                 MonthProjection projection = new MonthProjection();
                 projection.setMonth(monthProjection.getMonth());
-                projection.setAmount(BigDecimal.valueOf(lastDigitalConnectivityAidValueProjection));
+                projection.setAmount(BigDecimal.valueOf(digitalConnectivityAmount));
                 projections.add(projection);
             }
             digitalConnectivityAidComponent.setProjections(projections);
