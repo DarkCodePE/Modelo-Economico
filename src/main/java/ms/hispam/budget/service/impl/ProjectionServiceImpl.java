@@ -259,23 +259,29 @@ public class ProjectionServiceImpl implements ProjectionService {
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
         try {
             Map<String, AccountProjection> componentesMap = new HashMap<>();
-            //log.debug("projection {}",projection.getIdBu());
+
+
             List<AccountProjection> components = getAccountsByBu(projection.getIdBu());
+
             //log.debug("components {}",components.size());
             for (AccountProjection concept : components) {
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             //.debug("componentesMap {}", componentesMap);
+
             List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap);
+
             //List<ProjectionDTO> headcount = getHeadcount(projection, componentesMap);
             //log.debug("headcount {}", headcount);
             //Agrupar por componente y agrupar por mes
+            log.info("Agrupar por componente y agrupar por mes {}",new Date());
             List<ResumenComponentDTO> componentMonthAmountMap = getResumenPorMonth(headcount, componentesMap).stream()
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
 
             //Agrupar por mes
+
             List<MonthProjection> monthAmountList = groupingByMonth(componentMonthAmountMap).stream()
                     .sorted(Comparator.comparing(MonthProjection::getMonth)).collect(Collectors.toList());
 
@@ -298,10 +304,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
-
+            log.info("Termino Agrupar por componente y agrupar por mes {}",new Date());
             List<RealesProjection> getReales = repository.getReales("%" + projection.getBu()
                     .replace("T. ", "") + "%", projection.getPeriod());
-
+            log.info("Inicio Agrupar reales {}",new Date());
             //agrupar getreales por cuenta y mes y monto
             List<ResumenComponentDTO> groupedRealesMonth = groupedReales(getReales).stream()
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
@@ -323,9 +329,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .positions(headcount)
                     .count(headcount.size())
                     .build() : null;
-
+            log.info("Termino Agrupar reales {}",new Date());
             //get rosseta
             List<RosetaDTO> rosseta = getRoseta(projection.getIdBu());
+
             //recorrer rosseta por childs y ver si en payment esta incluido componentMonthAmountMap para acumular el mes y monto
             for (RosetaDTO rosetaDTO : rosseta) {
                 acumularMontosPorComponente(rosetaDTO, componentMonthAmountMap);
@@ -415,7 +422,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .filter(h -> h.getClassEmployee().equals("T"))
                 .collect(Collectors.toList());
         log.debug("headcount {}",headcountT);*/
-
+        log.info("Inicio Pais {}",new Date());
         switch (projection.getBu()){
             case "T. ECUADOR":
                 isEcuador(headcount,projection);
@@ -435,6 +442,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             default:
                 break;
         }
+        log.info("Termina Pais {}",new Date());
 
 
 // Posiciones deshabilitadas
@@ -789,7 +797,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
         headcount.stream()
-
+                .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     // LOG PON NAME
@@ -1382,6 +1390,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         //TODO: ADD MONTH BASE
+        log.info("Iniciando Headcount {}",new Date());
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
         List<HeadcountProjection> headcount =  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
@@ -1409,7 +1418,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .convent(e.getConvent())
                         .level(e.getLevel())
                         .build()).collect(Collectors.toList());
-
+        log.info("Terminando Headcount {}",new Date());
+        log.info("Inicio Nomina {}",new Date());
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                 codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
@@ -1419,6 +1429,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .importe(e.getImporte())
                         .build())
                 .collect(Collectors.toList());
+        log.info("Termino Nomina {}",new Date());
         //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
