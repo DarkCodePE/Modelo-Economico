@@ -724,7 +724,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     }
                 });
                 double totalSalarios = calcularTotalSalarios(headcount, "CP", true);
-                double totalSalariosNoCP = calcularTotalSalarios(headcount, "CP", false);
+                double totalSalariosNoCP = calcularTotalSalariosNoCP(headcount, "CP", false);
         headcount.stream()
                         .parallel()
                         .forEach(headcountData -> {
@@ -739,6 +739,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     public double calcularTotalSalarios(List<ProjectionDTO> headcount, String type, boolean includeType) {
         return headcount.stream()
+                .flatMap(h -> h.getComponents().stream())
+                .filter(c -> c.getPaymentComponent().equals("SALARY"))
+                .map(PaymentComponentDTO::getProjections)
+                .map(projections -> projections.get(projections.size() - 1))
+                .mapToDouble(p -> p.getAmount().doubleValue())
+                .sum();
+    }
+    //calcularTotalSalarios NO CP
+    public double calcularTotalSalariosNoCP(List<ProjectionDTO> headcount, String type, boolean includeType) {
+        return headcount.stream()
+                .filter(h -> !h.getPoName().contains("CP"))
                 .flatMap(h -> h.getComponents().stream())
                 .filter(c -> c.getPaymentComponent().equals("SALARY"))
                 .map(PaymentComponentDTO::getProjections)

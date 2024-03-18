@@ -226,7 +226,7 @@ public class Mexico {
        }
        PaymentComponentDTO paymentComponentDTO = createPaymentComponent(baseSalary, baseSalaryIntegral, period, range);
        Map<String, Pair<Double, Double>> cache = createCache(salaryList, incrementList);
-       log.info("cache: {}", cache);
+       //log.info("cache: {}", cache);
        double lastDifferPercent = 0;
        double highestAmountSoFar = Math.max(baseSalary, baseSalaryIntegral);
        for (MonthProjection projection : paymentComponentDTO.getProjections()) {
@@ -552,11 +552,11 @@ public class Mexico {
       yearMonth = yearMonth.plusMonths(1);
       String nextPeriod = yearMonth.format(formatter);
        ParametersDTO provRetiroIASParamNext = provisionSistemasComplementariosIASMap.get(nextPeriod);
-         double provRetiroIASNext = provRetiroIASParamNext == null ? 0.0 : provRetiroIASParamNext.getValue();
-        provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIASNext));
+       double provRetiroIASNext = provRetiroIASParamNext == null ? 0.0 : provRetiroIASParamNext.getValue();
+       provRetiroIASComponent.setAmount(BigDecimal.valueOf((componentMap.get("SALARY").getAmount().doubleValue() / totalSalaries) * provRetiroIASNext));
         // Apply the formula for each month of projection
         List<MonthProjection> projections = new ArrayList<>();
-        double lastProvRetiroIAS = provRetiroIASComponent.getAmount().doubleValue();
+        double lastProvRetiroIAS = provRetiroIASNext;
         for (MonthProjection projection : salaryComponent.getProjections()) {
             ParametersDTO provRetiroIASParamProj = provisionSistemasComplementariosIASMap.get(projection.getMonth());
             double provRetiroIASProj;
@@ -604,15 +604,21 @@ public class Mexico {
             double lastSGMM = SGMMComponent.getAmount().doubleValue();
             for (MonthProjection projection : salaryComponent.getProjections()) {
                 ParametersDTO SGMMParamProj = SGMMMap.get(projection.getMonth());
-                double SGMMProj = SGMMParamProj == null ? 0.0 : SGMMParamProj.getValue();
+                double SGMMProj;
+                if (SGMMParamProj != null) {
+                    SGMMProj = SGMMParamProj.getValue();
+                    lastSGMM = SGMMProj;
+                } else {
+                    SGMMProj = lastSGMM;
+                }
                 double proportion = projection.getAmount().doubleValue() / totalSalaries;
-                double SGMMAmount;
-                if(SGMMParamProj != null) {
+                double SGMMAmount = proportion * SGMMProj;
+             /*   if(SGMMParamProj != null) {
                     SGMMAmount = proportion * SGMMProj;
                     lastSGMM = SGMMAmount;
                 }else {
                     SGMMAmount = lastSGMM;
-                }
+                }*/
                 MonthProjection SGMMProjection = new MonthProjection();
                 SGMMProjection.setMonth(projection.getMonth());
                 SGMMProjection.setAmount(BigDecimal.valueOf(SGMMAmount));
@@ -1298,14 +1304,21 @@ public class Mexico {
             for (MonthProjection compeProjection : salaryComponent.getProjections()) {
                 double monthlyCompensation = compeProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(compeProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                double compensation;
+                double monthlyProportionValue;
+                if(monthlyProportion != null){
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastCompensation = monthlyProportionValue;
+                }else {
+                    monthlyProportionValue = lastCompensation;
+                }
+                double compensation = monthlyCompensation * monthlyProportionValue;
+              /*  double compensation;
                 if(monthlyProportion != null){
                     compensation = monthlyCompensation * monthlyProportionValue;
                     lastCompensation = compensation;
                 }else {
                     compensation = lastCompensation;
-                }
+                }*/
                 MonthProjection compensationProjection = new MonthProjection();
                 compensationProjection.setMonth(compeProjection.getMonth());
                 compensationProjection.setAmount(BigDecimal.valueOf(compensation));
@@ -1341,15 +1354,21 @@ public class Mexico {
             for (MonthProjection dispoProjection : salaryComponent.getProjections()) {
                 double monthlyDisponibilidad = dispoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(dispoProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
-                double disponibilidad;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastDisponibilidad = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastDisponibilidad;
+                }
+                double disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
+                /*double disponibilidad;
                 if (monthlyProportion != null) {
                     disponibilidad = monthlyDisponibilidad * monthlyProportionValue;
                     lastDisponibilidad = disponibilidad;
                 } else {
                     disponibilidad = lastDisponibilidad;
-                }
+                }*/
                 MonthProjection disponibilidadProjection = new MonthProjection();
                 disponibilidadProjection.setMonth(dispoProjection.getMonth());
                 disponibilidadProjection.setAmount(BigDecimal.valueOf(disponibilidad));
@@ -1385,15 +1404,21 @@ public class Mexico {
             for (MonthProjection gratProjection : salaryComponent.getProjections()) {
                 double monthlyGratificacion = gratProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double gratificacion = monthlyGratificacion * monthlyProportionValue;
-                double gratificacion;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastGratificacion = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastGratificacion;
+                }
+                double gratificacion = monthlyGratificacion * monthlyProportionValue;
+                /*double gratificacion;
                 if (monthlyProportion != null) {
                     gratificacion = monthlyGratificacion * monthlyProportionValue;
                     lastGratificacion = gratificacion;
                 } else {
                     gratificacion = lastGratificacion;
-                }
+                }*/
                 MonthProjection gratificacionProjection = new MonthProjection();
                 gratificacionProjection.setMonth(gratProjection.getMonth());
                 gratificacionProjection.setAmount(BigDecimal.valueOf(gratificacion));
@@ -1429,15 +1454,21 @@ public class Mexico {
             for (MonthProjection gratExtraProjection : salaryComponent.getProjections()) {
                 double monthlyGratificacionExtraordinaria = gratExtraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(gratExtraProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
-                double gratificacionExtraordinaria;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastGratificacionExtraordinaria = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastGratificacionExtraordinaria;
+                }
+                double gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
+                /*double gratificacionExtraordinaria;
                 if (monthlyProportion != null) {
                     gratificacionExtraordinaria = monthlyGratificacionExtraordinaria * monthlyProportionValue;
                     lastGratificacionExtraordinaria = gratificacionExtraordinaria;
                 } else {
                     gratificacionExtraordinaria = lastGratificacionExtraordinaria;
-                }
+                }*/
                 MonthProjection gratificacionExtraordinariaProjection = new MonthProjection();
                 gratificacionExtraordinariaProjection.setMonth(gratExtraProjection.getMonth());
                 gratificacionExtraordinariaProjection.setAmount(BigDecimal.valueOf(gratificacionExtraordinaria));
@@ -1473,15 +1504,21 @@ public class Mexico {
             for (MonthProjection trabajoExtensoProjection : salaryComponent.getProjections()) {
                 double monthlyTrabajoExtenso = trabajoExtensoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoExtensoProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
-                double trabajoExtenso;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastTrabajoExtenso = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastTrabajoExtenso;
+                }
+                double trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
+               /* double trabajoExtenso;
                 if (monthlyProportion != null) {
                     trabajoExtenso = monthlyTrabajoExtenso * monthlyProportionValue;
                     lastTrabajoExtenso = trabajoExtenso;
                 } else {
                     trabajoExtenso = lastTrabajoExtenso;
-                }
+                }*/
                 MonthProjection trabajoExtProjection = new MonthProjection();
                 trabajoExtProjection.setMonth(trabajoExtensoProjection.getMonth());
                 trabajoExtProjection.setAmount(BigDecimal.valueOf(trabajoExtenso));
@@ -1517,15 +1554,21 @@ public class Mexico {
             for (MonthProjection trabajoGravableProjection : salaryComponent.getProjections()) {
                 double monthlyTrabajoGravable = trabajoGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(trabajoGravableProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
-                double trabajoGravable;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastTrabajoGravable = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastTrabajoGravable;
+                }
+                double trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
+                /*double trabajoGravable;
                 if (monthlyProportion != null) {
                     trabajoGravable = monthlyTrabajoGravable * monthlyProportionValue;
                     lastTrabajoGravable = trabajoGravable;
                 } else {
                     trabajoGravable = lastTrabajoGravable;
-                }
+                }*/
                 MonthProjection trabajoGravProjection = new MonthProjection();
                 trabajoGravProjection.setMonth(trabajoGravableProjection.getMonth());
                 trabajoGravProjection.setAmount(BigDecimal.valueOf(trabajoGravable));
@@ -1561,15 +1604,21 @@ public class Mexico {
             for (MonthProjection parteExentaFestivoLaboradoProjection : salaryComponent.getProjections()) {
                 double monthlyParteExentaFestivoLaborado = parteExentaFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteExentaFestivoLaboradoProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
-                double parteExentaFestivoLaborado;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastParteExentaFestivoLaborado = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastParteExentaFestivoLaborado;
+                }
+                double parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
+               /* double parteExentaFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteExentaFestivoLaborado = monthlyParteExentaFestivoLaborado * monthlyProportionValue;
                     lastParteExentaFestivoLaborado = parteExentaFestivoLaborado;
                 } else {
                     parteExentaFestivoLaborado = lastParteExentaFestivoLaborado;
-                }
+                }*/
                 MonthProjection parteExentaFestLaboradoProjection = new MonthProjection();
                 parteExentaFestLaboradoProjection.setMonth(parteExentaFestivoLaboradoProjection.getMonth());
                 parteExentaFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteExentaFestivoLaborado));
@@ -1605,15 +1654,21 @@ public class Mexico {
             for (MonthProjection parteGravableFestivoLaboradoProjection : salaryComponent.getProjections()) {
                 double monthlyParteGravableFestivoLaborado = parteGravableFestivoLaboradoProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(parteGravableFestivoLaboradoProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
-                double parteGravableFestivoLaborado;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastParteGravableFestivoLaborado = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastParteGravableFestivoLaborado;
+                }
+                double parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
+                /*double parteGravableFestivoLaborado;
                 if (monthlyProportion != null) {
                     parteGravableFestivoLaborado = monthlyParteGravableFestivoLaborado * monthlyProportionValue;
                     lastParteGravableFestivoLaborado = parteGravableFestivoLaborado;
                 } else {
                     parteGravableFestivoLaborado = lastParteGravableFestivoLaborado;
-                }
+                }*/
                 MonthProjection parteGravFestLaboradoProjection = new MonthProjection();
                 parteGravFestLaboradoProjection.setMonth(parteGravableFestivoLaboradoProjection.getMonth());
                 parteGravFestLaboradoProjection.setAmount(BigDecimal.valueOf(parteGravableFestivoLaborado));
@@ -1649,15 +1704,21 @@ public class Mexico {
             for (MonthProjection primaDominicalGravableProjection : salaryComponent.getProjections()) {
                 double monthlyPrimaDominicalGravable = primaDominicalGravableProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(primaDominicalGravableProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
-                double primaDominicalGravable;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastPrimaDominicalGravable = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastPrimaDominicalGravable;
+                }
+                double primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
+                /*double primaDominicalGravable;
                 if (monthlyProportion != null) {
                     primaDominicalGravable = monthlyPrimaDominicalGravable * monthlyProportionValue;
                     lastPrimaDominicalGravable = primaDominicalGravable;
                 } else {
                     primaDominicalGravable = lastPrimaDominicalGravable;
-                }
+                }*/
                 MonthProjection primaDominicalGravProjection = new MonthProjection();
                 primaDominicalGravProjection.setMonth(primaDominicalGravableProjection.getMonth());
                 primaDominicalGravProjection.setAmount(BigDecimal.valueOf(primaDominicalGravable));
@@ -1693,15 +1754,21 @@ public class Mexico {
             for (MonthProjection mudanzaProjection : salaryComponent.getProjections()) {
                 double monthlyMudanza = mudanzaProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(mudanzaProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double mudanza = monthlyMudanza * monthlyProportionValue;
-                double mudanza;
+                double monthlyProportionValue;
+                if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastMudanza = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastMudanza;
+                }
+                double mudanza = monthlyMudanza * monthlyProportionValue;
+                /*double mudanza;
                 if (monthlyProportion != null) {
                     mudanza = monthlyMudanza * monthlyProportionValue;
                     lastMudanza = mudanza;
                 } else {
                     mudanza = lastMudanza;
-                }
+                }*/
                 MonthProjection mudanzaProjectionMonth = new MonthProjection();
                 mudanzaProjectionMonth.setMonth(mudanzaProjection.getMonth());
                 mudanzaProjectionMonth.setAmount(BigDecimal.valueOf(mudanza));
@@ -1737,15 +1804,21 @@ public class Mexico {
             for (MonthProjection vidaCaraProjection : salaryComponent.getProjections()) {
                 double monthlyVidaCara = vidaCaraProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(vidaCaraProjection.getMonth());
-                double monthlyProportionValue = monthlyProportion == null ? 0.0 : monthlyProportion.getValue() / 100.0;
-                //double vidaCara = monthlyVidaCara * monthlyProportionValue;
-                double vidaCara;
+                double monthlyProportionValue;
                 if (monthlyProportion != null) {
+                    monthlyProportionValue = monthlyProportion.getValue() / 100.0;
+                    lastVidaCara = monthlyProportionValue;
+                } else {
+                    monthlyProportionValue = lastVidaCara;
+                }
+                //double vidaCara = monthlyVidaCara * monthlyProportionValue;
+                double vidaCara = monthlyVidaCara * monthlyProportionValue;
+                /*if (monthlyProportion != null) {
                     vidaCara = monthlyVidaCara * monthlyProportionValue;
                     lastVidaCara = vidaCara;
                 } else {
                     vidaCara = lastVidaCara;
-                }
+                }*/
                 MonthProjection vidaCaraProjectionMonth = new MonthProjection();
                 vidaCaraProjectionMonth.setMonth(vidaCaraProjection.getMonth());
                 vidaCaraProjectionMonth.setAmount(BigDecimal.valueOf(vidaCara));
