@@ -291,17 +291,27 @@ public class Colombia {
         PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
         PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
         String category = findCategory(classEmployee);
+        //log.debug("period -> {}", period);
         PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryComponent(pc938001Component, pc938005Component, category, period, range, "P", SALARY).get("salaryComponent");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO salaryMinBase = salaryMap.get(nextPeriod);
+        ParametersDTO salaryMinIntegralBase = salaryIntegralMap.get(nextPeriod);
         if (category.equals("P")){
             if (paymentComponentDTO != null && paymentComponentDTO.getAmount().doubleValue() != 0.0) {
                 String salaryType = paymentComponentDTO.getSalaryType();
                 double lastSalary = paymentComponentDTO.getAmount().doubleValue();
+                double lastLegalBaseSalary = salaryMinBase != null ? salaryMinBase.getValue() : 0.0;
+                double lastLegalIntegralSalary = salaryMinIntegralBase != null ? salaryMinIntegralBase.getValue() : 0.0;
                 if (salaryType.equals("INTEGRAL")) {
                     for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                         //log.debug("projection.getMonth() -> {}", projection.getMonth());
                         //log.debug("cacheSalaryIntegralMin.get(projection.getMonth()) -> {}", cacheSalaryIntegralMin.get(projection.getMonth()));
                         Double salaryIntegralMinMap = cacheSalaryIntegralMin.get(projection.getMonth());
-                        double salaryIntegralMin = salaryIntegralMinMap != null ? salaryIntegralMinMap : 0.0;
+                        double salaryIntegralMin;
+                        salaryIntegralMin = Objects.requireNonNullElse(salaryIntegralMinMap, lastLegalIntegralSalary);
                         //log.debug("salaryIntegralMin -> {}", salaryIntegralMin);
                         double salaryTemporalProjection;
                         if (projection.getAmount().doubleValue() <= salaryIntegralMin) {
@@ -315,8 +325,9 @@ public class Colombia {
                 } else {
                     for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                         Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
-                        double salaryMin = salaryMinMap != null ? salaryMinMap : 0.0;
-                        //("salaryMin -> {}", salaryMin);
+                        double salaryMin;
+                        salaryMin = Objects.requireNonNullElse(salaryMinMap, lastLegalBaseSalary);
+                        //("salaryMin -> {}", salaryMin);lastLegalBaseSalary
                         double salaryTemporalProjection;
                         if (projection.getAmount().doubleValue() <= salaryMin) {
                             salaryTemporalProjection = salaryMin;
@@ -603,7 +614,7 @@ public class Colombia {
                 BigDecimal surchargesAmount;
                 if (surchargesParam != null) {
                     double surchargesParamValueValid = surchargesParamValue != 0.0 ? surchargesParamValue : 1.0;
-                    surchargesAmount = BigDecimal.valueOf(projection.getAmount().doubleValue() * surchargesParamValueValid);
+                    surchargesAmount = BigDecimal.valueOf((projection.getAmount().doubleValue() / 12) * surchargesParamValueValid);
                     lastSurcharges = surchargesAmount.doubleValue();
                 } else {
                     surchargesAmount = BigDecimal.valueOf(lastSurcharges);
@@ -647,7 +658,7 @@ public class Colombia {
                 BigDecimal overtimeAmount;
                 if (overtimeParam != null) {
                     double overtimeParamValueValid = overtimeParamValue != 0.0 ? overtimeParamValue : 1.0;
-                    overtimeAmount = BigDecimal.valueOf(projection.getAmount().doubleValue() * overtimeParamValueValid);
+                    overtimeAmount = BigDecimal.valueOf((projection.getAmount().doubleValue() / 12) * overtimeParamValueValid);
                     lastOvertime = overtimeAmount.doubleValue();
                 } else {
                     overtimeAmount = BigDecimal.valueOf(lastOvertime);
@@ -1007,12 +1018,6 @@ public class Colombia {
                 .filter(c -> subsidyComponents.contains(c.getPaymentComponent()))
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
         PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
-        //ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        //double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        //String periodSubsidy = subsidyMin!=null ? subsidyMin.getPeriod() : "";
-        //int subsidyMonth = Integer.parseInt(periodSubsidy.substring(4, 6));
-        //int subsidyYear = Integer.parseInt(periodSubsidy.substring(0, 4));
-        //total base
         PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
         PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
         PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
@@ -1034,12 +1039,14 @@ public class Colombia {
         double totalAmountBase = salary + overtime + surcharges + commission;
         transportSubsidyComponent.setAmount(BigDecimal.valueOf(totalAmountBase < 2 * salaryMinNextValue ? subsidyMinNextValue : 0));
         String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
-        BigDecimal lastValidSubsidyValue = transportSubsidyComponent.getAmount();
+        BigDecimal lastValidSubsidyParam = transportSubsidyComponent.getAmount();
         BigDecimal lastValidSalaryValue = BigDecimal.valueOf(salaryMinNextValue);
+        BigDecimal lastValidSubsidyValue = BigDecimal.valueOf(subsidyMinNextValue);
         if (category.equals("P") && salaryType.equals("BASE")) {
             // Calcular el Subsidio de Transporte para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
             for (MonthProjection primeProjection : salaryComponent.getProjections()) {
+                //(surcharges/12) + (commission/12)
                 BigDecimal totalAmount = subsidyComponents.stream()
                         .map(componentMap::get)
                         .filter(Objects::nonNull)
@@ -1058,22 +1065,21 @@ public class Colombia {
                 //log salary and month
                 //log.info("salaryMinInternalValue -> {}, month -> {}", salaryMinInternalValue, primeProjection.getMonth());
                 ParametersDTO subsidyMinInternalParam = subsidyMap.get(primeProjection.getMonth());
-                double subsidyMinInternalValue = subsidyMinInternalParam != null ? subsidyMinInternalParam.getValue() : 0.0;
+                double subsidyMinInternalValue;
+                if (subsidyMinInternalParam != null) {
+                    subsidyMinInternalValue = subsidyMinInternalParam.getValue();
+                    lastValidSubsidyParam = BigDecimal.valueOf(subsidyMinInternalValue);
+                } else {
+                    subsidyMinInternalValue = lastValidSubsidyParam.doubleValue();
+                }
                 // Calcular el costo del Subsidio de Transporte
                 BigDecimal transportSubsidyCost;
-                if (subsidyMinInternalParam != null) {
-                    /*transportSubsidyCost = totalAmount.doubleValue() < 2 * salaryMinInternalValue ? BigDecimal.valueOf(subsidyMinInternalValue) : lastValidSubsidyValue;*/
-                    if (totalAmount.doubleValue() < 2 * salaryMinInternalValue) {
-                        transportSubsidyCost = BigDecimal.valueOf(subsidyMinInternalValue);
-                        lastValidSubsidyValue = transportSubsidyCost;
-                    }else {
-                        //transportSubsidyCost = lastValidSubsidyValue;
-                        transportSubsidyCost = BigDecimal.valueOf(0);
-                    }
-                    //lastValidSubsidyValue = transportSubsidyCost;
-                } else {
-                    transportSubsidyCost = lastValidSubsidyValue;
+                if (totalAmount.doubleValue() < 2 * salaryMinInternalValue) {
+                    transportSubsidyCost = BigDecimal.valueOf(subsidyMinInternalValue);
+                }else {
+                    transportSubsidyCost = BigDecimal.valueOf(0);
                 }
+
                 //log total and month
                 //log.info("totalAmount -> {}, month -> {}", totalAmount, primeProjection.getMonth());
                 //log.info("transportSubsidyCost -> {}, month -> {}", transportSubsidyCost, primeProjection.getMonth());
@@ -1089,7 +1095,7 @@ public class Colombia {
             transportSubsidyComponent.setProjections(Shared.generateMonthProjection(period,range,transportSubsidyComponent.getAmount()));
         }
         component.add(transportSubsidyComponent);
-        //log.debug("component -> {}", "transportSubsidy");
+        log.debug("component -> {}", "transportSubsidy");
     }
     public void contributionBox(List<PaymentComponentDTO> component, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
@@ -1149,60 +1155,70 @@ public class Colombia {
     }
     public void companyHealthContribution(List<PaymentComponentDTO> component, String classEmployee,  List<ParametersDTO> parameters, String period, Integer range) {
         String category = findCategory(classEmployee);
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        List<String> healthComponents = Arrays.asList("SALARY", "HHEE", "SURCHARGES", "COMMISSION", "SALARY_PRA", "TEMPORAL_SALARY");
-        Map<String, PaymentComponentDTO> componentMap = component.stream()
-                .filter(c -> healthComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
-        PaymentComponentDTO salaryComponent = componentMap.get(SALARY);
-        if (category.equals("APR") || category.equals("PRA")){
-            salaryComponent = componentMap.get(SALARY_PRA);
-        }
-        PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
-        PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
-        PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
-        double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
-        double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
-        double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
-        double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
-        // Crear un nuevo PaymentComponentDTO para el Aporte Salud Empresa
-        PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
-        healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA");
-        double totalAmountBase = salary + overtime + surcharges + commission;
-        //log.debug("totalAmountBase -> {}", totalAmountBase);
-        String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
-        BigDecimal healthContributionBase;
-        if (category.equals("APR") || category.equals("PRA")) {
-            healthContributionBase = BigDecimal.valueOf(totalAmountBase * 0.04);
-        } else if (category.equals("P")) {
-            if (salaryType.equals("BASE")) {
-                if (totalAmountBase > 25 * legalSalaryMinInternal) {
-                    healthContributionBase = BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.085);
-                } else if (totalAmountBase > 10 * legalSalaryMinInternal) {
-                    healthContributionBase = BigDecimal.valueOf(totalAmountBase * 0.085);
-                } else {
-                    healthContributionBase = BigDecimal.ZERO;
-                }
-            } else { // salaryType is INTEGRAL
-                BigDecimal seventyPercentTotal = BigDecimal.valueOf(totalAmountBase * 0.70);
-                double seventyPercentTotalDouble = seventyPercentTotal.doubleValue();
-                if (seventyPercentTotalDouble > 25 * legalSalaryMinInternal) {
-                    //healthContribution = legalSalaryMinInternal.multiply(BigDecimal.valueOf(25)).multiply(BigDecimal.valueOf(0.085));
-                    healthContributionBase = BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.085);
-                } else {
-                    //c = seventyPercentTotal.multiply(BigDecimal.valueOf(0.085));
-                    healthContributionBase = BigDecimal.valueOf(seventyPercentTotalDouble * 0.085);
-                }
-            }
-        } else {
-            healthContributionBase = BigDecimal.ZERO;
-        }
-        healthContributionComponent.setAmount(healthContributionBase);
         if (!category.equals("T")) {
+            HashMap<String, ParametersDTO> legalSalaryMinMap = new HashMap<>();
+            HashMap<String, Double> cacheLegalSalaryMin = new HashMap<>();
+            createCache(parameters, legalSalaryMinMap, cacheLegalSalaryMin, (parameter, mapParameter) -> {
+            });
+            String salaryCategory = "SALARY";
+            if (category.equals("APR") || category.equals("PRA")) {
+                salaryCategory = "SALARY_PRA";
+            }
+            List<String> healthComponents = Arrays.asList(salaryCategory, "HHEE", "SURCHARGES", "COMMISSION");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> healthComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
+            PaymentComponentDTO salaryComponent = componentMap.get(salaryCategory);
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            // Crear un nuevo PaymentComponentDTO para el Aporte Salud Empresa
+            PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
+            healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA");
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            //log.debug("totalAmountBase -> {}", totalAmountBase);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO legalSalaryMin = salaryComponent != null ? legalSalaryMinMap.get(nextPeriod) : null;
+            double legalSalaryMinInternalBase = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
+            String salaryType = salaryComponent == null ? "" : salaryComponent.getSalaryType();
+            BigDecimal healthContributionBase;
+            if (category.equals("APR") || category.equals("PRA")) {
+                healthContributionBase = BigDecimal.valueOf(totalAmountBase * 0.04);
+            } else if (category.equals("P")) {
+                if (salaryType.equals("BASE")) {
+                    if (totalAmountBase > 25 * legalSalaryMinInternalBase) {
+                        healthContributionBase = BigDecimal.valueOf(25 * legalSalaryMinInternalBase * 0.085);
+                    } else if (totalAmountBase > 10 * legalSalaryMinInternalBase) {
+                        healthContributionBase = BigDecimal.valueOf(totalAmountBase * 0.085);
+                    } else {
+                        healthContributionBase = BigDecimal.ZERO;
+                    }
+                } else { // salaryType is INTEGRAL
+                    BigDecimal seventyPercentTotal = BigDecimal.valueOf(totalAmountBase * 0.70);
+                    double seventyPercentTotalDouble = seventyPercentTotal.doubleValue();
+                    if (seventyPercentTotalDouble > 25 * legalSalaryMinInternalBase) {
+                        //healthContribution = legalSalaryMinInternal.multiply(BigDecimal.valueOf(25)).multiply(BigDecimal.valueOf(0.085));
+                        healthContributionBase = BigDecimal.valueOf(25 * legalSalaryMinInternalBase * 0.085);
+                    } else {
+                        //c = seventyPercentTotal.multiply(BigDecimal.valueOf(0.085));
+                        healthContributionBase = BigDecimal.valueOf(seventyPercentTotalDouble * 0.085);
+                    }
+                }
+            } else {
+                healthContributionBase = BigDecimal.ZERO;
+            }
+            healthContributionComponent.setAmount(healthContributionBase);
             // Calcular el Aporte Salud Empresa para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
             if (salaryComponent != null && salaryComponent.getProjections() != null) {
+                double lastValidSalaryValue = legalSalaryMinInternalBase;
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
                     BigDecimal totalAmount = healthComponents.stream()
                             .map(componentMap::get)
@@ -1211,16 +1227,23 @@ public class Colombia {
                             .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                             .map(MonthProjection::getAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+                    ParametersDTO legalSalaryMinInternalParam = legalSalaryMinMap.get(primeProjection.getMonth());
+                    double legalSalaryMinInternalValue;
+                    if (legalSalaryMinInternalParam != null) {
+                        legalSalaryMinInternalValue = legalSalaryMinInternalParam.getValue();
+                        lastValidSalaryValue = legalSalaryMinInternalValue;
+                    } else {
+                        legalSalaryMinInternalValue = lastValidSalaryValue;
+                    }
                     // Calcular el Aporte Salud Empresa
                     BigDecimal healthContribution;
                     if (category.equals("APR") || category.equals("PRA")) {
                         healthContribution = totalAmount.multiply(BigDecimal.valueOf(0.04));
                     } else if (category.equals("P")) {
                         if (salaryComponent.getSalaryType().equals("BASE")) {
-                            if (totalAmount.doubleValue() > 25 * legalSalaryMinInternal) {
-                                healthContribution = BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.085);
-                            } else if (totalAmount.doubleValue() > 10 * legalSalaryMinInternal) {
+                            if (totalAmount.doubleValue() > 25 * legalSalaryMinInternalValue) {
+                                healthContribution = BigDecimal.valueOf(25 * legalSalaryMinInternalValue * 0.085);
+                            } else if (totalAmount.doubleValue() > 10 * legalSalaryMinInternalValue) {
                                 healthContribution = BigDecimal.valueOf(totalAmount.doubleValue() * 0.085);
                             } else {
                                 healthContribution = BigDecimal.ZERO;
@@ -1228,9 +1251,9 @@ public class Colombia {
                         } else { // salaryType is INTEGRAL
                             BigDecimal seventyPercentTotal = totalAmount.multiply(BigDecimal.valueOf(0.70));
                             double seventyPercentTotalDouble = seventyPercentTotal.doubleValue();
-                            if (seventyPercentTotalDouble > 25 * legalSalaryMinInternal) {
+                            if (seventyPercentTotalDouble > 25 * legalSalaryMinInternalValue) {
                                 //healthContribution = legalSalaryMinInternal.multiply(BigDecimal.valueOf(25)).multiply(BigDecimal.valueOf(0.085));
-                                healthContribution = BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.085);
+                                healthContribution = BigDecimal.valueOf(25 * legalSalaryMinInternalValue * 0.085);
                             } else {
                                 //healthContribution = seventyPercentTotal.multiply(BigDecimal.valueOf(0.085));
                                 healthContribution = BigDecimal.valueOf(seventyPercentTotalDouble * 0.085);
@@ -1247,15 +1270,18 @@ public class Colombia {
                     projections.add(projection);
                 }
                 healthContributionComponent.setProjections(projections);
-            }else {
+            } else {
                 healthContributionComponent.setAmount(BigDecimal.valueOf(0));
-                healthContributionComponent.setProjections(Shared.generateMonthProjection(period,range,healthContributionComponent.getAmount()));
+                healthContributionComponent.setProjections(Shared.generateMonthProjection(period, range, healthContributionComponent.getAmount()));
             }
+            component.add(healthContributionComponent);
         }else {
-            healthContributionComponent.setAmount(BigDecimal.valueOf(0));
-            healthContributionComponent.setProjections(Shared.generateMonthProjection(period,range,healthContributionComponent.getAmount()));
+            PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
+            paymentComponentDTO.setPaymentComponent("APORTE_SALUD_EMPRESA");
+            paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
+            component.add(paymentComponentDTO);
         }
-        component.add(healthContributionComponent);
         log.debug("component -> {}", "companyHealthContribution");
     }
     public void companyRiskContribution(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, String classEmployee, String period, Integer range) {
@@ -1362,31 +1388,40 @@ public class Colombia {
         component.add(riskContributionComponent);
         log.debug("component -> {}", "companyRiskContribution");
     }
-    public void companyRiskContributionTrainee(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
+    public void companyRiskContributionTrainee2(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range) {
         String category = findCategory(classEmployee);
-        ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
-        double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
-        // Obtén los componentes necesarios para el cálculo
-        List<String> riskComponents = Arrays.asList("SALARY_PRA", "HHEE", "SURCHARGES", "COMMISSION");
-        Map<String, PaymentComponentDTO> componentMap = component.stream()
-                .filter(c -> riskComponents.contains(c.getPaymentComponent()))
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
-        PaymentComponentDTO salaryComponent = componentMap.get("SALARY_PRA");
-        PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
-        PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
-        PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
-        double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
-        double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
-        double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
-        double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
-        double totalAmountBase = salary + overtime + surcharges + commission;
-        // Crear un nuevo PaymentComponentDTO para el Aporte Riesgo Empresa
-        PaymentComponentDTO riskContributionComponent = new PaymentComponentDTO();
-        riskContributionComponent.setPaymentComponent("APORTE_RIESGO_EMPRESA_BECARIOS");
-        riskContributionComponent.setAmount(totalAmountBase > 25 * legalSalaryMinInternal ? BigDecimal.valueOf(25 * legalSalaryMinInternal * 0.00881) : BigDecimal.valueOf(totalAmountBase * 0.00881));
         if (category.equals("APR") || category.equals("PRA")) {
+            HashMap<String, ParametersDTO> legalSalaryMinMap = new HashMap<>();
+            HashMap<String, Double> cacheLegalSalaryMin = new HashMap<>();
+            createCache(parameters, legalSalaryMinMap, cacheLegalSalaryMin, (parameter, mapParameter) -> {
+            });
+            // Obtén los componentes necesarios para el cálculo
+            List<String> riskComponents = Arrays.asList("SALARY_PRA", "HHEE", "SURCHARGES", "COMMISSION");
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> riskComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
+            PaymentComponentDTO salaryComponent = componentMap.get("SALARY_PRA");
+            PaymentComponentDTO overtimeComponent = componentMap.get("HHEE");
+            PaymentComponentDTO surchargesComponent = componentMap.get("SURCHARGES");
+            PaymentComponentDTO commissionComponent = componentMap.get("COMMISSION");
+            double salary = salaryComponent == null ? 0.0 : salaryComponent.getAmount().doubleValue();
+            double overtime = overtimeComponent == null ? 0.0 : overtimeComponent.getAmount().doubleValue();
+            double surcharges = surchargesComponent == null ? 0.0 : surchargesComponent.getAmount().doubleValue();
+            double commission = commissionComponent == null ? 0.0 : commissionComponent.getAmount().doubleValue();
+            double totalAmountBase = salary + overtime + surcharges + commission;
+            // Crear un nuevo PaymentComponentDTO para el Aporte Riesgo Empresa
+            PaymentComponentDTO riskContributionComponent = new PaymentComponentDTO();
+            riskContributionComponent.setPaymentComponent("APORTE_RIESGO_EMPRESA_BECARIOS");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO legalSalaryMin = salaryComponent != null ? legalSalaryMinMap.get(nextPeriod) : null;
+            double legalSalaryMinInternalBase = legalSalaryMin != null ? legalSalaryMin.getValue() : 0.0;
+            riskContributionComponent.setAmount(totalAmountBase > 25 * legalSalaryMinInternalBase ? BigDecimal.valueOf(25 * legalSalaryMinInternalBase * 0.00881) : BigDecimal.valueOf(totalAmountBase * 0.00881));
             // Calcular el Aporte Riesgo Empresa para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
+            double lastValidSalaryValue = legalSalaryMinInternalBase;
             if (salaryComponent != null && salaryComponent.getProjections() != null) {
                 for (MonthProjection riskProjection : salaryComponent.getProjections()) {
                     double totalAmount = riskComponents.stream()
@@ -1397,10 +1432,20 @@ public class Colombia {
                             .mapToDouble(projection -> projection.getAmount().doubleValue())
                             .sum();
 
+                    ParametersDTO legalSalaryMinInternalParam = legalSalaryMinMap.get(riskProjection.getMonth());
+                    double legalSalaryMinInternalValue;
+                    //calcular el salario minimo por mes
+                    if (legalSalaryMinInternalParam != null) {
+                        legalSalaryMinInternalValue = legalSalaryMinInternalParam.getValue();
+                        lastValidSalaryValue = legalSalaryMinInternalValue;
+                    } else {
+                        legalSalaryMinInternalValue = lastValidSalaryValue;
+                    }
+
                     // Calcular el Aporte Riesgo Empresa
                     double riskContribution;
-                    if (totalAmount > 25 * legalSalaryMinInternal) {
-                        riskContribution = 25 * legalSalaryMinInternal * 0.00881;
+                    if (totalAmount > 25 * legalSalaryMinInternalValue) {
+                        riskContribution = 25 * legalSalaryMinInternalValue * 0.00881;
                     } else {
                         riskContribution = totalAmount * 0.00881;
                     }
@@ -1412,15 +1457,18 @@ public class Colombia {
                     projections.add(projection);
                 }
                 riskContributionComponent.setProjections(projections);
-            }else {
+            } else {
                 riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-                riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
+                riskContributionComponent.setProjections(Shared.generateMonthProjection(period, range, riskContributionComponent.getAmount()));
             }
+            component.add(riskContributionComponent);
         }else {
-            riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-            riskContributionComponent.setProjections(Shared.generateMonthProjection(period,range,riskContributionComponent.getAmount()));
+            PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
+            paymentComponentDTO.setPaymentComponent("APORTE_RIESGO_EMPRESA_BECARIOS");
+            paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
+            component.add(paymentComponentDTO);
         }
-        component.add(riskContributionComponent);
         log.debug("component -> {}", "companyRiskContributionTrainee");
     }
     public void icbfContribution(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
@@ -1704,24 +1752,38 @@ public class Colombia {
         //ParametersDTO sodexoBase = sodexoMap.get(nextPeriod);
         //double sodexoValueBase = sodexoBase != null ? sodexoBase.getValue() : 0.0;
         //log.info("sodexoValueBase -> {}", sodexoValueBase);
-        ParametersDTO sodexoCercano= sodexoMap.get(nextPeriod);
-        double sodexoValueExclusions =  findExcludedPositions(position, sodexoCercano != null ? sodexoCercano.getValue():0.0, excludedPositions);
+        ParametersDTO sodexoParam= sodexoMap.get(nextPeriod);
+        double sodexoValueBase = sodexoParam != null ? sodexoParam.getValue() : 0.0;
+        double sodexoValueExclusions =  findExcludedPositions(position, sodexoValueBase, excludedPositions);
         ParametersDTO salaryMinInternal = salaryMap.get(nextPeriod);
         double legalSalaryMinInternal = salaryMinInternal != null ? salaryMinInternal.getValue() : 0.0;
         // Crear un nuevo PaymentComponentDTO para Sodexo
         PaymentComponentDTO sodexoComponent = new PaymentComponentDTO();
         sodexoComponent.setPaymentComponent("SODEXO");
         if (category.equals("P")) {
-            sodexoComponent.setAmount(BigDecimal.valueOf(totalAmountBase < 2 * legalSalaryMinInternal ? sodexoValueExclusions : 0));
+            double sodexoContributionBase;
+            if (totalAmountBase < 2 * legalSalaryMinInternal) {
+                sodexoContributionBase = sodexoValueExclusions;
+            } else {
+                sodexoContributionBase = 0;
+            }
+            sodexoComponent.setAmount(BigDecimal.valueOf(sodexoContributionBase));
             // Calcular el valor de Sodexo para cada proyección
             List<MonthProjection> projections = new ArrayList<>();
             BigDecimal lastSalaryMinValue = BigDecimal.valueOf(legalSalaryMinInternal);
             BigDecimal lastSodexoValue = BigDecimal.valueOf(sodexoValueExclusions);
+            BigDecimal lastSodexoParam = BigDecimal.valueOf(sodexoValueBase);
             if (salaryComponent != null && salaryComponent.getProjections() != null){
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
                     ParametersDTO sodexo = sodexoMap.get(primeProjection.getMonth());
-                    double sodexoValue = sodexo != null ? sodexo.getValue() : 0.0;
-                    double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoValue, excludedPositions);
+                    double sodexoParamValue;
+                    if (sodexo != null) {
+                        sodexoParamValue = sodexo.getValue();
+                        lastSodexoParam = BigDecimal.valueOf(sodexoParamValue);
+                    } else {
+                        sodexoParamValue = lastSodexoParam.doubleValue();
+                    }
+                    double sodexoValueExclusionsProjection =  findExcludedPositions(position, sodexoParamValue, excludedPositions);
                     //log.info("position -> {}, sodexoValueExclusionsProjection -> {}, moth -> {}", position, sodexoValueExclusionsProjection, primeProjection.getMonth());
                     double totalAmount = sodexoComponents.stream()
                             .map(componentMap::get)
@@ -2048,7 +2110,7 @@ public class Colombia {
     public Double findExcludedPositions (String position, Double digitalConnectivityValue, List<RangeBuDetailDTO> excludedPositions) {
         // Verificar si la posición está en la lista de posiciones excluidas
         boolean isExcluded = excludedPositions.stream()
-                .anyMatch(excludedPosition -> excludedPosition.getRange().equals(position) && excludedPosition.getValue() == 0);
+                .anyMatch(excludedPosition -> excludedPosition.getRange().equalsIgnoreCase(position) && excludedPosition.getValue() == 0);
         //log.debug("isExcluded: " + isExcluded + ", position: " + position + ", digitalConnectivityValue: " + digitalConnectivityValue);
         if (isExcluded) {
             return 0.0;
@@ -2648,6 +2710,7 @@ public class Colombia {
         String category = findCategory(classEmployee);
         if (category.equals("T")){
             // Get the necessary components for the calculation
+            /*(Salario Base[temporales] + Comisiones[temporales] + Provisión Mensual Prima[temporales] + Consolidado de Vacaciones[temporales] + Consolidado De Cesantias[temporales] + Consolidado De Intereses De Cesantias[temporales] + Subsidio de Transporte[temporales] + Aporte Salud Empresa[temporales] + Aporte Riesgo Empresa[temporales] + Aporte Caja[temporales] + Aporte ICBF[temporales] + Aporte Sena[temporales] + Aporte Pension Empresa[temporales]) * 7,35%"*/
             List<String> feeComponents = Arrays.asList("TEMPORAL_SALARY", "COMMISSION_TEMP", "PRIMA_MENSUAL_TEMPORAL", "CONSOLIDADO_VACACIONES_TEMPORAL", "CONSOLIDADO_CESANTIAS_TEMPORAL", "CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL", "SUBSIDIO_TRANSPORTE_TEMPORALES", "APORTE_SALUD_EMPRESA_TEMP", "APORTE_RIESGO_EMPRESA_TEMP", "APORTE_CAJA_TEMPORALES", "APORTE_ICBF_TEMPORALES", "APORTE_SENA_TEMPORALES", "APORTE_PENSION_EMPRESA_TEMPORALE");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> feeComponents.contains(c.getPaymentComponent()))
