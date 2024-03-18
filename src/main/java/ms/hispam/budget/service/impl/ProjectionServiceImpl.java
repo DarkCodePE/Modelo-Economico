@@ -700,7 +700,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
-                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu);
+                    methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu, headcountData.getPo());
                     methodsMexico.valesDeDespensa(component, projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsMexico.performanceBonus(component, headcountData.getPoName(), convenioNivel, projection.getPeriod(), projection.getRange(), convenioBonoCache);
                     methodsMexico.seguroSocial(component, convenio, projection.getPeriod(), projection.getRange(),convenioCache);
@@ -747,7 +747,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     public double calcularTotalSalarios(List<ProjectionDTO> headcount, String type, boolean includeType) {
         return headcount.stream()
-                .filter(h -> includeType ? h.getPoName().contains(type) : !h.getPoName().contains(type))
                 .flatMap(h -> h.getComponents().stream())
                 .filter(c -> c.getPaymentComponent().equals("SALARY"))
                 .map(PaymentComponentDTO::getProjections)
@@ -818,9 +817,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.consolidatedSeveranceInterest(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.contributionBox(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                     methodsColombia.transportSubsidy(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), transportSubsidyList);
-                    methodsColombia.companyHealthContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyHealthContribution(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
                     methodsColombia.companyRiskContribution(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.companyRiskContributionTrainee(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContributionTrainee2(component, salaryPraList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.icbfContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.senaContribution(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.companyPensionContribution(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
