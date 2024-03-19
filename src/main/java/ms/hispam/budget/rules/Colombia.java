@@ -98,8 +98,8 @@ public class Colombia {
         BigDecimal commission = BigDecimal.valueOf(cacheCommission.get(nextPeriod) == null ? 0.0 : cacheCommission.get(nextPeriod));
         //log.debug("commission -> {}", commission);
         if (!classEmployee.equals("T")) {
-            //commissionComponent.setAmount(commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue())));
-            commissionComponent.setAmount(commission);
+            commissionComponent.setAmount(commission.multiply(BigDecimal.valueOf(maxCommission / sumCommission.doubleValue())));
+            //commissionComponent.setAmount(commission);
         } else {
             commissionComponent.setAmount(BigDecimal.ZERO);
         }
@@ -874,6 +874,7 @@ public class Colombia {
             //last vacation amount
             double lastVacationAmount = vacationComponent.getAmount().doubleValue();
             for (MonthProjection primeProjection : componentMap.get("SALARY").getProjections()) {
+                //CALCULAR EL TOTAL DE LOS COMPONENTES
                 BigDecimal totalAmount = vacationComponents.stream()
                         .map(componentMap::get)
                         .filter(Objects::nonNull)
@@ -881,16 +882,23 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
+                //BUSCAR EL VALOR DEL CONSOLIDADO DE VACACIONES
                 ParametersDTO consolidateVacation = consolidatedVacationMap.get(primeProjection.getMonth());
-                double  consolidateVacationAmount = consolidateVacation != null ? consolidateVacation.getValue() / 12 : 0.0;
-                // Calcular el costo del Consolidado de Vacaciones
-                BigDecimal vacationCost;
+                double  consolidateVacationAmount;
                 if (consolidateVacation != null){
+                    consolidateVacationAmount = consolidateVacation.getValue() / 12;
+                    lastVacationAmount = consolidateVacationAmount;
+                }else {
+                    consolidateVacationAmount = lastVacationAmount;
+                }
+                // Calcular el costo del Consolidado de Vacaciones
+                BigDecimal vacationCost = BigDecimal.valueOf((totalAmount.doubleValue() / 30) * consolidateVacationAmount);
+              /*  if (consolidateVacation != null){
                     vacationCost = BigDecimal.valueOf((totalAmount.doubleValue() / 30) * consolidateVacationAmount);
                     lastVacationAmount = vacationCost.doubleValue();
                 }else {
                     vacationCost = BigDecimal.valueOf(lastVacationAmount);
-                }
+                }*/
                 //log.debug("vacationCost -> {}", vacationCost);
                 // Crear una proyección para este mes
                 MonthProjection projection = new MonthProjection();
@@ -1805,9 +1813,9 @@ public class Colombia {
                     double sodexoContribution;
                     if (totalAmount < 2 * salaryMinInternalValue) {
                         sodexoContribution = sodexoValueExclusionsProjection;
-                        lastSodexoValue = BigDecimal.valueOf(sodexoContribution);
+                        //lastSodexoValue = BigDecimal.valueOf(sodexoContribution);
                     } else {
-                        sodexoContribution = lastSodexoValue.doubleValue();
+                        sodexoContribution = 0.0;
                     }
                     //log salry type and month
                     //log.info("totalAmount -> {}, month -> {}", totalAmount, primeProjection.getMonth());
@@ -2089,15 +2097,16 @@ public class Colombia {
                 ParametersDTO digitalConnectivity = digitalConnectivityMap.get(monthProjection.getMonth());
                 double digitalConnectivityAmount;
                 if (digitalConnectivity != null) {
-                    double digitalConnectivityValue = digitalConnectivity.getValue();
-                    digitalConnectivityAmount = findExcludedPositions(position, digitalConnectivityValue, excludedPositions);
+                    digitalConnectivityAmount = digitalConnectivity.getValue();
+                    //digitalConnectivityAmount = findExcludedPositions(position, digitalConnectivityValue, excludedPositions);
                     lastDigitalConnectivityAidValueProjection = digitalConnectivityAmount;
                 }else {
                     digitalConnectivityAmount = lastDigitalConnectivityAidValueProjection;
                 }
+                double amountDigitalConnectivity = findExcludedPositions(position, digitalConnectivityAmount, excludedPositions);
                 MonthProjection projection = new MonthProjection();
                 projection.setMonth(monthProjection.getMonth());
-                projection.setAmount(BigDecimal.valueOf(digitalConnectivityAmount));
+                projection.setAmount(BigDecimal.valueOf(amountDigitalConnectivity));
                 projections.add(projection);
             }
             digitalConnectivityAidComponent.setProjections(projections);
@@ -2778,20 +2787,27 @@ public class Colombia {
             socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
             socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
             String category = findCategory(classEmployee);
-            BigDecimal lastValidSocialSecurityUniqueBonus = socialSecurityUniqueBonusComponent.getAmount();
+            BigDecimal lastValidSocialSecurityUniqueBonus = BigDecimal.valueOf(ssBonus);
             if (category.equals("P")) {
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
                 // Crear el componente de pago "Seguridad Social Bonificación Única"
                     ParametersDTO bonusParameter = ssBonusMap.get(primeProjection.getMonth());
-                    double bonus = bonusParameter != null ? bonusParameter.getValue() / 100 : 0.0;
-                    BigDecimal amount;
+                    double bonus;
+                    if(bonusParameter != null){
+                        bonus = bonusParameter.getValue()/100;
+                        lastValidSocialSecurityUniqueBonus = BigDecimal.valueOf(bonus);
+                    }else{
+                        bonus = lastValidSocialSecurityUniqueBonus.doubleValue();
+                    }
+                    BigDecimal  amount = BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus);
+                   /* BigDecimal amount;
                     if(bonusParameter != null){
                         amount = BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus);
                         lastValidSocialSecurityUniqueBonus = amount;
                     }else{
                         amount = lastValidSocialSecurityUniqueBonus;
-                    }
+                    }*/
                     MonthProjection projection = new MonthProjection();
                     projection.setMonth(primeProjection.getMonth());
                     projection.setAmount(amount);
