@@ -104,7 +104,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     }
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="po";
-    private static final String[]  HEADERNAME={"po","typeEmployee"};
+    private static final String[]  HEADERNAME={"po","typeEmployee","name"};
 
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
@@ -438,7 +438,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             default:
                 break;
         }
-        //FILTER COLOMBIA - HHEE Y RECARGOS -> MULTIPLICAR POR 12 AMBOS
+    //FILTER COLOMBIA - HHEE Y RECARGOS -> MULTIPLICAR POR 12 AMBOS
         if(projection.getBu().equals("T. COLOMBIA")){
             headcount.forEach(p -> p.getComponents().forEach(t -> t.getProjections().forEach(m -> {
                 if (t.getPaymentComponent().equals("HHEE") || t.getPaymentComponent().equals("SURCHARGES")) {
@@ -447,7 +447,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             })));
         }
         log.debug("headcount {}",headcount);
-        // Posiciones deshabilitadas
+    // Posiciones deshabilitadas
         projection.getDisabledPo().forEach(r-> headcount.stream().filter(p->p.getPo().equals(r.getPosition()))
                 .findFirst().ifPresent(p->
                         p.getComponents().forEach(t->t.getProjections()
@@ -685,9 +685,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> provisionFondoAhorro = filterParametersByName(projection.getParameters(), "Provisión Fondo de Ahorro");
         //%Impuesto Estatal
         List<ParametersDTO> stateTax = filterParametersByName(projection.getParameters(), "Impuesto Estatal");
+        //Calcular la suma total de todos los salarios de la plantilla
         //Prov Retiro (IAS)
         List<ParametersDTO> provisionRetiroIAS = filterParametersByName(projection.getParameters(), "Prov Retiro (IAS)");
-        //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
@@ -773,7 +773,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .findFirst()
                 .orElse(null);
         //log.debug("rangeBuByBU {}",rangeBuByBU);
-        List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : null;
+        List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : new ArrayList<>();
         //log.debug("rangeBuDetail {}",rangeBuDetail);
         //log.debug("excludedPositions {}",excludedPositions);
         Colombia methodsColombia = new Colombia();
@@ -943,7 +943,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
-        //TODO: FILTER BY BU
         List<Convenio> convenio = convenioRepository.findAll();
         List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
         return Config.builder()
@@ -1066,9 +1065,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     @Override
     public ProjectionInformation getHistorialProjection(Integer  id) {
-
         List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
-        log.info("parameters {}",parameters);
+
         List<DisabledPoDTO> disabledPoDTOS = disabledPoHistorialRepository.findByIdProjectionHistorial(id).stream().map(c->
                 new DisabledPoDTO(c.getPo(),c.getIdssff(),c.getPeriodFrom(),c.getPeriodTo())).collect(Collectors.toList());
         BaseExternResponse response = BaseExternResponse.builder()
@@ -1103,12 +1101,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             bc.getHeaders().addAll(List.of(HEADERNAME));
             List<Map<String,Object>> data = new ArrayList<>();
             businessCaseHistorials.forEach(t-> data.stream().filter(e->e.get(HEADERPO).equals(t.getPo())).findFirst().ifPresentOrElse(r->
-                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                            r.put(t.getComponent(),t.getComponent().equals("typeEmployee") ||t.getComponent().equals("name")
+                                    ?Shared.desencriptar(t.getNvalue()):
                                     Double.parseDouble(Shared.desencriptar(t.getNvalue())))
                     ,()->{
                         Map<String, Object> map = new HashMap<>();
                         map.put(HEADERPO,t.getPo());
-                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")?Shared.desencriptar(t.getNvalue()):
+                        map.put(t.getComponent(),t.getComponent().equals("typeEmployee")||t.getComponent().equals("name")?Shared.desencriptar(t.getNvalue()):
                                 Double.parseDouble(Shared.desencriptar(t.getNvalue())));
                         data.add(map);
                     }));

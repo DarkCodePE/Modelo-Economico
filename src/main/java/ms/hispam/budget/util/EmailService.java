@@ -19,6 +19,8 @@ public class EmailService {
     private final MailFeignClient mailFgClient;
     private final JavaMailSender emailSender;
     private final SpringTemplateEngine templateEngine;
+    private String OCPTOKEN="f60aac663e674ad1a899993ae09c41e9";
+
     public EmailService(MailFeignClient mailFgClient, JavaMailSender emailSender, SpringTemplateEngine templateEngine) {
         this.mailFgClient = mailFgClient;
         this.emailSender = emailSender;
@@ -39,6 +41,6 @@ public class EmailService {
         mail.setBody(body);
         mail.setAttachment(new ArrayList<>());
         SendMail sendMail = new SendMail(Arrays.asList(mail));
-        mailFgClient.sendEmail(sendMail);
+        mailFgClient.sendEmail(sendMail,OCPTOKEN);
     }
 }

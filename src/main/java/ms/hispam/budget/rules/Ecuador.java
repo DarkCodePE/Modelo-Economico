@@ -210,7 +210,7 @@ public class Ecuador {
         componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(k->coa.set(k.getAmount().doubleValue()));
         PaymentComponentDTO vaca = new PaymentComponentDTO();
         vaca.setPaymentComponent("VACA");
-        vaca.setAmount(BigDecimal.valueOf((((salary.get()+coa.get())/24)*(15-(15-parameter.get()))/12)));
+        vaca.setAmount(BigDecimal.valueOf((((salary.get()+coa.get())/24)*(15/12)*1/parameter.get())));
         List<MonthProjection> months= Shared.generateMonthProjection(period,range,BigDecimal.ZERO);
         months.forEach(f->{
             AtomicReference<Double> salaryMonth = new AtomicReference<>((double) 0);
@@ -221,7 +221,7 @@ public class Ecuador {
             componentDTO.stream().filter(c -> c.getType() == 2).findFirst().flatMap(k -> k.getProjections().stream()
                     .filter(y -> y.getMonth().equalsIgnoreCase(f.getMonth()))
                     .findFirst()).ifPresent(u -> coaMonth.set(u.getAmount().doubleValue()));
-            f.setAmount(BigDecimal.valueOf(((salaryMonth.get()+coaMonth.get())/24)*(15-(15-parameter.get()))/12));
+            f.setAmount(BigDecimal.valueOf((((salaryMonth.get()+coaMonth.get())/24)*(15/12)*1/parameter.get())));
         });
         vaca.setProjections(months);
         componentDTO.add(vaca);
