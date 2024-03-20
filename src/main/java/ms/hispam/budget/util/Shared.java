@@ -44,11 +44,11 @@ public class Shared {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
+        //YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
         for (int i = 0; i < range; i++) {
             dates.add( MonthProjection.builder().month( fechaActual.format(formatter)).amount(amount).build() );
             fechaActual = fechaActual.plusMonths(1);
         }
-
         return dates;
     }
     public static List<String> generateRangeMonth(String monthBase, int range) {

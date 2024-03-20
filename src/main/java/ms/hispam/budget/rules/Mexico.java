@@ -695,8 +695,8 @@ public class Mexico {
         }
     }
     public void performanceBonus(List<PaymentComponentDTO> component, String poName, String convenioBono, String period, Integer range, Map<String, ConvenioBono> convenioBonoCache) {
-        /*log.debug("ConvenioBono: {}", convenioBono);
-        log.debug("ConvenioBonoCache: {}", convenioBonoCache);*/
+        log.debug("ConvenioBono: {}", convenioBono);
+        log.debug("ConvenioBonoCache: {}", convenioBonoCache);
         ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
         /*log.debug("ConvenioBono: {}", convenioBonoData);*/
         //log.debug("ConvenioBono: {}", convenioBonoData);
@@ -1300,7 +1300,7 @@ public class Mexico {
         if (salaryComponent != null) {
             compensacionComponent.setAmount(BigDecimal.valueOf(salaryComponent.getAmount().doubleValue() * proporciónMensualBase));
             List<MonthProjection> projections = new ArrayList<>();
-            double lastCompensation = salaryComponent.getAmount().doubleValue();
+            double lastCompensation = proporciónMensualBase;
             for (MonthProjection compeProjection : salaryComponent.getProjections()) {
                 double monthlyCompensation = compeProjection.getAmount().doubleValue() / 12;
                 ParametersDTO monthlyProportion = proporciónMensualMap.get(compeProjection.getMonth());

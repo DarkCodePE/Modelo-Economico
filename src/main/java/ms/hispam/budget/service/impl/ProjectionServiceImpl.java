@@ -438,9 +438,16 @@ public class ProjectionServiceImpl implements ProjectionService {
             default:
                 break;
         }
-
-
-// Posiciones deshabilitadas
+        //FILTER COLOMBIA - HHEE Y RECARGOS -> MULTIPLICAR POR 12 AMBOS
+        if(projection.getBu().equals("T. COLOMBIA")){
+            headcount.forEach(p -> p.getComponents().forEach(t -> t.getProjections().forEach(m -> {
+                if (t.getPaymentComponent().equals("HHEE") || t.getPaymentComponent().equals("SURCHARGES")) {
+                    m.setAmount(m.getAmount().multiply(BigDecimal.valueOf(12)));
+                }
+            })));
+        }
+        log.debug("headcount {}",headcount);
+        // Posiciones deshabilitadas
         projection.getDisabledPo().forEach(r-> headcount.stream().filter(p->p.getPo().equals(r.getPosition()))
                 .findFirst().ifPresent(p->
                         p.getComponents().forEach(t->t.getProjections()
@@ -678,6 +685,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> provisionFondoAhorro = filterParametersByName(projection.getParameters(), "Provisión Fondo de Ahorro");
         //%Impuesto Estatal
         List<ParametersDTO> stateTax = filterParametersByName(projection.getParameters(), "Impuesto Estatal");
+        //Prov Retiro (IAS)
+        List<ParametersDTO> provisionRetiroIAS = filterParametersByName(projection.getParameters(), "Prov Retiro (IAS)");
         //Calcular la suma total de todos los salarios de la plantilla
         headcount.stream()
                 .parallel()
@@ -732,7 +741,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.participacionTrabajadores(component, employeeParticipationList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroDental(component,dentalInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroVida(component, lifeInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
-                    methodsMexico.provisionSistemasComplementariosIAS(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
+                    methodsMexico.provisionSistemasComplementariosIAS(component, provisionRetiroIAS, projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.SGMM(component, sgmmList, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
                 });
         //log.debug("headcount {}",headcount);
@@ -934,6 +943,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        //TODO: FILTER BY BU
+        List<Convenio> convenio = convenioRepository.findAll();
+        List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
         return Config.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
@@ -941,6 +953,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .money(vbu.getMoney())
                 .vViewPo(vbu.getVViewPo())
                 .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
+                .convenios(convenio)
+                .convenioBonos(convenioBono)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                 .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
@@ -1052,8 +1066,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     @Override
     public ProjectionInformation getHistorialProjection(Integer  id) {
-        List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
 
+        List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
+        log.info("parameters {}",parameters);
         List<DisabledPoDTO> disabledPoDTOS = disabledPoHistorialRepository.findByIdProjectionHistorial(id).stream().map(c->
                 new DisabledPoDTO(c.getPo(),c.getIdssff(),c.getPeriodFrom(),c.getPeriodTo())).collect(Collectors.toList());
         BaseExternResponse response = BaseExternResponse.builder()

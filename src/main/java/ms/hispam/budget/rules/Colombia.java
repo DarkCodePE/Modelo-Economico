@@ -1062,6 +1062,7 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
+
                 ParametersDTO salaryMinInternalParam = salaryMap.get(primeProjection.getMonth());
                 double salaryMinInternalValue;
                 if (salaryMinInternalParam != null) {
@@ -2781,7 +2782,7 @@ public class Colombia {
             ParametersDTO ssBonusParameterBase = ssBonusMap.get(nextPeriod);
             double ssBonus = ssBonusParameterBase != null ? ssBonusParameterBase.getValue()/100 : 0.0;
             //log.info("ssBonus -> {}", ssBonus);
-            // Calcular el valor de "Seguridad Social Bonificación Única"7
+            // Calcular el valor de "Seguridad Social Bonificación Única"
             double socialSecurityUniqueBonusValue = uniqueBonusComponent.getAmount().doubleValue() * ssBonus;
             PaymentComponentDTO socialSecurityUniqueBonusComponent = new PaymentComponentDTO();
             socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
