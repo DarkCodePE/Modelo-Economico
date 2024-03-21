@@ -90,7 +90,7 @@ public class Colombia {
         //log.debug("period -> {}", period);
         //log.debug("sumCommission -> {}", sumCommission);
         //log.debug("period -> {}", period);
-        log.debug("cacheCommission -> {}", cacheCommission);
+        //log.debug("cacheCommission -> {}", cacheCommission);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
         yearMonth = yearMonth.plusMonths(1);
