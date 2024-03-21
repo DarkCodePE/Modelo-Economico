@@ -259,29 +259,23 @@ public class ProjectionServiceImpl implements ProjectionService {
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
         try {
             Map<String, AccountProjection> componentesMap = new HashMap<>();
-
-
+            //log.debug("projection {}",projection.getIdBu());
             List<AccountProjection> components = getAccountsByBu(projection.getIdBu());
-
             //log.debug("components {}",components.size());
             for (AccountProjection concept : components) {
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             //.debug("componentesMap {}", componentesMap);
-
             List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap);
-
             //List<ProjectionDTO> headcount = getHeadcount(projection, componentesMap);
             //log.debug("headcount {}", headcount);
             //Agrupar por componente y agrupar por mes
-            log.info("Agrupar por componente y agrupar por mes {}",new Date());
             List<ResumenComponentDTO> componentMonthAmountMap = getResumenPorMonth(headcount, componentesMap).stream()
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
 
             //Agrupar por mes
-
             List<MonthProjection> monthAmountList = groupingByMonth(componentMonthAmountMap).stream()
                     .sorted(Comparator.comparing(MonthProjection::getMonth)).collect(Collectors.toList());
 
@@ -304,10 +298,10 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
-            log.info("Termino Agrupar por componente y agrupar por mes {}",new Date());
+
             List<RealesProjection> getReales = repository.getReales("%" + projection.getBu()
                     .replace("T. ", "") + "%", projection.getPeriod());
-            log.info("Inicio Agrupar reales {}",new Date());
+
             //agrupar getreales por cuenta y mes y monto
             List<ResumenComponentDTO> groupedRealesMonth = groupedReales(getReales).stream()
                     .peek(component -> component.getProjections().sort(Comparator.comparing(MonthProjection::getMonth)))
@@ -329,10 +323,9 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .positions(headcount)
                     .count(headcount.size())
                     .build() : null;
-            log.info("Termino Agrupar reales {}",new Date());
+
             //get rosseta
             List<RosetaDTO> rosseta = getRoseta(projection.getIdBu());
-
             //recorrer rosseta por childs y ver si en payment esta incluido componentMonthAmountMap para acumular el mes y monto
             for (RosetaDTO rosetaDTO : rosseta) {
                 acumularMontosPorComponente(rosetaDTO, componentMonthAmountMap);
@@ -425,7 +418,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .filter(h -> h.getClassEmployee().equals("T"))
                 .collect(Collectors.toList());
         log.debug("headcount {}",headcountT);*/
-        log.info("Inicio Pais {}",new Date());
+
         switch (projection.getBu()){
             case "T. ECUADOR":
                 isEcuador(headcount,projection);
@@ -445,10 +438,16 @@ public class ProjectionServiceImpl implements ProjectionService {
             default:
                 break;
         }
-        log.info("Termina Pais {}",new Date());
-
-
-// Posiciones deshabilitadas
+    //FILTER COLOMBIA - HHEE Y RECARGOS -> MULTIPLICAR POR 12 AMBOS
+        if(projection.getBu().equals("T. COLOMBIA")){
+            headcount.forEach(p -> p.getComponents().forEach(t -> t.getProjections().forEach(m -> {
+                if (t.getPaymentComponent().equals("HHEE") || t.getPaymentComponent().equals("SURCHARGES")) {
+                    m.setAmount(m.getAmount().multiply(BigDecimal.valueOf(12)));
+                }
+            })));
+        }
+        log.debug("headcount {}",headcount);
+    // Posiciones deshabilitadas
         projection.getDisabledPo().forEach(r-> headcount.stream().filter(p->p.getPo().equals(r.getPosition()))
                 .findFirst().ifPresent(p->
                         p.getComponents().forEach(t->t.getProjections()
@@ -687,6 +686,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //%Impuesto Estatal
         List<ParametersDTO> stateTax = filterParametersByName(projection.getParameters(), "Impuesto Estatal");
         //Calcular la suma total de todos los salarios de la plantilla
+        //Prov Retiro (IAS)
+        List<ParametersDTO> provisionRetiroIAS = filterParametersByName(projection.getParameters(), "Prov Retiro (IAS)");
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
@@ -740,7 +741,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.participacionTrabajadores(component, employeeParticipationList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroDental(component,dentalInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroVida(component, lifeInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
-                    methodsMexico.provisionSistemasComplementariosIAS(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
+                    methodsMexico.provisionSistemasComplementariosIAS(component, provisionRetiroIAS, projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.SGMM(component, sgmmList, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
                 });
         //log.debug("headcount {}",headcount);
@@ -837,19 +838,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsColombia.sodexo(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange(), sodexoList, headcountData.getPoName(), rangeBuDetail );
                     methodsColombia.sena(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     //methodsColombia.senaTemporales(component, projection.getParameters(),headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.uniqueBonus(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.AuxilioDeTransporteAprendizSena(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.uniqueBonus(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+                    //subsidy list
+                    methodsColombia.AuxilioDeTransporteAprendizSena(component, headcountData.getClassEmployee(), salaryPraList, projection.getPeriod(), projection.getRange(), transportSubsidyList);
                     methodsColombia.AuxilioConectividadDigital(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getPoName(), rangeBuDetail , digitalConnectivityList);
                     methodsColombia.commissionTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),totalSum, commissionList, dataMapTemporal, headcountData.getPo());
                     methodsColombia.prodMonthPrimeTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacationTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.consolidatedSeveranceInterestTemporal(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.transportSubsidyTemporaries(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
-                    methodsColombia.companyHealthContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.companyRiskContributionTemporals(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.consolidatedSeveranceInterestTemporal(component, projection.getParameters(), headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.transportSubsidyTemporaries(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), transportSubsidyList);
+                    methodsColombia.companyHealthContributionTemporals(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
+                    methodsColombia.companyRiskContributionTemporals(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
                     methodsColombia.contributionBoxTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.icbfContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
+                    methodsColombia.icbfContributionTemporaries(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
                     methodsColombia.senaContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.companyPensionContributionTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
                     methodsColombia.feeTemporaries(component, headcountData.getClassEmployee(), projection.getParameters(), projection.getPeriod(), projection.getRange());
@@ -942,6 +944,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        List<Convenio> convenio = convenioRepository.findAll();
+        List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
         return Config.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
@@ -949,6 +953,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .money(vbu.getMoney())
                 .vViewPo(vbu.getVViewPo())
                 .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
+                .convenios(convenio)
+                .convenioBonos(convenioBono)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                 .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
@@ -1404,7 +1410,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         //TODO: ADD MONTH BASE
-        log.info("Iniciando Headcount {}",new Date());
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
         List<HeadcountProjection> headcount =  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
@@ -1432,8 +1437,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .convent(e.getConvent())
                         .level(e.getLevel())
                         .build()).collect(Collectors.toList());
-        log.info("Terminando Headcount {}",new Date());
-        log.info("Inicio Nomina {}",new Date());
+
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                 codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
@@ -1443,7 +1447,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .importe(e.getImporte())
                         .build())
                 .collect(Collectors.toList());
-        log.info("Termino Nomina {}",new Date());
         //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
