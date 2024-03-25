@@ -221,7 +221,7 @@ public class Ecuador {
             componentDTO.stream().filter(c -> c.getType() == 2).findFirst().flatMap(k -> k.getProjections().stream()
                     .filter(y -> y.getMonth().equalsIgnoreCase(f.getMonth()))
                     .findFirst()).ifPresent(u -> coaMonth.set(u.getAmount().doubleValue()));
-            f.setAmount(BigDecimal.valueOf(((salaryMonth.get()+ coaMonth.get()*12)/(24*15*parameter.get()))));
+            f.setAmount(BigDecimal.valueOf(((salaryMonth.get()+ coaMonth.get())*12)/(24*15*parameter.get())));
         });
         vaca.setProjections(months);
         componentDTO.add(vaca);
