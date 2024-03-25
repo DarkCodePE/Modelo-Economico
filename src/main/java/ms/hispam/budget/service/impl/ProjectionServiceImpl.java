@@ -707,7 +707,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //Tope sueldo - Fondo Ahorro
         List<ParametersDTO> topeSueldoFondoAhorro = filterParametersByName(projection.getParameters(), "Tope Sueldo - Fondo Ahorro");
         //UMA mensual
-        List<ParametersDTO> umaMensual = filterParametersByName(projection.getParameters(), "UMA Mensual");
+        List<ParametersDTO> umaMensual = filterParametersByName(projection.getParameters(), "UMA");
         //% Provisión Fondo de Ahorro
         List<ParametersDTO> provisionFondoAhorro = filterParametersByName(projection.getParameters(), "Provisión Fondo de Ahorro");
         //%Impuesto Estatal
@@ -716,7 +716,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //Prov Retiro (IAS)
         List<ParametersDTO> provisionRetiroIAS = filterParametersByName(projection.getParameters(), "Prov Retiro (IAS)");
         //vales de despensa
-        List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "Vales de Despensa");
+        List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "vales");
         headcount.stream()
                 .parallel()
                 .forEach(headcountData -> {
