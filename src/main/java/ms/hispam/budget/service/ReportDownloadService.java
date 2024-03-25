@@ -51,4 +51,9 @@ public class ReportDownloadService {
     public List<ReportJob> getReport(String mail) {
         return reportJobRepository.findByIdSsffOrderByCreationDateDesc(mail);
     }
+    // Método para obtener el reporte generado por usuario y BU
+    @Transactional(value = "mysqlTransactionManager", readOnly = true)
+    public List<ReportJob> getReportBu(String mail, Integer bu) {
+        return reportJobRepository.findByIdSsffAndBu(mail, bu);
+    }
 }

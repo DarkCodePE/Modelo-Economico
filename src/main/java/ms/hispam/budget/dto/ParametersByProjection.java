@@ -1,6 +1,8 @@
 package ms.hispam.budget.dto;
 
 import lombok.*;
+import ms.hispam.budget.entity.mysql.Convenio;
+import ms.hispam.budget.entity.mysql.ConvenioBono;
 import ms.hispam.budget.entity.mysql.ParameterDefault;
 
 import javax.validation.constraints.Min;
@@ -28,6 +30,8 @@ public class ParametersByProjection {
     private List<ParametersDTO> parameters;
     private List<PaymentComponentType> paymentComponent;
     private List<RangeBuDTO> temporalParameters;
+    private List<Convenio> convenios;
+    private List<ConvenioBono> convenioBonos;
     private List<ParameterDefault> defaultParameters;
     @NotEmpty(message="Se requiere nomina From")
     private String nominaFrom;

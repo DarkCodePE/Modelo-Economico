@@ -49,6 +49,7 @@ public class ProjectionController {
 
     @PostMapping("/new-projection")
     public ProjectionSecondDTO getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
+        log.debug("Projection: {}", projection);
         Shared.replaceSLash(projection);
         return service.getNewProjection(projection);
     }
@@ -109,6 +110,7 @@ public class ProjectionController {
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
             job.setCreationDate(java.time.LocalDateTime.now());
             job.setCode(taskId);
+            job.setIdBu(projection.getIdBu());
             job.setIdSsff(user);
             ReportJob jobDB =  reportJobRepository.save(job);
             ExcelReportDTO reportInProgress = ExcelReportDTO.builder()
@@ -130,6 +132,15 @@ public class ProjectionController {
     public List<ReportJob> getReport(@RequestHeader String user) {
         List<ReportJob> reportJobs = reportDownloadService.getReport(user);
         // Carga los parámetros de cada ReportJob
+        reportJobs.forEach(reportJob -> reportJob.getParameters().size());
+        return reportJobs;
+    }
+    //report bu
+    @GetMapping("/report-bu")
+    @Transactional("mysqlTransactionManager")
+    public List<ReportJob> getReportBu(@RequestHeader String user,@RequestParam Integer idBu) {
+        List<ReportJob> reportJobs = reportDownloadService.getReportBu(user,idBu);
+        //log.debug("User: {}, BU: {}", user, idBu);
         reportJobs.forEach(reportJob -> reportJob.getParameters().size());
         return reportJobs;
     }

@@ -305,13 +305,19 @@ public class Colombia {
                 double lastSalary = paymentComponentDTO.getAmount().doubleValue();
                 double lastLegalBaseSalary = salaryMinBase != null ? salaryMinBase.getValue() : 0.0;
                 double lastLegalIntegralSalary = salaryMinIntegralBase != null ? salaryMinIntegralBase.getValue() : 0.0;
+                List<MonthProjection> projections = new ArrayList<>();
                 if (salaryType.equals("INTEGRAL")) {
                     for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                         //log.debug("projection.getMonth() -> {}", projection.getMonth());
                         //log.debug("cacheSalaryIntegralMin.get(projection.getMonth()) -> {}", cacheSalaryIntegralMin.get(projection.getMonth()));
-                        Double salaryIntegralMinMap = cacheSalaryIntegralMin.get(projection.getMonth());
+                        ParametersDTO salaryIntegralMinMap = salaryIntegralMap.get(projection.getMonth());
                         double salaryIntegralMin;
-                        salaryIntegralMin = Objects.requireNonNullElse(salaryIntegralMinMap, lastLegalIntegralSalary);
+                        if (salaryIntegralMinMap != null) {
+                            salaryIntegralMin = salaryIntegralMinMap.getValue();
+                            lastLegalIntegralSalary = salaryIntegralMin;
+                        } else {
+                            salaryIntegralMin = lastLegalIntegralSalary;
+                        }
                         //log.debug("salaryIntegralMin -> {}", salaryIntegralMin);
                         double salaryTemporalProjection;
                         if (projection.getAmount().doubleValue() <= salaryIntegralMin) {
@@ -320,13 +326,22 @@ public class Colombia {
                         } else {
                             salaryTemporalProjection = lastSalary;
                         }
-                        projection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(projection.getMonth());
+                        monthProjection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
+                        //log.debug("monthProjection -> {}", monthProjection);
+                        projections.add(monthProjection);
                     }
                 } else {
                     for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                        Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
+                        ParametersDTO salaryMapParameter = salaryMap.get(projection.getMonth());
                         double salaryMin;
-                        salaryMin = Objects.requireNonNullElse(salaryMinMap, lastLegalBaseSalary);
+                        if (salaryMapParameter != null) {
+                            salaryMin = salaryMapParameter.getValue();
+                            lastLegalBaseSalary = salaryMin;
+                        } else {
+                            salaryMin = lastLegalBaseSalary;
+                        }
                         //("salaryMin -> {}", salaryMin);lastLegalBaseSalary
                         double salaryTemporalProjection;
                         if (projection.getAmount().doubleValue() <= salaryMin) {
@@ -335,9 +350,14 @@ public class Colombia {
                         } else {
                             salaryTemporalProjection = lastSalary;
                         }
-                        projection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
+                       MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(projection.getMonth());
+                        monthProjection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
+                        //log.debug("monthProjection -> {}", monthProjection);
+                        projections.add(monthProjection);
                     }
                 }
+                paymentComponentDTO.setProjections(projections);
             }
         }else {
             paymentComponentDTO.setAmount(BigDecimal.ZERO);
@@ -359,6 +379,13 @@ public class Colombia {
         Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
         Map<String, Double> cacheSalaryMin = new ConcurrentHashMap<>();
         createCache(legalSalaryMinList, salaryMap, cacheSalaryMin, (parameter, mapParameter) -> {});
+        //next period
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+        ParametersDTO salaryMinBase = salaryMap.get(nextPeriod);
+        double salaryMin = salaryMinBase != null ? salaryMinBase.getValue() : 0.0;
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO pc938001Component = componentMap.get(PC938001);
         PaymentComponentDTO pc938005Component = componentMap.get(PC938005);
@@ -368,23 +395,35 @@ public class Colombia {
                 //double highestAmountSoFar = Math.max(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue());
                 PaymentComponentDTO paymentComponentDTO = (PaymentComponentDTO)createSalaryTemporalComponent(pc938001Component.getAmount().doubleValue(), pc938005Component == null ? 0.0 : pc938005Component.getAmount().doubleValue(), classEmployee, period, range, category, TEMPORAL_SALARY).get("salaryComponent");
                 if (paymentComponentDTO != null){
+
                     double lastTemporalSalary = paymentComponentDTO.getAmount().doubleValue();
-                    if (paymentComponentDTO.getAmount().doubleValue() != 0.0) {
-                        if (paymentComponentDTO.getProjections() != null){
-                            for (MonthProjection projection : paymentComponentDTO.getProjections()) {
-                                Double salaryMinMap = cacheSalaryMin.get(projection.getMonth());
-                                double salaryMin = salaryMinMap != null ? salaryMinMap : 0.0;
-                                double salaryTemporalProjection;
-                                if(projection.getAmount().doubleValue() <= salaryMin){
-                                    salaryTemporalProjection = salaryMin;
-                                    lastTemporalSalary = salaryTemporalProjection;
-                                }else{
-                                    salaryTemporalProjection = lastTemporalSalary;
-                                }
-                                projection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
-                            }
+                    double lastLegalBaseSalary = salaryMin;
+                    List<MonthProjection> projections = new ArrayList<>();
+                    for (MonthProjection projection : paymentComponentDTO.getProjections()) {
+                        ParametersDTO salaryMinMap = salaryMap.get(projection.getMonth());
+
+                        double salaryMinProjection;
+                        if(salaryMinMap != null){
+                            salaryMinProjection = salaryMinMap.getValue();
+                            lastLegalBaseSalary = salaryMinProjection;
+                        }else{
+                            salaryMinProjection = lastLegalBaseSalary;
                         }
+
+                        double salaryTemporalProjection;
+                        if(projection.getAmount().doubleValue() <= salaryMinProjection){
+                            salaryTemporalProjection = salaryMinProjection;
+                            lastTemporalSalary = salaryTemporalProjection;
+                        }else{
+                            salaryTemporalProjection = lastTemporalSalary;
+                        }
+
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(projection.getMonth());
+                        monthProjection.setAmount(BigDecimal.valueOf(salaryTemporalProjection));
+                        projections.add(monthProjection);
                     }
+                    paymentComponentDTO.setProjections(projections);
                     component.add(paymentComponentDTO);
                 }else {
                     PaymentComponentDTO paymentComponentDTO1 = new PaymentComponentDTO();
@@ -462,7 +501,7 @@ public class Colombia {
             }
         }
         component.add(paymentComponentDTO);
-       // log.debug("component -> {}", "salaryPra");
+        // log.debug("component -> {}", "salaryPra");
     }
 
     public void revisionSalary(List<PaymentComponentDTO> component,List<ParametersDTO> parameters,String period, Integer range, String classEmployee){
@@ -2535,7 +2574,7 @@ public class Colombia {
                     BigDecimal healthContribution;
                     if (totalAmount > 25 * legalSalaryMinInternalProj) {
                         healthContribution = BigDecimal.valueOf(25 * legalSalaryMinInternalProj * 0.085);
-                    } else if (totalAmount > 10 * legalSalaryMinInternal) {
+                    } else if (totalAmount > 10 * legalSalaryMinInternalProj) {
                         healthContribution = BigDecimal.valueOf(totalAmount * 0.085);
                     } else {
                         healthContribution = BigDecimal.ZERO;
@@ -2764,7 +2803,7 @@ public class Colombia {
         }
         log.debug("component -> {}", "icbfContributionTemporaries");
     }
-    public void senaContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> parameters, String period, Integer range) {
+    public void senaContributionTemporaries(List<PaymentComponentDTO> component, String classEmployee, List<ParametersDTO> salaryList, String period, Integer range) {
         String category = findCategory(classEmployee);
         if (category.equals("T")) {
             // Get the necessary components for the calculation
@@ -2784,28 +2823,45 @@ public class Colombia {
             PaymentComponentDTO senaContributionComponent = new PaymentComponentDTO();
             senaContributionComponent.setPaymentComponent("APORTE_SENA_TEMPORALES");
             double totalAmountBase = salary + overtime + surcharges + commission;
-            ParametersDTO legalSalaryMin = getParametersById(parameters, 47);
+            Map<String, ParametersDTO>  salaryListMap = new ConcurrentHashMap<>();
+            Map<String, Double> cacheSalary = new ConcurrentHashMap<>();
+            createCache(salaryList, salaryListMap, cacheSalary,  (parameter, mapParameter) -> {});
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+            ParametersDTO legalSalaryMin = salaryListMap.get(nextPeriod);
             double legalSalaryMinInternal = legalSalaryMin!=null ? legalSalaryMin.getValue() : 0.0;
             senaContributionComponent.setAmount(BigDecimal.valueOf( totalAmountBase >= 10 * legalSalaryMinInternal ? totalAmountBase * 0.02 : 0));
             // Calculate the Sena Contribution for each projection
             if (salaryComponent != null && salaryComponent.getProjections() != null) {
                 List<MonthProjection> projections = new ArrayList<>();
+                double lastLegalSalaryMinInternal = legalSalaryMinInternal;
                 for (MonthProjection primeProjection : salaryComponent.getProjections()) {
-                    double totalAmount = senaComponents.stream()
-                            .map(componentMap::get)
-                            .filter(Objects::nonNull)
-                            .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
-                            .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
-                            .mapToDouble(projection -> projection.getAmount().doubleValue())
-                            .sum();
+                        BigDecimal totalAmount = senaComponents.stream()
+                                .map(componentMap::get)
+                                .filter(Objects::nonNull)
+                                .flatMap(paymentComponentDTO -> paymentComponentDTO.getProjections().stream())
+                                .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
+                                .map(MonthProjection::getAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    ParametersDTO salaryProj = salaryListMap.get(primeProjection.getMonth());
+                    double legalSalaryMinInternalProj;
+                    if (salaryProj != null) {
+                        legalSalaryMinInternalProj = salaryProj.getValue();
+                        lastLegalSalaryMinInternal = legalSalaryMinInternalProj;
+                    } else {
+                        legalSalaryMinInternalProj = lastLegalSalaryMinInternal;
+                    }
                     MonthProjection projection = new MonthProjection();
                     projection.setMonth(primeProjection.getMonth());
-                    if (totalAmount >= 10 * legalSalaryMinInternal) {
-                        //log.info("totalAmount -> {}", totalAmount);
-                        projection.setAmount(BigDecimal.valueOf(totalAmount * 0.02));
+                    double amount;
+                    if (totalAmount.doubleValue() >= 10 * legalSalaryMinInternalProj) {
+                        amount = totalAmount.doubleValue() * 0.02;
                     } else {
-                        projection.setAmount(BigDecimal.valueOf(0));
+                        amount = 0.0;
                     }
+                    projection.setAmount(BigDecimal.valueOf(amount));
                     projections.add(projection);
                 }
                 senaContributionComponent.setProjections(projections);
