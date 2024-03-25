@@ -657,22 +657,30 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .orElse(null);
         Integer idBu = projection.getIdBu();
         //convenio by ParamwtersProjection
-        List<Convenio> convenioList = projection.getConvenios();
+        List<Convenio> convenioList = projection.getConvenios() != null ? projection.getConvenios() : new ArrayList<>();
         //convenio bono by ParamwtersProjection
-        List<ConvenioBono> convenioBonoList = projection.getConvenioBonos();
+        List<ConvenioBono> convenioBonoList = projection.getConvenioBonos() != null ? projection.getConvenioBonos() : new ArrayList<>();
 
         convenioCache = new HashMap<>();
         for (Convenio convenio : convenioList) {
-            String key = convenio.getConvenioName();
-            convenioCache.put(key, convenio);
+            if (convenio != null) {
+                String key = convenio.getConvenioName();
+                if (key != null) {
+                    convenioCache.put(key, convenio);
+                }
+            }
         }
-        log.debug("convenioCache {}", convenioCache);
+        //log.debug("convenioCache {}", convenioCache);
         convenioBonoCache = new HashMap<>();
         for (ConvenioBono convenioBono : convenioBonoList) {
-            String key = convenioBono.getConvenioNivel();
-            convenioBonoCache.put(key, convenioBono);
+            if (convenioBono != null) {
+                String key = convenioBono.getConvenioNivel();
+                if (key != null) {
+                    convenioBonoCache.put(key, convenioBono);
+                }
+            }
         }
-        log.debug("convenioCache {}", convenioCache);
+        //log.debug("convenioCache {}", convenioCache);
 
 
         Mexico methodsMexico = new Mexico(mexicoService, convenioRepository, convenioBonoRepository);
