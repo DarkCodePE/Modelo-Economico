@@ -619,7 +619,6 @@ public class XlsReportService {
                     MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
-
                     reportJobRepository.save(job);
                     // Notifica al usuario
                     notifyUser("El reporte está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);

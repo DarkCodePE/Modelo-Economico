@@ -30,7 +30,8 @@ public class ReportJob {
     @Column(name = "nomina_range")
     private String nominaRange;
     private String code;
-
+    @Column(name = "id_bu")
+    private Integer idBu;
     @Column(name = "creation_date")
     private LocalDateTime creationDate;
     @OneToMany(mappedBy = "reportJob")
