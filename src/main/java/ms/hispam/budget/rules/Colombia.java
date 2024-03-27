@@ -1087,7 +1087,7 @@ public class Colombia {
     }
 
     public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, String classEmployee, String period, Integer range, List<ParametersDTO> subsidyMinList, String code) {
-        log.info("code -> {}", code);
+        //log.info("code -> {}", code);
         String category = findCategory(classEmployee);
         //salarymap
         Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
@@ -1138,7 +1138,7 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-                log.info("totalAmount -> {}, month -> {}", totalAmount, primeProjection.getMonth());
+                //log.info("totalAmount -> {}, month -> {}", totalAmount, primeProjection.getMonth());
                 ParametersDTO salaryMinInternalParam = salaryMap.get(primeProjection.getMonth());
                 double salaryMinInternalValue;
                 if (salaryMinInternalParam != null) {
