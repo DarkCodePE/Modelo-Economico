@@ -90,7 +90,7 @@ public class Colombia {
         //log.debug("period -> {}", period);
         //log.debug("sumCommission -> {}", sumCommission);
         //log.debug("period -> {}", period);
-        log.debug("cacheCommission -> {}", cacheCommission);
+        //log.debug("cacheCommission -> {}", cacheCommission);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
         YearMonth yearMonth = YearMonth.parse(period, formatter);
         yearMonth = yearMonth.plusMonths(1);
@@ -746,9 +746,9 @@ public class Colombia {
                 .anyMatch(excludedPosition -> excludedPosition.equals(position));*/
         String category = findCategory(classEmployee);
         if (!category.equals("T")) {
-            //log.debug("sumCommission -> {}", sumCommission);
+            Map<String, ParametersDTO> commissionMap = new ConcurrentHashMap<>();
             Map<String, Double> cacheCommission = new ConcurrentHashMap<>();
-            createCommissionCache(commissionList, period, range, cacheCommission);
+            createCache(commissionList, commissionMap, cacheCommission, (parameter, mapParameter) -> {});
             //log.debug("cacheCommission -> {}", cacheCommission);
             Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
             PaymentComponentDTO salaryComponent = componentMap.get("SALARY");
@@ -759,6 +759,7 @@ public class Colombia {
             //String category = findCategory(classEmployee);
             double pc938003Amount = pc938003Component == null ? 0.0 : pc938003Component.getAmount().doubleValue();
             double pc938012Amount = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
+            //Sumatoria de las comisiones
             double maxCommission = Math.max(pc938003Amount, pc938012Amount);
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent(COMMISSION);
@@ -766,17 +767,28 @@ public class Colombia {
             YearMonth yearMonth = YearMonth.parse(period, formatter);
             yearMonth = yearMonth.plusMonths(1);
             String nextPeriod = yearMonth.format(formatter);
-            double commission = cacheCommission.get(nextPeriod) == null ? 0.0 : cacheCommission.get(nextPeriod);
-            paymentComponentDTO.setAmount(BigDecimal.valueOf(commission));
+            double commission = commissionMap.get(nextPeriod) == null ? 0.0 : commissionMap.get(nextPeriod).getValue() / 12;
+            double commissionProBase = maxCommission / sumCommission.doubleValue();
+            paymentComponentDTO.setAmount(BigDecimal.valueOf(commission * commissionProBase));
             paymentComponentDTO.setProjections(Shared.generateMonthProjection(period,range,paymentComponentDTO.getAmount()));
             //log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
             List<MonthProjection> projections = new ArrayList<>();
+            double lastCommission = commission;
             for (MonthProjection projection : paymentComponentDTO.getProjections()) {
                 //SI($I5<>"T";//AJ$10/12*($M5/SUMA($M$4:$M$15));0)
-                double cacheCommissionValue = cacheCommission.get(projection.getMonth()) == null ? 0.0 : cacheCommission.get(projection.getMonth());
-                BigDecimal commissionProj = BigDecimal.valueOf(cacheCommissionValue);
+                ParametersDTO commissionParam = commissionMap.get(projection.getMonth());
+                double cacheCommissionValue;
+                if (commissionParam != null) {
+                    cacheCommissionValue = commissionParam.getValue() / 12;
+                    lastCommission = cacheCommissionValue;
+                } else {
+                    cacheCommissionValue = lastCommission;
+                }
+                //AP$9/12*($M8/SUMA($M$4:$M$15)),0)
+                double commissionPro = maxCommission / sumCommission.doubleValue();
+                double commissionProj = cacheCommissionValue * commissionPro;
                 projection.setMonth(projection.getMonth());
-                projection.setAmount(commissionProj);
+                projection.setAmount(BigDecimal.valueOf(commissionProj));
                 projections.add(projection);
             }
             paymentComponentDTO.setProjections(projections);
@@ -1074,7 +1086,8 @@ public class Colombia {
         //log.debug("component -> {}", "consolidatedSeveranceInterest");
     }
 
-    public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, String classEmployee, String period, Integer range, List<ParametersDTO> subsidyMinList) {
+    public void transportSubsidy(List<PaymentComponentDTO> component, List<ParametersDTO> salaryList, String classEmployee, String period, Integer range, List<ParametersDTO> subsidyMinList, String code) {
+        log.info("code -> {}", code);
         String category = findCategory(classEmployee);
         //salarymap
         Map<String, ParametersDTO> salaryMap = new ConcurrentHashMap<>();
@@ -1125,7 +1138,7 @@ public class Colombia {
                         .filter(projection -> projection.getMonth().equals(primeProjection.getMonth()))
                         .map(MonthProjection::getAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+                log.info("totalAmount -> {}, month -> {}", totalAmount, primeProjection.getMonth());
                 ParametersDTO salaryMinInternalParam = salaryMap.get(primeProjection.getMonth());
                 double salaryMinInternalValue;
                 if (salaryMinInternalParam != null) {
@@ -1769,7 +1782,7 @@ public class Colombia {
                         pensionContributionBasic = totalAmount * 0.12;
                     }
                     double pensionContributionIntegral;
-                    if (0.70 * totalAmount > 25 * salaryMinInternalValue) {
+                    if (salaryTypeProjection.equals("INTEGRAL") && 0.70 * totalAmount > 25 * salaryMinInternalValue) {
                         pensionContributionIntegral = 25 * salaryMinInternalValue * 0.12;
                     } else {
                         pensionContributionIntegral = 0.70 * totalAmount * 0.12;
@@ -2939,7 +2952,7 @@ public class Colombia {
         if (category.equals("T")){
             // Get the necessary components for the calculation
             /*(Salario Base[temporales] + Comisiones[temporales] + Provisión Mensual Prima[temporales] + Consolidado de Vacaciones[temporales] + Consolidado De Cesantias[temporales] + Consolidado De Intereses De Cesantias[temporales] + Subsidio de Transporte[temporales] + Aporte Salud Empresa[temporales] + Aporte Riesgo Empresa[temporales] + Aporte Caja[temporales] + Aporte ICBF[temporales] + Aporte Sena[temporales] + Aporte Pension Empresa[temporales]) * 7,35%"*/
-            List<String> feeComponents = Arrays.asList("TEMPORAL_SALARY", "COMMISSION_TEMP", "PRIMA_MENSUAL_TEMPORAL", "CONSOLIDADO_VACACIONES_TEMPORAL", "CONSOLIDADO_CESANTIAS_TEMPORAL", "CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL", "SUBSIDIO_TRANSPORTE_TEMPORALES", "APORTE_SALUD_EMPRESA_TEMP", "APORTE_RIESGO_EMPRESA_TEMP", "APORTE_CAJA_TEMPORALES", "APORTE_ICBF_TEMPORALES", "APORTE_SENA_TEMPORALES", "APORTE_PENSION_EMPRESA_TEMPORALE");
+            List<String> feeComponents = Arrays.asList("TEMPORAL_SALARY", "COMMISSION_TEMP", "PRIMA_MENSUAL_TEMPORAL", "CONSOLIDADO_VACACIONES_TEMPORAL", "CONSOLIDADO_CESANTIAS_TEMPORAL", "CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL", "SUBSIDIO_TRANSPORTE_TEMPORALES", "APORTE_SALUD_EMPRESA_TEMP", "APORTE_RIESGO_EMPRESA_TEMP", "APORTE_CAJA_TEMPORALES", "APORTE_ICBF_TEMPORALES", "APORTE_SENA_TEMPORALES", "APORTE_PENSION_EMPRESA_TEMPORALES");
             Map<String, PaymentComponentDTO> componentMap = component.stream()
                     .filter(c -> feeComponents.contains(c.getPaymentComponent()))
                     .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
@@ -2995,7 +3008,13 @@ public class Colombia {
             Map<String, Double> cacheBonus = new ConcurrentHashMap<>();
             createCache(ssBonusList, ssBonusMap, cacheBonus, ((parameter, mapParameter) -> {}));
             // Obtener el valor de "Bonificación Única"
-            Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            //Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+            //PaymentComponentDTO uniqueBonusComponent = componentMap.get("UNIQUE_BONUS");
+            List<String> vacationComponents = Arrays.asList("UNIQUE_BONUS");
+            //log.info("vacationComponents -> {}", component);
+            Map<String, PaymentComponentDTO> componentMap = component.stream()
+                    .filter(c -> vacationComponents.contains(c.getPaymentComponent()))
+                    .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
             PaymentComponentDTO uniqueBonusComponent = componentMap.get("UNIQUE_BONUS");
             // Use the period to get the ParametersDTO from the sodexoMap
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
@@ -3012,7 +3031,7 @@ public class Colombia {
             socialSecurityUniqueBonusComponent.setPaymentComponent("SOCIAL_SECURITY_UNIQUE_BONUS");
             socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(socialSecurityUniqueBonusValue));
             String category = findCategory(classEmployee);
-            BigDecimal lastValidSocialSecurityUniqueBonus = BigDecimal.valueOf(ssBonus);
+            double lastValidSocialSecurityUniqueBonus = ssBonus;
             if (category.equals("P")) {
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection primeProjection : uniqueBonusComponent.getProjections()) {
@@ -3021,11 +3040,11 @@ public class Colombia {
                     double bonus;
                     if(bonusParameter != null){
                         bonus = bonusParameter.getValue()/100;
-                        lastValidSocialSecurityUniqueBonus = BigDecimal.valueOf(bonus);
+                        lastValidSocialSecurityUniqueBonus = bonus;
                     }else{
-                        bonus = lastValidSocialSecurityUniqueBonus.doubleValue();
+                        bonus = lastValidSocialSecurityUniqueBonus;
                     }
-                    BigDecimal  amount = BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus);
+                    BigDecimal  amount = BigDecimal.valueOf(primeProjection.getAmount().doubleValue() * bonus);
                    /* BigDecimal amount;
                     if(bonusParameter != null){
                         amount = BigDecimal.valueOf(uniqueBonusComponent.getAmount().doubleValue() * bonus);

@@ -42,10 +42,7 @@ public class Uruguay {
     }
     private Map<String, PaymentComponentDTO> createComponentMap(List<PaymentComponentDTO> component) {
         return component.stream()
-                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> {
-                    existing.getProjections().addAll(replacement.getProjections());
-                    return existing;
-                }));
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
     }
     public void salary(List<PaymentComponentDTO> component, List<ParametersDTO> salaryIncreaseList, String classEmployee, String period, Integer range, List<ParametersDTO> inflationList) {
         Map<String, ParametersDTO> salaryIncreaseMap = new HashMap<>();
@@ -64,8 +61,8 @@ public class Uruguay {
         ParametersDTO inflation = inflationMap.get(nextPeriod);
         double inflationValue = inflation != null ? inflation.getValue() : 0.0;
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO salaryBaseComponent = componentMap.get("010");
-        PaymentComponentDTO daysComponent = componentMap.get("020");
+        PaymentComponentDTO salaryBaseComponent = componentMap.get("0010");
+        PaymentComponentDTO daysComponent = componentMap.get("0020");
         if (salaryBaseComponent != null && daysComponent != null && daysComponent.getAmount().doubleValue() > 0) {
             double salaryBase = (salaryBaseComponent.getAmount().doubleValue() / daysComponent.getAmount().doubleValue()) * 30;
             PaymentComponentDTO salaryComponent = new PaymentComponentDTO();

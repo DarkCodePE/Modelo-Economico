@@ -840,24 +840,26 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("revisionList {}",revisionList);
         //log.debug("salaryList {}",salaryList);
         //Genera las proyecciones del rango
+        // filter po PO90005153
         headcount.stream()
+                //.filter(h -> h.getPo().equals("PO90005153"))
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
                     // LOG PON NAME
-                    //log.info("getPoName {}",headcountData.getPoName());
+                    //log.info("getPoName {}",headcountData.getPo());
                     methodsColombia.salary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList);
                     methodsColombia.temporalSalary(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), salaryList, revisionList, revisionEttList, salaryIntegralsList,  dataMapTemporal, headcountData.getPo());
                     methodsColombia.salaryPra(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),salaryList, salaryPraList);
                     methodsColombia.revisionSalary(component, projection.getParameters(), projection.getPeriod(), projection.getRange(), headcountData.getClassEmployee());
                     //methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList);
-                    methodsColombia.commission2(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList, excludedPositionsBC, headcountData.getPoName());
+                    methodsColombia.commission(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), totalSum, commissionList, excludedPositionsBC, headcountData.getPoName());
                     methodsColombia.prodMonthPrime(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedVacation(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), vacationDaysProvisioned);
                     methodsColombia.consolidatedSeverance(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.consolidatedSeveranceInterest(component, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.contributionBox(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
-                    methodsColombia.transportSubsidy(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), transportSubsidyList);
+                    methodsColombia.transportSubsidy(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(), transportSubsidyList, headcountData.getPo());
                     methodsColombia.companyHealthContribution(component, headcountData.getClassEmployee(), salaryList, projection.getPeriod(), projection.getRange());
                     methodsColombia.companyRiskContribution(component, salaryList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
                     methodsColombia.companyRiskContributionTrainee2(component, salaryPraList, headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange());
@@ -2001,14 +2003,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             } else {
                 PaymentComponentDTO sueldo010Component = PaymentComponentDTO.builder()
                         .type(16)
-                        .paymentComponent("010")
+                        .paymentComponent("0010")
                         .amount(BigDecimal.ZERO)
                         .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                         .show(true)
                         .build();
                 PaymentComponentDTO sueldo020Component = PaymentComponentDTO.builder()
                         .type(16)
-                        .paymentComponent("020")
+                        .paymentComponent("0020")
                         .amount(BigDecimal.ZERO)
                         .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                         .show(true)
@@ -2034,6 +2036,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 projectionsComponent.add(sueldo020Component);
             }
         }
+        log.debug("projectionsComponent {}",projectionsComponent);
     }
     public HeadcountHistoricalProjectionDTO convertToDTO(HeadcountHistoricalProjection projection) {
         HeadcountHistoricalProjectionDTO dto = new HeadcountHistoricalProjectionDTO();
