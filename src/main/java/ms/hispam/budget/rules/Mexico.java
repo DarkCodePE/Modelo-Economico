@@ -738,7 +738,7 @@ public class Mexico {
                         el valor obtenido se divide entre 12, para proratear la cantidad              */
                 // Get the bonus percentage from the ConvenioBono object
                 double bonusPercent = convenioBonoData.getBonoPercentage() / 100.0;
-                double monthlyBonusBase = (salaryComponent.getAmount().doubleValue() * bonusPercent) / 12;
+                double monthlyBonusBase = salaryComponent.getAmount().doubleValue() * bonusPercent;
 
                 // Create a new PaymentComponentDTO for the bonus
                 PaymentComponentDTO bonusComponent = new PaymentComponentDTO();
@@ -749,7 +749,7 @@ public class Mexico {
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
                     MonthProjection bonusProjection = new MonthProjection();
-                    double monthlyBonus = (projection.getAmount().doubleValue() * bonusPercent) / 12;
+                    double monthlyBonus = projection.getAmount().doubleValue() * bonusPercent;
                     bonusProjection.setMonth(projection.getMonth());
                     bonusProjection.setAmount(BigDecimal.valueOf(monthlyBonus));
                     projections.add(bonusProjection);
