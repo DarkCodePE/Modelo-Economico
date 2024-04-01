@@ -295,7 +295,8 @@ public class Mexico {
         }
     }
     public void provVacacionesRefactor(List<PaymentComponentDTO> component, List<ParametersDTO> parameters, String classEmployee, String period, Integer range, LocalDate dateContract, LocalDate dateBirth, RangeBuDTO rangeBuByBU, Integer idBu, String poName) {
-        //log.debug("po name: {}", poName);
+       // log.debug("po name: {}", poName);
+
         if (dateContract != null) {
             LocalDate dateActual = LocalDate.now();
             long seniority = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
