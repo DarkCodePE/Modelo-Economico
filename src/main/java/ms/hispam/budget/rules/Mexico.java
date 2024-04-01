@@ -721,7 +721,7 @@ public class Mexico {
         log.debug("ConvenioBonoCache: {}", convenioBonoCache);*/
         //TODO: QUE PASA SI EL CONVENIO CAMBIA DE UN MES A OTRO
         ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
-        /*log.debug("ConvenioBono: {}", convenioBonoData);*/
+        log.debug("ConvenioBono: {}", convenioBonoData);
         //log.debug("ConvenioBono: {}", convenioBonoData);
         if (convenioBonoData != null) {
             // Convert the component list to a map
