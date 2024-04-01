@@ -14,5 +14,13 @@ public class DataBaseResponse {
     private String idssff;
     private String poName;
     private String typeEmployee;
+    //fecha de nacimiento
+    private String birthDate;
+    //fecha de contratacion
+    private String hiringDate;
+    //convent
+    private String convent;
+    //nivel
+    private String level;
     private List<ComponentAmount> components;
 }

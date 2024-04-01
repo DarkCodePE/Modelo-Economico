@@ -1313,7 +1313,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 )).entrySet().stream()
                 .map(entry -> {
                     HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
-                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),info.getClassemp(),entry.getValue());
+                    String fechaNac = info.getFnac()!=null?info.getFnac().toString():"";
+                    String fechaContra = info.getFcontra()!=null?info.getFcontra().toString():"";
+                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),info.getClassemp(), fechaNac, fechaContra, info.getConvent(), info.getLevel(), entry.getValue());
                 })
                 .collect(Collectors.toList());
 

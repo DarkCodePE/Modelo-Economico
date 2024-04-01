@@ -39,7 +39,7 @@ public class XlsReportService {
     // Crear un ReentrantLock
     private static final ReentrantLock lock = new ReentrantLock();
     private static final String[] headers = {"po","idssff"};
-    private static final String[] headersInput = {"po","idssff","Nombre de la posición"};
+    private static final String[] headersInput = {"po","idssff","Nombre de la posición", "Tipo de Empleado", "Fecha de Nacimiento", "Fecha de Contratación", "Convenio", "Nivel"};
 
     private final EmailService emailService;
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
@@ -287,69 +287,9 @@ public class XlsReportService {
             hstart++;
         }
         int pstart =1;
-       /* dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t->{
-                        Object obj = t.get("po");
-                        //Map<po, components>
-                        List<ComponentAmount> components = dataBase.getComponents()
-                                .stream()
-                                .map(k->
-                                        ComponentAmount.builder()
-                                        .component(k.getComponent())
-                                        .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
-                                        .build()
-                                )
-                                .collect(Collectors.toList());
-
-                        components.addAll(dataBase.getNominas().stream().map(k->
-                                ComponentAmount.builder()
-                                        .component(k.getCodeNomina())
-                                        .amount(t.get(k.getName())!=null?new BigDecimal(t.get(k.getName()).toString()): BigDecimal.ZERO)
-                                        .build()).collect(Collectors.toList()));
-
-                        return  DataBaseResponse.builder()
-                                .po(obj.toString())
-                                .idssff("NUEVO")
-                                .poName(t.get("name").toString())
-                                .components(components)
-                                .build();
-                    }
-                    ).collect(Collectors.toList())); */
 
         Map<String, List<ComponentAmount>> positionMap = new HashMap<>();
 
-        /*dataBase.getData().addAll(dataBase2.getBc().getData().stream().map(t -> {
-            String position = t.get("po").toString();
-            List<ComponentAmount> components = dataBase.getComponents()
-                    .stream()
-                    .map(k ->
-                            ComponentAmount.builder()
-                                    .component(k.getComponent())
-                                    .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
-                                    .build()
-                    )
-                    .collect(Collectors.toList());
-
-            components.addAll(dataBase.getNominas().stream().map(k ->
-                    ComponentAmount.builder()
-                            .component(k.getCodeNomina())
-                            .amount(t.get(k.getName()) != null ? new BigDecimal(t.get(k.getName()).toString()) : BigDecimal.ZERO)
-                            .build()).collect(Collectors.toList()));
-
-            if (positionMap.containsKey(position)) {
-                positionMap.get(position).addAll(components);
-            } else {
-                positionMap.put(position, components);
-            }
-
-            return DataBaseResponse.builder()
-                    .po(position)
-                    .idssff("NUEVO")
-                    .poName(t.get("name").toString())
-                    .components(positionMap.get(position))
-                    .build();
-        }).collect(Collectors.toList()));*/
-
-        //List<DataBaseResponse> data = dataBase.getData();
         for (Map<String, Object> t : dataBase2.getBc().getData()) {
             String position = t.get("po").toString();
             List<ComponentAmount> components = dataBase.getComponents()
@@ -377,6 +317,11 @@ public class XlsReportService {
                     .po(position)
                     .idssff(dataBase.getData().get(0).getIdssff())
                     .poName(dataBase.getData().get(0).getPoName())
+                    .typeEmployee(dataBase.getData().get(0).getTypeEmployee())
+                    .birthDate(dataBase.getData().get(0).getBirthDate())
+                    .hiringDate(dataBase.getData().get(0).getHiringDate())
+                    .convent(dataBase.getData().get(0).getConvent())
+                    .level(dataBase.getData().get(0).getLevel())
                     .components(positionMap.get(position))
                     .build();
 
@@ -416,9 +361,19 @@ public class XlsReportService {
             pdataCell.setCellValue(dataBase.getData().get(i).getIdssff());
             pdataCell = data.createCell(2);
             pdataCell.setCellValue(dataBase.getData().get(i).getPoName());
+            pdataCell = data.createCell(3);
+            pdataCell.setCellValue(dataBase.getData().get(i).getTypeEmployee());
+            pdataCell = data.createCell(4);
+            pdataCell.setCellValue(dataBase.getData().get(i).getBirthDate());
+            pdataCell = data.createCell(5);
+            pdataCell.setCellValue(dataBase.getData().get(i).getHiringDate());
+            pdataCell = data.createCell(6);
+            pdataCell.setCellValue(dataBase.getData().get(i).getConvent());
+            pdataCell = data.createCell(7);
+            pdataCell.setCellValue(dataBase.getData().get(i).getLevel());
             int starDetail=0;
             for (int j = 0; j < dataBase.getComponents().size(); j++) {
-                pdataCell = data.createCell(j+3);
+                pdataCell = data.createCell(j+8);
                 Cell finalPdataCell = pdataCell;
                 int finalJ = j;
                 dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null
@@ -428,7 +383,7 @@ public class XlsReportService {
                 starDetail++;
             }
             for (int k = 0; k < dataBase.getNominas().size(); k++) {
-                pdataCell = data.createCell(starDetail+3);
+                pdataCell = data.createCell(starDetail+8);
                 Cell finalPdataCell = pdataCell;
                 int finalK= k;
                 dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null
@@ -438,7 +393,7 @@ public class XlsReportService {
                 starDetail++;
             }
             for (int k = 0; k < headers.size(); k++) {
-                pdataCell = data.createCell(starDetail+3);
+                pdataCell = data.createCell(starDetail+8);
                 Cell finalPdataCell = pdataCell;
                 int finalK= k;
                 dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null
