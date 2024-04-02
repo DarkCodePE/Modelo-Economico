@@ -315,13 +315,13 @@ public class XlsReportService {
 
             DataBaseResponse newResponse = DataBaseResponse.builder()
                     .po(position)
-                    .idssff(dataBase.getData().get(0).getIdssff())
-                    .poName(dataBase.getData().get(0).getPoName())
-                    .typeEmployee(dataBase.getData().get(0).getTypeEmployee())
-                    .birthDate(dataBase.getData().get(0).getBirthDate())
-                    .hiringDate(dataBase.getData().get(0).getHiringDate())
-                    .convent(dataBase.getData().get(0).getConvent())
-                    .level(dataBase.getData().get(0).getLevel())
+                    .idssff("")
+                    .poName("Nueva posición")
+                    .typeEmployee("")
+                    .birthDate("")
+                    .hiringDate("")
+                    .convent("")
+                    .level("")
                     .components(positionMap.get(position))
                     .build();
 
