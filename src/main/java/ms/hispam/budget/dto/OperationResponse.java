@@ -2,6 +2,8 @@ package ms.hispam.budget.dto;
 
 import lombok.*;
 
+import javax.persistence.Column;
+
 @Getter
 @Setter
 @Builder
@@ -10,4 +12,6 @@ import lombok.*;
 public class OperationResponse {
     private String code;
     private String name;
+    private Integer bu;
+    private Boolean isInput;
 }

@@ -18,4 +18,6 @@ public class BaseExtern {
     private String code;
     private String name;
     private Integer bu;
+    @Column(name = "is_input")
+    private Boolean isInput;
 }

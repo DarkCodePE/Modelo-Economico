@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
@@ -279,8 +280,14 @@ public class XlsReportService {
             hstart++;
         }
 
-        List<String> headers = dataBase2.getBaseExtern().getHeaders().stream().filter(
-                t->!t.equals("po") && !t.equals("idssff")).collect(Collectors.toList());
+        List<String> headers = dataBase2
+                .getBaseExtern()
+                .getHeaders()
+                .stream()
+                .filter(
+                    t->!t.equals("po") && !t.equals("idssff")
+                ).collect(Collectors.toList());
+       /* log.debug("Headers: {}", headers);*/
         for (int i = 0; i < headers.size(); i++) {
             pheaderCell.setCellValue(headers.get(i));
             pheaderCell = pheader.createCell(hstart);
@@ -291,6 +298,7 @@ public class XlsReportService {
         Map<String, List<ComponentAmount>> positionMap = new HashMap<>();
 
         for (Map<String, Object> t : dataBase2.getBc().getData()) {
+
             String position = t.get("po").toString();
             List<ComponentAmount> components = dataBase.getComponents()
                     .stream()
@@ -300,7 +308,7 @@ public class XlsReportService {
                             .build()
                     )
                     .collect(Collectors.toList());
-
+            log.debug("Position: {}", position);
             components.addAll(dataBase.getNominas().stream().map(k ->
                     ComponentAmount.builder()
                             .component(k.getCodeNomina())
@@ -312,19 +320,21 @@ public class XlsReportService {
             } else {
                 positionMap.put(position, components);
             }
-
+            //log.debug("Position: {}", position);
+            //log.debug("dataBase2.getBaseExtern(): {}", dataBase2.getBaseExtern().getHeaders());
+            //log.debug("test -> {}", dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)));
             DataBaseResponse newResponse = DataBaseResponse.builder()
                     .po(position)
                     .idssff("")
                     .poName("Nueva posición")
                     .typeEmployee("")
-                    .birthDate("")
-                    .hiringDate("")
-                    .convent("")
-                    .level("")
+                    .birthDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FNAC")).orElse("").toString())
+                    .hiringDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FCON")).orElse("").toString())
+                    .convent(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("CONV")).orElse("").toString())
+                    .level(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("NIV")).orElse("").toString())
                     .components(positionMap.get(position))
                     .build();
-
+            //log.debug("newResponse: {}", newResponse);
             int index = -1;
             for (int i = 0; i < dataBase.getData().size(); i++) {
                 if (dataBase.getData().get(i).getPo().equals(position)) {

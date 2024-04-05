@@ -29,6 +29,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
@@ -92,6 +97,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private ConvenioRepository convenioRepository;
     @Autowired
     private ConvenioBonoRepository convenioBonoRepository;
+    @Autowired
+    private RangoBuPivotHistoricalRepository rangoBuPivotHistoricalRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
@@ -718,6 +725,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //vales de despensa
         List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "vales");
         headcount.stream()
+                //.filter(h -> h.getPo().equals("PO10039174"))
                 .parallel()
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
@@ -842,7 +850,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //Genera las proyecciones del rango
         // filter po PO90005153
         headcount.stream()
-                //.filter(h -> h.getPo().equals("PO90005153"))
+                //.filter(h -> h.getPo().equals("PO10039174"))
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
@@ -995,9 +1003,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .convenioBonos(convenioBono)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
-                .baseExtern(baseExternRepository.findByBu(vbu.getId()).stream().map(c->OperationResponse
-                        .builder().code(c.getCode()).name(c.getName())
-                        .build()).collect(Collectors.toList()))
+                .baseExtern(baseExternRepository.findByBu(vbu.getId())
+                        .stream()
+                        .map(c->OperationResponse
+                            .builder()
+                                .code(c.getCode())
+                                .name(c.getName())
+                                .bu(c.getBu())
+                                .isInput(c.getIsInput())
+                            .build()
+                        )
+                        .collect(Collectors.toList()))
                 .current(vbu.getCurrent())
                 .build();
     }
@@ -1039,7 +1055,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             periodFrom(c.getFrom()).periodTo(c.getTo()).
                             build()).collect(Collectors.toList());
             disabledPoHistorialRepository.saveAll(disabledPoHistoricals);
-            //ADD IF EXTERN IS NOT NULL
+
+            // Ahora agregamos la lógica para manejar los parámetros atemporales
+            List<RangoBuPivot> parametrosAtemporales = rangeBuPivotRepository.findByBu_Id(historial.getIdBu());
+           /* List<RangoBuPivotHistorical> rangosHistoricos = parametrosAtemporales.stream().map(p-> {
+                RangoBuPivotHistorical rangoBuPivotHistorical = new RangoBuPivotHistorical();
+                rangoBuPivotHistorical.setIdHistorial(historial.getId());
+                rangoBuPivotHistorical.setIdRangoBuPivot(p.getId().intValue());
+                rangoBuPivotHistorical.setValue(p.);
+            }
+            )).collect(Collectors.toList());*/
+
+        //ADD IF EXTERN IS NOT NULL
             if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                List<PoHistorialExtern> extern= new ArrayList<>();
 
@@ -1186,7 +1213,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             Shared.replaceSLash(projection);
 
             List<ComponentProjection> componentProjections = sharedRepo.getComponentByBu(projection.getBu());
-            //TODO: ADD BASE EXTERN
 
             DataRequest dataBase = DataRequest.builder()
                     .idBu(projection.getIdBu())
@@ -1494,7 +1520,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 Map<String,Object> resp = projection.getBc().getData().get(i);
                 String pos = resp.get(HEADERPO).toString();
                 //dataMapTemporal.put(pos, new HashMap<>(resp));
-                headcount.stream().filter(e->e.getPosition().equals(pos)).findFirst().ifPresent(headcount::remove);
+                headcount
+                        .stream()
+                        .filter(e->e.getPosition()
+                                .equals(pos))
+                        .findFirst()
+                        .ifPresent(headcount::remove);
                     //List<String> excludedPositionsBC = new ArrayList<>();
                     for (Map.Entry<String, Object> entry : resp.entrySet()) {
                         int finalI = i;
@@ -1513,11 +1544,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 .ifPresentOrElse(t->
                                         {
                                             String position = resp.get(HEADERPO).toString();
+                                            LocalDate fNac = convertToJavaDate(resp.get("FNAC").toString());
+                                            LocalDate fContra = convertToJavaDate(resp.get("FCON").toString());
+                                           /* log.debug("fNac {}",fNac);
+                                            log.debug("fContra {}",fContra);*/
+                                          /*  LocalDate fNac = LocalDate.parse(resp.get("FNAC").toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                                            LocalDate fContra = LocalDate.parse(resp.get("FCON").toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));*/
                                             headcount.add(HeadcountProjection.builder()
                                                     .position(position)
                                                     .idssff("")
                                                     .poname(resp.get("name").toString())
                                                     .classEmp(resp.get("typeEmployee").toString())
+                                                    .fContra(fNac)
+                                                    .fNac(fContra)
+                                                    .convent(resp.get("CONV").toString())
+                                                    .level(resp.get("NIV").toString())
                                                     .component(t.getComponent())
                                                     .amount(Double.parseDouble(resp.get(t.getName()).toString()))
                                                     .build());
@@ -1648,7 +1689,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
 
     }
-
+    public static LocalDate convertToJavaDate(String value) {
+        try {
+            // Intenta convertir el valor a Double
+            double excelDate = Double.parseDouble(value);
+            // Si no se lanza una excepción, entonces el valor es numérico
+            return convertExcelDateToJavaDate(excelDate);
+        } catch (NumberFormatException e) {
+            // Si se lanza una excepción, entonces el valor no es numérico
+            return convertStringToLocalDate(value);
+        }
+    }
+    public static LocalDate convertExcelDateToJavaDate(double excelDate) {
+        return LocalDate.of(1900, 1, 1).plusDays((long) excelDate - 2);
+    }
+    public static LocalDate convertStringToLocalDate(String dateString) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        try {
+            return LocalDate.parse(dateString, formatter);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("El valor proporcionado no es una fecha válida: " + dateString);
+        }
+    }
     private HeadcountProjection convertToHeadcountProjection(HeadcountHistoricalProjection e) {
         try {
             return HeadcountProjection.builder()
