@@ -31,7 +31,8 @@ public interface ProjectionService {
     Boolean deleteHistorical( Integer id);
 
     void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job);
-
+    void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
+    void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     byte[] downloadProjectionHistorical(Integer id);
 
     DataBaseMainReponse getDataBase(DataRequest dataRequest);
@@ -43,8 +44,6 @@ public interface ProjectionService {
     List<RosetaDTO> getRoseta(Integer bu);
 
     Boolean saveMoneyOdin(String po,Integer requirement);
-
-    byte[] downloadFileType(ParametersByProjection projection,Integer type,Integer idBu);
 
     List<PositionBaseline> getPositionBaseline(String period,String filter,String bu,Integer idBu);
 }
