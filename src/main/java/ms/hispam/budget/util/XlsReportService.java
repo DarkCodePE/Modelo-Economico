@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 @Component
 @Slf4j(topic = "XlsReportService")
@@ -221,11 +222,14 @@ public class XlsReportService {
     private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
         try {
             // Crea un nuevo libro de Excel
-            Workbook workbook = new XSSFWorkbook();
+            // Crea un nuevo libro de Excel
+            SXSSFWorkbook workbook = new SXSSFWorkbook();
             Sheet sheet = workbook.createSheet("CDG");
 
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
-                    .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(),  (existingValue, newValue) -> newValue));
+            accountProjections = null; // Liberar memoria
+
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
 
             for (ProjectionDTO data : vdata) {
@@ -243,8 +247,11 @@ public class XlsReportService {
                         groupData.sum += projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
                     }
+                    component.setProjections(null); // Liberar memoria
                 }
+                data.setComponents(null); // Liberar memoria
             }
+            vdata = null; // Liberar memoria
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
@@ -260,7 +267,7 @@ public class XlsReportService {
             headerRow.createCell(5).setCellValue("Concepto");
             headerRow.createCell(6).setCellValue("Suma(Monto) ");
             int rowNum = 1;
-        // Al escribir en la hoja de Excel
+            // Al escribir en la hoja de Excel
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
@@ -280,7 +287,7 @@ public class XlsReportService {
 
             // Obtiene la última fila utilizada en la hoja de Excel
             int lastRow = sheet.getLastRowNum();
-            int lastColumn = sheet.getRow(0).getLastCellNum();
+            // int lastColumn = sheet.getRow(0).getLastCellNum();
             // Agrega una fila en blanco para separar el reporte principal de los parámetros de proyección
             lastRow++;
 
