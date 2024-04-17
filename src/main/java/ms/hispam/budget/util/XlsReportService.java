@@ -285,26 +285,22 @@ public class XlsReportService {
                 }
             }
 
-            // Obtiene la última fila utilizada en la hoja de Excel
+            // Determinar la última columna
+            int lastColumn = sheet.getRow(0).getLastCellNum();
             int lastRow = sheet.getLastRowNum();
-            // int lastColumn = sheet.getRow(0).getLastCellNum();
-            // Agrega una fila en blanco para separar el reporte principal de los parámetros de proyección
-            lastRow++;
-
-            // A partir de la siguiente fila, comienza a agregar los parámetros de proyección
             for (ParametersDTO pam : parameters.getParameters()) {
                 Row data = sheet.createRow(++lastRow);
-                Cell pdataCell = data.createCell(0);
+                Cell pdataCell = data.createCell(lastColumn);
                 pdataCell.setCellValue(pam.getParameter().getDescription());
-                pdataCell = data.createCell(1);
+                pdataCell = data.createCell(lastColumn + 1);
                 pdataCell.setCellValue(pam.getPeriod());
-                pdataCell = data.createCell(2);
+                pdataCell = data.createCell(lastColumn + 2);
                 pdataCell.setCellValue(pam.getValue());
-                pdataCell = data.createCell(3);
+                pdataCell = data.createCell(lastColumn + 3);
                 pdataCell.setCellValue(pam.getIsRetroactive());
-                pdataCell = data.createCell(4);
+                pdataCell = data.createCell(lastColumn + 4);
                 pdataCell.setCellValue(pam.getPeriodRetroactive());
-                pdataCell = data.createCell(5);
+                pdataCell = data.createCell(lastColumn + 5);
                 pdataCell.setCellValue(pam.getRange());
             }
 
