@@ -1658,8 +1658,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 .ifPresentOrElse(t->
                                         {
                                             String position = resp.get(HEADERPO).toString();
-                                            LocalDate fNac = convertToJavaDate(resp.get("FNAC").toString());
-                                            LocalDate fContra = convertToJavaDate(resp.get("FCON").toString());
+                                            LocalDate fNac = resp.get("FNAC")!=null?convertToJavaDate(resp.get("FNAC").toString()): LocalDate.now();
+                                            LocalDate fContra = resp.get("FCON")!=null?convertToJavaDate(resp.get("FCON").toString()): LocalDate.now();
                                            /* log.debug("fNac {}",fNac);
                                             log.debug("fContra {}",fContra);*/
                                           /*  LocalDate fNac = LocalDate.parse(resp.get("FNAC").toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -1671,8 +1671,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                     .classEmp(resp.get("typeEmployee").toString())
                                                     .fContra(fNac)
                                                     .fNac(fContra)
-                                                    .convent(resp.get("CONV").toString())
-                                                    .level(resp.get("NIV").toString())
+                                                    .convent(resp.get("CONV") != null ? resp.get("CONV").toString() : "")
+                                                    .level(resp.get("NIV") != null ? resp.get("NIV").toString() : "")
                                                     .component(t.getComponent())
                                                     .amount(Double.parseDouble(resp.get(t.getName()).toString()))
                                                     .build());

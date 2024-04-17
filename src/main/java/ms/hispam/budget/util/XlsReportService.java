@@ -285,23 +285,27 @@ public class XlsReportService {
                 }
             }
 
-            // Determinar la última columna
-            int lastColumn = sheet.getRow(0).getLastCellNum();
-            int lastRow = sheet.getLastRowNum();
-            for (ParametersDTO pam : parameters.getParameters()) {
-                Row data = sheet.createRow(++lastRow);
-                Cell pdataCell = data.createCell(lastColumn);
-                pdataCell.setCellValue(pam.getParameter().getDescription());
-                pdataCell = data.createCell(lastColumn + 1);
-                pdataCell.setCellValue(pam.getPeriod());
-                pdataCell = data.createCell(lastColumn + 2);
-                pdataCell.setCellValue(pam.getValue());
-                pdataCell = data.createCell(lastColumn + 3);
-                pdataCell.setCellValue(pam.getIsRetroactive());
-                pdataCell = data.createCell(lastColumn + 4);
-                pdataCell.setCellValue(pam.getPeriodRetroactive());
-                pdataCell = data.createCell(lastColumn + 5);
-                pdataCell.setCellValue(pam.getRange());
+            Row firstRow = sheet.getRow(0);
+            if (firstRow != null) {
+                // Determinar la última columna
+                int lastColumn = firstRow.getLastCellNum();
+                int lastRow = sheet.getLastRowNum();
+                lastRow++;
+                for (ParametersDTO pam : parameters.getParameters()) {
+                    Row data = sheet.createRow(++lastRow);
+                    Cell pdataCell = data.createCell(lastColumn);
+                    pdataCell.setCellValue(pam.getParameter().getDescription());
+                    pdataCell = data.createCell(lastColumn + 1);
+                    pdataCell.setCellValue(pam.getPeriod());
+                    pdataCell = data.createCell(lastColumn + 2);
+                    pdataCell.setCellValue(pam.getValue());
+                    pdataCell = data.createCell(lastColumn + 3);
+                    pdataCell.setCellValue(pam.getIsRetroactive());
+                    pdataCell = data.createCell(lastColumn + 4);
+                    pdataCell.setCellValue(pam.getPeriodRetroactive());
+                    pdataCell = data.createCell(lastColumn + 5);
+                    pdataCell.setCellValue(pam.getRange());
+                }
             }
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
