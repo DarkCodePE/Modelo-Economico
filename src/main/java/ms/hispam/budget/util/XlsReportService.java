@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 @Component
 @Slf4j(topic = "XlsReportService")
@@ -90,15 +91,6 @@ public class XlsReportService {
         }
     }
 
-    public static byte[] generateExcelType(List<ProjectionDTO> vdata, Integer type, Bu bu, List<AccountProjection> accountProjections) {
-        if(type==2){
-            return generatePlanner(vdata,accountProjections);
-        }else if (type==3){
-            return generateCdg(vdata,bu,accountProjections);
-        }
-        return null;
-    }
-
     private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections){
         try {
 
@@ -143,7 +135,7 @@ public class XlsReportService {
                         row.createCell(2).setCellValue(data.getAreaFuncional());
                         row.createCell(3).setCellValue(data.getDivision());
                         row.createCell(4).setCellValue(data.getCCostos());
-                        row.createCell(5).setCellValue(component.getName());
+                        row.createCell(5).setCellValue(component.getPaymentComponent());
                         row.createCell(6).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
                         row.createCell(7).setCellValue(projection.getMonth());
                         row.createCell(8).setCellValue(projection.getAmount().doubleValue());
@@ -163,7 +155,7 @@ public class XlsReportService {
         }
     }
 
-    private static byte[] generateCdg(List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections){
+    private static byte[] generateCdg2(List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections){
         try {
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
@@ -225,6 +217,119 @@ public class XlsReportService {
             throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
 
         }
+    }
+
+    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
+        try {
+            // Crea un nuevo libro de Excel
+            // Crea un nuevo libro de Excel
+            SXSSFWorkbook workbook = new SXSSFWorkbook();
+            Sheet sheet = workbook.createSheet("CDG");
+
+            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(),  (existingValue, newValue) -> newValue));
+            accountProjections = null; // Liberar memoria
+
+            Map<GroupKey, GroupData> groupedData = new HashMap<>();
+
+            for (ProjectionDTO data : vdata) {
+                for (PaymentComponentDTO component : data.getComponents()) {
+                    for (MonthProjection projection : component.getProjections()) {
+                        GroupKey key = new GroupKey(
+                                mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
+                                data.getAreaFuncional(),
+                                data.getCCostos(),
+                                component.getPaymentComponent()
+                        );
+
+                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
+                        groupData.meses.add(projection.getMonth());
+                        groupData.sum += projection.getAmount().doubleValue();
+                        groupedData.put(key, groupData);
+                    }
+                    component.setProjections(null); // Liberar memoria
+                }
+                data.setComponents(null); // Liberar memoria
+            }
+            vdata = null; // Liberar memoria
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setFont(createBoldFont(workbook));
+
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Nombre Proyección");
+            headerRow.createCell(1).setCellValue("Cuenta SAP");
+            headerRow.createCell(2).setCellValue("Actividad Funcional");
+            headerRow.createCell(3).setCellValue("CeCo");
+            headerRow.createCell(4).setCellValue("Mes");
+            headerRow.createCell(5).setCellValue("Concepto");
+            headerRow.createCell(6).setCellValue("Suma(Monto) ");
+            int rowNum = 1;
+            // Al escribir en la hoja de Excel
+            for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
+                GroupKey key = entry.getKey();
+                GroupData groupData = entry.getValue();
+
+                for (String mes : groupData.meses) {
+                    Row row = sheet.createRow(rowNum++);
+
+                    row.createCell(0).setCellValue("PPTO_0");
+                    row.createCell(1).setCellValue(key.getCuentaSap());
+                    row.createCell(2).setCellValue(key.getActividadFuncional());
+                    row.createCell(3).setCellValue(key.getCeCo());
+                    row.createCell(4).setCellValue(mes); // Mes individual para cada entrada
+                    row.createCell(5).setCellValue(key.getConcepto());
+                    row.createCell(6).setCellValue(groupData.sum); // Suma de montos
+                }
+            }
+
+            Row firstRow = sheet.getRow(0);
+            if (firstRow != null) {
+                // Determinar la última columna
+                int lastColumn = firstRow.getLastCellNum();
+                int lastRow = sheet.getLastRowNum();
+                lastRow++;
+                for (ParametersDTO pam : parameters.getParameters()) {
+                    Row data = sheet.createRow(++lastRow);
+                    Cell pdataCell = data.createCell(lastColumn);
+                    pdataCell.setCellValue(pam.getParameter().getDescription());
+                    pdataCell = data.createCell(lastColumn + 1);
+                    pdataCell.setCellValue(pam.getPeriod());
+                    pdataCell = data.createCell(lastColumn + 2);
+                    pdataCell.setCellValue(pam.getValue());
+                    pdataCell = data.createCell(lastColumn + 3);
+                    pdataCell.setCellValue(pam.getIsRetroactive());
+                    pdataCell = data.createCell(lastColumn + 4);
+                    pdataCell.setCellValue(pam.getPeriodRetroactive());
+                    pdataCell = data.createCell(lastColumn + 5);
+                    pdataCell.setCellValue(pam.getRange());
+                }
+            }
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            log.error("Error al generar el reporte", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    // Método auxiliar para crear un Font en negrita
+    private static Font createBoldFont(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setBold(true);
+        return font;
+    }
+
+    // Método auxiliar para crear celdas con estilo
+    private static void createStyledCell(Row row, int column, String value, CellStyle style) {
+        Cell cell = row.createCell(column);
+        cell.setCellValue(value);
+        cell.setCellStyle(style);
     }
 
     private static void generateParameter(Workbook workbook ,List<ParametersDTO> parameters){
@@ -308,7 +413,7 @@ public class XlsReportService {
                             .build()
                     )
                     .collect(Collectors.toList());
-            log.debug("Position: {}", position);
+            //log.debug("Position: {}", position);
             components.addAll(dataBase.getNominas().stream().map(k ->
                     ComponentAmount.builder()
                             .component(k.getCodeNomina())
@@ -326,8 +431,8 @@ public class XlsReportService {
             DataBaseResponse newResponse = DataBaseResponse.builder()
                     .po(position)
                     .idssff("")
-                    .poName("Nueva posición")
-                    .typeEmployee("")
+                    .poName(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("name")).orElse("Nueva posición").toString())
+                    .typeEmployee(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("typeEmployee")).orElse("").toString())
                     .birthDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FNAC")).orElse("").toString())
                     .hiringDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FCON")).orElse("").toString())
                     .convent(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("CONV")).orElse("").toString())
@@ -568,6 +673,18 @@ public class XlsReportService {
         }, executorService);
     }
 
+    public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
+        return CompletableFuture.supplyAsync(() -> {
+           return generatePlanner(vdata,accountProjections);
+        });
+    }
+    //generateCdgAsync
+    public static CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections) {
+        return CompletableFuture.supplyAsync(() -> {
+            return generateCdg(projection, vdata,bu,accountProjections);
+        });
+    }
+
     // Método para notificar al usuario, a ser implementado según tu mecanismo de notificación
     private void notifyUser(String notificationDetail, String userContact) {
         // Enviar notificación al usuario (correo electrónico, mensaje de texto, etc.)
@@ -586,7 +703,7 @@ public class XlsReportService {
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);
                     // Notifica al usuario
-                    notifyUser("El reporte está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
+                    notifyUser("El reporte de proyección está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
                 })
                 .exceptionally(e -> {
                     job.setStatus("fallido");
@@ -594,7 +711,57 @@ public class XlsReportService {
                     job.setErrorMessage(e.getMessage());
                     reportJobRepository.save(job);
                     // Notifica al usuario
-                    notifyUser("Falló la generación del reporte para el usuario con el contacto: " + userContact , userContact);
+                    notifyUser("Falló la generación del reporte de proyección para el usuario con el contacto: " + userContact , userContact);
+                    log.error("Error al generar el reporte", e);
+                    return null;
+                });
+    }
+    //generatePlannerAsync
+    @Async
+    public void generateAndCompleteReportAsyncPlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+        generatePlannerAsync(vdata, accountProjections)
+                .thenAccept(reportData -> {
+                    job.setStatus("completado");
+                    // Guarda el reporte en el almacenamiento externo
+                    MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
+                    job.setReportUrl(responseUpload.getPath());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("El reporte para planner está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
+                })
+                .exceptionally(e -> {
+                    job.setStatus("fallido");
+                    job.setIdSsff(userContact);
+                    job.setErrorMessage(e.getMessage());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("Falló la generación del reporte para planner para el usuario con el contacto: " + userContact , userContact);
+                    log.error("Error al generar el reporte", e);
+                    return null;
+                });
+    }
+    //generateCdgAsync
+    @Async
+    public void generateAndCompleteReportAsyncCdg(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+        generateCdgAsync(projection, vdata, bu, accountProjections)
+                .thenAccept(reportData -> {
+                    job.setStatus("completado");
+                    // Guarda el reporte en el almacenamiento externo
+                    MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
+                    job.setReportUrl(responseUpload.getPath());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("El reporte para CDG está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
+                })
+                .exceptionally(e -> {
+                    job.setStatus("fallido");
+                    job.setIdSsff(userContact);
+                    job.setErrorMessage(e.getMessage());
+                    reportJobRepository.save(job);
+                    // Notifica al usuario
+                    notifyUser("Falló la generación del reporte para CDG para el usuario con el contacto: " + userContact , userContact);
                     log.error("Error al generar el reporte", e);
                     return null;
                 });

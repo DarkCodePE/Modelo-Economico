@@ -101,7 +101,7 @@ public class ProjectionController {
         }
     }*/
     @PostMapping("/download-projection")
-    public ExcelReportDTO downloadProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
+    public ExcelReportDTO downloadProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user, @RequestParam Integer type, @RequestParam Integer idBu) {
         try {
             ReportJob job = new ReportJob();
             String taskId = UUID.randomUUID().toString();
@@ -112,13 +112,19 @@ public class ProjectionController {
             job.setCode(taskId);
             job.setIdBu(projection.getIdBu());
             job.setIdSsff(user);
+            job.setTypeReport(type);
             ReportJob jobDB =  reportJobRepository.save(job);
             ExcelReportDTO reportInProgress = ExcelReportDTO.builder()
                     .id(job.getId())
                     .code(jobDB.getCode())
                     .status("en progreso")
                     .build();
-            service.downloadProjection(projection, user, jobDB);
+            if (type == 2)
+                service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
+            else if (type == 1)
+                service.downloadProjection(projection, user, jobDB);
+            else if (type == 3)
+                service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"
             return reportInProgress;
         } catch (Exception e) {
@@ -126,6 +132,7 @@ public class ProjectionController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al iniciar la descarga de la proyección", e);
         }
     }
+
     // Método para obtener el reporte generado
     @GetMapping("/report")
     @Transactional("mysqlTransactionManager")
@@ -176,14 +183,6 @@ public class ProjectionController {
     @GetMapping("/save-money")
     public Boolean saveMoney(@RequestParam Integer id,@RequestParam String po) {
         return service.saveMoneyOdin(po,id);
-    }
-
-    @PostMapping("/download-type")
-    public ResponseEntity<byte[]> downloadFile(@RequestBody ParametersByProjection projection ,@RequestParam Integer type,@RequestParam Integer idBu) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDispositionFormData("attachment", "datos.xlsx");
-        return new ResponseEntity<>(service.downloadFileType(projection,type,idBu), headers, 200);
     }
 
     @GetMapping("/get-position-baseline")

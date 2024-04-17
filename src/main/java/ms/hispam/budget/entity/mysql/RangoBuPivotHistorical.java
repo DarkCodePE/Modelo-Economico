@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "rango_bu_pivot_historical")
@@ -19,16 +21,9 @@ public class RangoBuPivotHistorical {
     private Integer id;
 
     @Column(name = "id_historial")
+
     private Integer idHistorial;
 
-    @Column(name = "id_rango_bu_pivot")
-    private Integer idRangoBuPivot;
-
-    // Supongamos que hay otros valores que deseas capturar en el histórico,
-    // por ejemplo, el valor del rango en un periodo específico
-    private Double value;
-
-    @Column(name = "v_period")
-    private String vPeriod;
-
+    @OneToMany(mappedBy = "rangoBuPivotHistorical", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<RangoBuPivotHistoricalDetail> details = new HashSet<>();
 }

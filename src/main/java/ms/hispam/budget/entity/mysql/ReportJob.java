@@ -36,4 +36,7 @@ public class ReportJob {
     private LocalDateTime creationDate;
     @OneToMany(mappedBy = "reportJob")
     private List<ParameterBu> parameters;
+    //type_report
+    @Column(name = "type_report")
+    private Integer typeReport;
 }
