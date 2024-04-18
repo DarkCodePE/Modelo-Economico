@@ -12,4 +12,5 @@ public class NominaProjection {
     private String idssff;
     private String codeNomina;
     private Double importe;
+    private Double qDiasHoras;
 }
