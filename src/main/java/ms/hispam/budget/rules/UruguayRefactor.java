@@ -1068,10 +1068,7 @@ public class UruguayRefactor {
         aguinaldoComponent.setAmount(BigDecimal.valueOf(aguinaldo));
         List<MonthProjection> projections = new ArrayList<>();
         if (salaryBaseComponent != null && salaryBaseComponent.getProjections() != null) {
-            List<MonthProjection> limitedProjections = salaryBaseComponent.getProjections().stream()
-                    .limit(range)
-                    .collect(Collectors.toList());
-            for (MonthProjection projection : limitedProjections) {
+            for (MonthProjection projection : salaryBaseComponent.getProjections()) {
                 double totalAmountPerMonth = aguinaldoComponents.stream()
                         .map(componentMap::get)
                         .filter(Objects::nonNull)
@@ -1086,10 +1083,12 @@ public class UruguayRefactor {
                 monthProjection.setAmount(BigDecimal.valueOf(aguinaldoPerMonth));
                 projections.add(monthProjection);
             }
+            aguinaldoComponent.setProjections(projections);
         } else {
             aguinaldoComponent.setAmount(BigDecimal.valueOf(0));
             aguinaldoComponent.setProjections(Shared.generateMonthProjection(period, range, aguinaldoComponent.getAmount()));
         }
+        //log.debug("aguinaldoComponent: {}", aguinaldoComponent);
         component.add(aguinaldoComponent);
     }
     //Salario Vacacional -> (AI17+AI24+AI31+AI38+AI45+AI52+AI59+AI66+AI73+AI87+AI94+AI108)/30*AI$10/12
