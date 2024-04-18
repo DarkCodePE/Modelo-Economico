@@ -937,10 +937,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> fgcl = filterParametersByName(projection.getParameters(), "FGCL");
         headcount
                 .stream()
-                //.parallel()
+                .parallel()
                 .forEach(headcountData -> {
                     try {
-                        log.info("getPoName {}",headcountData.getPo());
+                        //log.info("getPoName {}",headcountData.getPo());
                         List<PaymentComponentDTO> component = headcountData.getComponents();
                         methodsUruguay.salary(component, salaryIncreaseList, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), inflationList);
                         methodsUruguay.overtime(component,headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteHHEE);
