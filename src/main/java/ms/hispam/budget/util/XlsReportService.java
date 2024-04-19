@@ -222,9 +222,7 @@ public class XlsReportService {
     private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
         try {
             // Crea un nuevo libro de Excel
-            // Crea un nuevo libro de Excel
             SXSSFWorkbook workbook = new SXSSFWorkbook();
-            Sheet sheet = workbook.createSheet("CDG");
 
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(),  (existingValue, newValue) -> newValue));
@@ -258,21 +256,21 @@ public class XlsReportService {
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             headerStyle.setFont(createBoldFont(workbook));
 
-            Row headerRow = sheet.createRow(0);
-            headerRow.createCell(0).setCellValue("Nombre Proyección");
-            headerRow.createCell(1).setCellValue("Cuenta SAP");
-            headerRow.createCell(2).setCellValue("Actividad Funcional");
-            headerRow.createCell(3).setCellValue("CeCo");
-            headerRow.createCell(4).setCellValue("Mes");
-            headerRow.createCell(5).setCellValue("Concepto");
-            headerRow.createCell(6).setCellValue("Suma(Monto) ");
-            int rowNum = 1;
+            int sheetNum = 0;
+            Sheet sheet = workbook.createSheet("CDG" + sheetNum);
+            int rowNum = 0;
+
             // Al escribir en la hoja de Excel
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
 
                 for (String mes : groupData.meses) {
+                    if (rowNum > 1048575) {
+                        sheetNum++;
+                        sheet = workbook.createSheet("CDG" + sheetNum);
+                        rowNum = 0;
+                    }
                     Row row = sheet.createRow(rowNum++);
 
                     row.createCell(0).setCellValue("PPTO_0");
@@ -282,29 +280,6 @@ public class XlsReportService {
                     row.createCell(4).setCellValue(mes); // Mes individual para cada entrada
                     row.createCell(5).setCellValue(key.getConcepto());
                     row.createCell(6).setCellValue(groupData.sum); // Suma de montos
-                }
-            }
-
-            Row firstRow = sheet.getRow(0);
-            if (firstRow != null) {
-                // Determinar la última columna
-                int lastColumn = firstRow.getLastCellNum();
-                int lastRow = sheet.getLastRowNum();
-                lastRow++;
-                for (ParametersDTO pam : parameters.getParameters()) {
-                    Row data = sheet.createRow(++lastRow);
-                    Cell pdataCell = data.createCell(lastColumn);
-                    pdataCell.setCellValue(pam.getParameter().getDescription());
-                    pdataCell = data.createCell(lastColumn + 1);
-                    pdataCell.setCellValue(pam.getPeriod());
-                    pdataCell = data.createCell(lastColumn + 2);
-                    pdataCell.setCellValue(pam.getValue());
-                    pdataCell = data.createCell(lastColumn + 3);
-                    pdataCell.setCellValue(pam.getIsRetroactive());
-                    pdataCell = data.createCell(lastColumn + 4);
-                    pdataCell.setCellValue(pam.getPeriodRetroactive());
-                    pdataCell = data.createCell(lastColumn + 5);
-                    pdataCell.setCellValue(pam.getRange());
                 }
             }
 

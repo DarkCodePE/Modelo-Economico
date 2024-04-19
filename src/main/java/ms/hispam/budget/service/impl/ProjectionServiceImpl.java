@@ -2210,7 +2210,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         }
                     }
                 }
-                log.info("projectionsComponent {}",projectionsComponent);
+                //log.info("projectionsComponent {}",projectionsComponent);
             } else {
                 PaymentComponentDTO sueldo010Component = PaymentComponentDTO.builder()
                         .type(16)
