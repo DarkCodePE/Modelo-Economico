@@ -229,8 +229,8 @@ public class XlsReportService {
             accountProjections = null; // Liberar memoria
 
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
-
-            for (ProjectionDTO data : vdata) {
+            //suma de todos los meses juntos
+            /*for (ProjectionDTO data : vdata) {
                 for (PaymentComponentDTO component : data.getComponents()) {
                     for (MonthProjection projection : component.getProjections()) {
                         GroupKey key = new GroupKey(
@@ -238,6 +238,27 @@ public class XlsReportService {
                                 data.getAreaFuncional(),
                                 data.getCCostos(),
                                 component.getPaymentComponent()
+                        );
+
+                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
+                        groupData.meses.add(projection.getMonth());
+                        groupData.sum += projection.getAmount().doubleValue();
+                        groupedData.put(key, groupData);
+                    }
+                    component.setProjections(null); // Liberar memoria
+                }
+                data.setComponents(null); // Liberar memoria
+            }*/
+            for (ProjectionDTO data : vdata) {
+                for (PaymentComponentDTO component : data.getComponents()) {
+                    for (MonthProjection projection : component.getProjections()) {
+                        // Include the month in the GroupKey
+                        GroupKey key = new GroupKey(
+                                mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
+                                data.getAreaFuncional(),
+                                data.getCCostos(),
+                                component.getPaymentComponent(),
+                                projection.getMonth()  // Add this line
                         );
 
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
