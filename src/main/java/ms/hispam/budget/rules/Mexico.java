@@ -722,7 +722,7 @@ public class Mexico {
         log.debug("ConvenioBonoCache: {}", convenioBonoCache);*/
         //TODO: QUE PASA SI EL CONVENIO CAMBIA DE UN MES A OTRO
         ConvenioBono convenioBonoData = convenioBonoCache.get(convenioBono);
-        log.debug("ConvenioBono: {}", convenioBonoData);
+        //log.debug("ConvenioBono: {}", convenioBonoData);
         //log.debug("ConvenioBono: {}", convenioBonoData);
         if (convenioBonoData != null) {
             // Convert the component list to a map
@@ -1031,13 +1031,11 @@ public class Mexico {
                 seniority = Period.between(hiringDate, LocalDate.now()).getYears();
             }
             if (age != 0){
-
                 boolean isCp = poName != null && poName.contains("CP");
                 // Verificar el título del puesto y la edad del empleado
                 if (!isCp && (age >= 30 || seniority >= 3)) {
                     aporteCtaSEREmpresaAmountBase = salaryComponent.getAmount().doubleValue() * aporteCtaSEREmpresaBase;
                 }
-
                 // Crear un nuevo PaymentComponentDTO para 'APORTACION_CTA_SER_EMPRESA'
                 PaymentComponentDTO aportacionCtaSEREmpresaComponent = new PaymentComponentDTO();
                 aportacionCtaSEREmpresaComponent.setPaymentComponent("APORTACION_CTA_SER_EMPRESA");

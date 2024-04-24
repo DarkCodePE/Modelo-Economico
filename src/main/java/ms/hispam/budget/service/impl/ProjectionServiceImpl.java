@@ -763,7 +763,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.parteExentaFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     //methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
-                    methodsMexico.primaDominicalGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
+                    //methodsMexico.primaDominicalGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.mudanza(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.vidaCara(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.primaDominicalExenta(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
@@ -945,8 +945,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsUruguay.salary(component, salaryIncreaseList, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), inflationList);
                         methodsUruguay.overtime(component,headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteHHEE);
                         methodsUruguay.activeGuard(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteGuardias);
-                        methodsUruguay.specialGuard(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteGuardias);
-                        methodsUruguay.legalGuard(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteGuardias);
+                        methodsUruguay.specialGuard(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
+                        methodsUruguay.legalGuard(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                         methodsUruguay.quarterlyBonus(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                         methodsUruguay.quarterlyBonus8(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                         methodsUruguay.monthlyBonus(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
@@ -2210,7 +2210,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         }
                     }
                 }
-                log.info("projectionsComponent {}",projectionsComponent);
+                //log.info("projectionsComponent {}",projectionsComponent);
             } else {
                 PaymentComponentDTO sueldo010Component = PaymentComponentDTO.builder()
                         .type(16)
