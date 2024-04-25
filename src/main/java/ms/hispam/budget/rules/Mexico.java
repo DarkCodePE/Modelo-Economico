@@ -463,6 +463,7 @@ public class Mexico {
         List<MonthProjection> projections = new ArrayList<>();
         double lastSeguroDental = seguroDentalComponent.getAmount().doubleValue();
         for (MonthProjection projection : salaryComponent.getProjections()) {
+            //TODO: HACER QUE TRAIGA EL SALARIO DE CADA MES
             ParametersDTO seguroDentalParamProj = dentalInsuranceMap.get(projection.getMonth());
             double seguroDentalProj;
             if (seguroDentalParamProj != null) {
