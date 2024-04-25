@@ -935,12 +935,22 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> frl = filterParametersByName(projection.getParameters(), "FRL");
         //FGCL
         List<ParametersDTO> fgcl = filterParametersByName(projection.getParameters(), "FGCL");
+        //Dias licencia anual
+        List<ParametersDTO> diasLicenciaAnual = filterParametersByName(projection.getParameters(), "Dias licencia anual");
         headcount
                 .stream()
+                //filter por po PO10042856 || PO99006564
+                //.filter(h -> h.getPo().equals("PO10042856") || h.getPo().equals("PO99006564"))
                 .parallel()
                 .forEach(headcountData -> {
                     try {
+
                         //log.info("getPoName {}",headcountData.getPo());
+
+                        if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                            addBaseExtern(headcountData,projection.getBaseExtern(),
+                                    projection.getPeriod(),projection.getRange());
+                        }
                         List<PaymentComponentDTO> component = headcountData.getComponents();
                         methodsUruguay.salary(component, salaryIncreaseList, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), inflationList);
                         methodsUruguay.overtime(component,headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), factorAjusteHHEE);
@@ -963,10 +973,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsUruguay.foodTicket(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), aumentoValorTicketAlimentacion);
                         //SUAT
                         methodsUruguay.suat(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), aumentoValorSUAT);
+                        //SUAT GRav Dinero
+                        methodsUruguay.suatGravDinero(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), salaryIncreaseList, inflationList);
                         //BSE
                         methodsUruguay.bcBs(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), inflationList);
                         //metlife
                         methodsUruguay.metlife(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), salaryIncreaseList);
+                        //metlife grav dinero
+                        methodsUruguay.metlifeGravDinero(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), salaryIncreaseList, inflationList);
                         //bse
                         methodsUruguay.bse(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), impuestoBSE);
                         //carAllowance
@@ -974,9 +988,31 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         //aguinaldo
                         methodsUruguay.aguinaldo(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange());
                         //Salario Vacacional
-                        methodsUruguay.vacationSalary(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), diasProvisionalesVacaciones);
+                        methodsUruguay.vacationSalary(component, headcountData.getClassEmployee(), projection.getPeriod(), projection.getRange(), diasLicenciaAnual, headcountData.getFContra());
+                        //montepioPatronal
+                        methodsUruguay.montepioPatronal(component, projection.getPeriod(), projection.getRange());
+                        //Montepío Patronal
+                        methodsUruguay.montepioPatronalEspecie(component, projection.getPeriod(), projection.getRange(), montepio);
+                        //frlPatronal
+                        methodsUruguay.frlPatronal(component, projection.getPeriod(), projection.getRange());
+                        //fonasaPatronal
+                        methodsUruguay.fonasaPatronal(component, projection.getPeriod(), projection.getRange(), fonasa);
+                        //fgclPatronal
+                        methodsUruguay.fgclPatronal(component, projection.getPeriod(), projection.getRange(), fgcl);
                         //employerContributions
-                        methodsUruguay.employerContributions(component, projection.getPeriod(), projection.getRange());
+                        methodsUruguay.aportesPatronales(component, projection.getPeriod(), projection.getRange());
+                        //Uniforme
+                        methodsUruguay.uniforme(component, projection.getPeriod(), projection.getRange());
+                        //TFSP
+                        methodsUruguay.tfsp(component, projection.getPeriod(), projection.getRange());
+                        //psp
+                        methodsUruguay.psp(component, projection.getPeriod(), projection.getRange());
+                        //GESP
+                        methodsUruguay.gesp(component, projection.getPeriod(), projection.getRange());
+                        //IPD
+                        methodsUruguay.ipd(component, projection.getPeriod(), projection.getRange());
+                        //Fiesta
+                        methodsUruguay.fiesta(component, projection.getPeriod(), projection.getRange());
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
