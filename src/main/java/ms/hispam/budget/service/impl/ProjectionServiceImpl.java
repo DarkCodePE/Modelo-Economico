@@ -732,8 +732,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 //.filter(h -> h.getPo().equals("PO10039174"))
                 .parallel()
                 .forEach(headcountData -> {
-                    double totalSalarios = calcularTotalSalarios(headcount, "CP", true);
-                    double totalSalariosNoCP = calcularTotalSalariosNoCP(headcount, "CP", false);
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
                     //log.debug("getPo {} - Salary {}",headcountData.getPo(), headcountData.getComponents().stream().filter(c->c.getPaymentComponent().equals("PC938003") || c.getPaymentComponent().equals("PC938012")).mapToDouble(c->c.getAmount().doubleValue()).max().getAsDouble());
                     //log.debug("getPo {} - Salary {}",  headcountData.getConvent());
@@ -765,20 +763,27 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     methodsMexico.parteExentaFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     //methodsMexico.parteGravableFestivoLaborado(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
-                    //methodsMexico.primaDominicalGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
+                    methodsMexico.primaDominicalGravable(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.mudanza(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.vidaCara(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.primaDominicalExenta(component, projection.getParameters(), projection.getPeriod(), projection.getRange(),mothProportionParam);
                     methodsMexico.calculateStateTax(component, stateTax, projection.getPeriod(), projection.getRange());
+                    if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                        addBaseExtern(headcountData,projection.getBaseExtern(),
+                                projection.getPeriod(),projection.getRange());
+                    }
+                });
+        double totalSalarios = calcularTotalSalarios(headcount, "CP", true);
+        double totalSalariosNoCP = calcularTotalSalariosNoCP(headcount, "CP", false);
+        headcount.stream()
+                .parallel()
+                .forEach(headcountData -> {
+                    List<PaymentComponentDTO> component = headcountData.getComponents();
                     methodsMexico.participacionTrabajadores(component, employeeParticipationList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroDental(component,dentalInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.seguroVida(component, lifeInsuranceList, projection.getParameters(), projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.provisionSistemasComplementariosIAS(component, provisionRetiroIAS, projection.getPeriod(), projection.getRange(), totalSalarios);
                     methodsMexico.SGMM(component, sgmmList, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), totalSalariosNoCP);
-                    if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
-                        addBaseExtern(headcountData,projection.getBaseExtern(),
-                                projection.getPeriod(),projection.getRange());
-                    }
                 });
         //log.debug("headcount {}",headcount);
     }
@@ -1042,8 +1047,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
     }
     private void  addBaseExtern(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
-        Map<String, Object>  po = baseExtern.getData().stream().filter(u->u.get("po")
-                .equals(headcount.getPo())).findFirst().orElse(null);
+        Map<String, Object>  po = baseExtern
+                .getData()
+                .stream()
+                .filter(u->u.get("po")
+                .equals(headcount.getPo()))
+                .findFirst()
+                .orElse(null);
        List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream().
                filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t))).map(
                p->
@@ -1057,7 +1067,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<PaymentComponentDTO> combined = new ArrayList<>(headcount.getComponents());
         combined.addAll(bases);
         headcount.setComponents(combined);
-        log.debug("headcount.getComponents() {}",headcount.getComponents());
+        //log.debug("headcount.getComponents() {}",headcount.getComponents());
     }
     private void addBaseExternV2(ProjectionDTO headcount, BaseExternResponse baseExtern, String period, Integer range) {
         Map<String, Map<String, Object>> baseExternMap = baseExtern.getData().stream()
