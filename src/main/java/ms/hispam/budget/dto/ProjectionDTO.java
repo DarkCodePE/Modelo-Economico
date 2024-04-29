@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProjectionDTO {
+    public class ProjectionDTO {
 
     private String idssff;
     private String po;
@@ -26,4 +26,5 @@ public class ProjectionDTO {
     private String cCostos;
     private String convent;
     private String level;
+    //TODO: PARA PERU INCLUIR PUESTOS ESPECIFICOS DE LA CRUZE CON LA TABLA PARAMETRICA
 }
