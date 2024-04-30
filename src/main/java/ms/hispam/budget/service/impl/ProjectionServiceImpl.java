@@ -1971,8 +1971,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .stream()
                             .filter(
                                     t-> {
-                                        log.debug("t.getName() {}",t.getName());
-                                        log.debug("entry.getKey() {}",entry.getKey());
+                                        //log.debug("t.getName() {}",t.getName());
+                                        //log.debug("entry.getKey() {}",entry.getKey());
                                         //log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
                                         return  !entry.getKey().equals(HEADERPO) &&
                                                 t.getName().equalsIgnoreCase(entry.getKey().trim());
@@ -2012,9 +2012,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             )
                             );
                 }
-                log.debug("headcount {}",headcount);
+               /* log.debug("headcount {}",headcount);
                 List<HeadcountProjection> headcountTemporalProcess = headcount.stream().filter(e->e.getPosition().equalsIgnoreCase("PO10038188")).collect(Collectors.toList());
-                log.info("headcountTemporal {}",headcountTemporalProcess);
+                log.info("headcountTemporal {}",headcountTemporalProcess);*/
             }
         }
         //log.debug("headcount -> {}", headcount);
