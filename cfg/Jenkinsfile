@@ -16,7 +16,6 @@ pipeline {
         FILE_ID_MAIN = '65047eb2-2a7d-4afc-bf15-4461e842c721'
         SONAR_SCANNER_HOME = tool 'sonarQube'
     }
-
     stages {
         stage('Prepare') {
             steps {
@@ -58,12 +57,12 @@ pipeline {
             }
         }
 
-        stage('DAST Analysis') {
+        /*stage('DAST Analysis') {
             steps{
                     dependencyCheck  additionalArguments: '--format JSON --format HTML' , odcInstallation:'DP-check'
 
             }
-        }
+        }*/
 
         stage('SonarQube Analysis') {
             steps {
@@ -72,6 +71,13 @@ pipeline {
                 }
             }
         }
+        stage('Deploy') {
+			steps{
+				sh 'mvn package azure-webapp:deploy'
+
+			}
+        }
+    }
     post {
         failure {
           script {
