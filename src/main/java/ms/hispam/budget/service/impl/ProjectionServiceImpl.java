@@ -755,7 +755,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     String convenio = headcountData.getConvent();
                     //log.debug("convenioNivel {}",convenioNivel);
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
+                    methodsMexico.salary3(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu, headcountData.getPo());
                     methodsMexico.valesDeDespensa(component, valesDespensa, umaMensual, projection.getPeriod(), projection.getRange());
@@ -1069,6 +1069,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .equals(headcount.getPo()))
                 .findFirst()
                 .orElse(null);
+        // Extract areaFuncional from the baseExtern data
+        String areaFuncional = po != null && po.get("areaFuncional") != null ? po.get("areaFuncional").toString() : null;
+
        List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream().
                filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t))).map(
                p->
@@ -1082,7 +1085,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<PaymentComponentDTO> combined = new ArrayList<>(headcount.getComponents());
         combined.addAll(bases);
         headcount.setComponents(combined);
-        //log.debug("headcount.getComponents() {}",headcount.getComponents());
+        // Set areaFuncional to headcount
+        headcount.setAreaFuncional(areaFuncional);
+        log.debug("headcount.getComponents() {}",headcount);
     }
     private void addBaseExternV2(ProjectionDTO headcount, BaseExternResponse baseExtern, String period, Integer range) {
         Map<String, Map<String, Object>> baseExternMap = baseExtern.getData().stream()
@@ -1353,7 +1358,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Async
     @Override
-    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job) {
+    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu) {
         try {
             Shared.replaceSLash(projection);
 
@@ -1369,7 +1374,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .isComparing(false)
                     .build();
             xlsReportService.generateAndCompleteReportAsync(projection,
-                    componentProjections, getDataBase(dataBase), userContact, job, userContact);
+                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -1407,6 +1412,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
+            //add database external to headcount
+            headcount
+                    .stream()
+                    .parallel()
+                    .forEach(h->{
+                        if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                            addBaseExtern(h,projection.getBaseExtern(),
+                                    projection.getPeriod(),projection.getRange());
+                        }
+            });
             xlsReportService.generateAndCompleteReportAsyncCdg(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
@@ -1639,7 +1654,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu
                 (idBu).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
-
         return repository.findPoBaseline(period, String.join(",", entities),
                 String.join(",", typeEmployee),"%"+filter+"%");
     }
@@ -1993,8 +2007,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                 .idssff("")
                                                 .poname(resp.get("name").toString())
                                                 .classEmp(typeEmpl)
-                                                .fContra(fNac)
-                                                .fNac(fContra)
+                                                .fContra(fContra)
+                                                .fNac(fNac)
                                                 .convent(conv)
                                                 .level(level)
                                                 .component(t.getComponent())

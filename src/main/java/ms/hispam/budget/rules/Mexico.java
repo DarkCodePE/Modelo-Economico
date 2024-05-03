@@ -235,6 +235,7 @@ public class Mexico {
             double incrementPercent;
             double lastSalary = 0.0;
             boolean isCp = poName != null && poName.contains("CP");
+            //log.debug("isCp: {}", isCp);
             ////log.debug("isCp: {}", isCp);
             if (salaryAndIncrement != null) {
                 incrementPercent = isCp ? salaryAndIncrement.getValue() / 100.0  :  0.0 ;
@@ -322,7 +323,6 @@ public class Mexico {
 
            double salary;
            //Calculo de incremento de salario
-
            if (!isCp){
                salary = calculateSalaryForNonCp(projection, minSalary, revisionParam, lastSalaryNonmin);
            } else {
@@ -398,6 +398,7 @@ public class Mexico {
         double lastSalaryIncrementValue = paymentComponentDTO.getAmount().doubleValue();
         double lastRevision = 0.0;
         double lastSalaryRevision = 0.0;
+        double lastRevisionNoCp = 0.0;
         List<MonthProjection> projections = new ArrayList<>();
         for (MonthProjection projection : paymentComponentDTO.getProjections()) {
             String month = projection.getMonth();
@@ -417,13 +418,6 @@ public class Mexico {
             }else {
                 minSalary = lastSalary;
             }
-            double salaryIncrementValue;
-            if (projection.getAmount().doubleValue() < minSalary) {
-                salaryIncrementValue = minSalary * (1 + increment);
-                lastSalaryIncrementValue = salaryIncrementValue;
-            } else {
-                salaryIncrementValue = lastSalaryIncrementValue;
-            }
             ParametersDTO closestSalaryRevision = salaryRevisionMap.get(month);
             double revisionParam;
             if (closestSalaryRevision != null) {
@@ -432,14 +426,33 @@ public class Mexico {
             }else {
                 revisionParam = lastRevision;
             }
-            double revisedAmount;
-            if (projection.getAmount().doubleValue() < minSalary) {
-                revisedAmount = minSalary * (1 + revisionParam);
-                lastSalaryRevision = revisedAmount;
+            double salary;
+            if (isCp) {
+                double salaryIncrementValue;
+                if (projection.getAmount().doubleValue() < minSalary) {
+                    salaryIncrementValue = minSalary * (1 + increment);
+                    lastSalaryIncrementValue = salaryIncrementValue;
+                } else {
+                    salaryIncrementValue = lastSalaryIncrementValue;
+                }
+                double revisedAmount;
+                if (projection.getAmount().doubleValue() < minSalary) {
+                    revisedAmount = minSalary * (1 + revisionParam);
+                    lastSalaryRevision = revisedAmount;
+                } else {
+                    revisedAmount = lastSalaryRevision;
+                }
+                salary = Math.max(salaryIncrementValue, revisedAmount);
             } else {
-                revisedAmount = lastSalaryRevision;
+                double revisedAmountNoCp;
+                if (projection.getAmount().doubleValue() > minSalary) {
+                    revisedAmountNoCp = minSalary * (1 + revisionParam);
+                    lastRevisionNoCp = revisedAmountNoCp;
+                } else {
+                    revisedAmountNoCp = lastRevisionNoCp;
+                }
+                salary = Math.max(projection.getAmount().doubleValue(), revisedAmountNoCp);
             }
-            double salary = Math.max(salaryIncrementValue, revisedAmount);
             MonthProjection newProjection = new MonthProjection();
             newProjection.setMonth(month);
             newProjection.setAmount(BigDecimal.valueOf(salary));
