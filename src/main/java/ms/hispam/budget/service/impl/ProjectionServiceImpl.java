@@ -422,9 +422,9 @@ public class ProjectionServiceImpl implements ProjectionService {
 
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         log.info("headcount {}",headcount);
-        /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+       /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                 .stream()
-                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
+                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99027314"))
                 .collect(Collectors.toList());
         log.debug("headcount {}",headcount);*/
         /*List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection)
@@ -713,7 +713,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //Genera las proyecciones del rango
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
         List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
-        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial");
+        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial Mexico");
         List<ParametersDTO> employeeParticipationList = filterParametersByName(projection.getParameters(), "Participación de los trabajadores");
         List<ParametersDTO> sgmmList = filterParametersByName(projection.getParameters(), "SGMM");
         List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
@@ -744,7 +744,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //vales de despensa
         List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "vales");
         headcount.stream()
-                //.filter(h -> h.getPo().equals("PO10039174"))
+                //.filter(h -> h.getPo().equals("PO10002098"))
                 .parallel()
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
@@ -755,7 +755,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     String convenio = headcountData.getConvent();
                     //log.debug("convenioNivel {}",convenioNivel);
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary3(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
+                    methodsMexico.salary2(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu, headcountData.getPo());
                     methodsMexico.valesDeDespensa(component, valesDespensa, umaMensual, projection.getPeriod(), projection.getRange());
