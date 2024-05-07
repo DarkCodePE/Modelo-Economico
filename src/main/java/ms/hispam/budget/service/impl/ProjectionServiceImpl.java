@@ -40,6 +40,7 @@ import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Service
@@ -103,6 +104,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private RangoBuPivotHistoricalRepository rangoBuPivotHistoricalRepository;
     @Autowired
     private rangoBuPivotHistoricalDetailRepository rangoBuPivotHistoricalDetailRepository;
+    @Autowired
+    private TypePaymentComponentRepository typePaymentComponentRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
@@ -1117,8 +1120,27 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
         List<Convenio> convenio = convenioRepository.findAll();
         List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
+
+        // Obtener todos los componentes
+        List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
+        log.info("allComponents {}",allComponents);
+        // Filtrar solo los componentes base
+        List<ComponentProjection> baseComponents = allComponents.stream()
+                .filter(ComponentProjection::getIsBase)
+                .collect(Collectors.toList());
+        //log.info("baseComponents {}",baseComponents);
+        // Filtrar los componentes que tienen un typePaymentComponentId único
+        List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
+                .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
+                .collect(Collectors.toList());
+        //log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
+        // Combinar las dos listas y eliminar duplicados
+        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        //log.debug("combinedComponents {}",combinedComponents);
         return Config.builder()
-                .components(sharedRepo.getComponentByBu(bu))
+                .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())
                 .money(vbu.getMoney())
@@ -1131,12 +1153,75 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .baseExtern(baseExternRepository.findByBu(vbu.getId())
                         .stream()
                         .map(c->OperationResponse
-                            .builder()
+                                .builder()
                                 .code(c.getCode())
                                 .name(c.getName())
                                 .bu(c.getBu())
                                 .isInput(c.getIsInput())
-                            .build()
+                                .build()
+                        )
+                        .collect(Collectors.toList()))
+                .current(vbu.getCurrent())
+                .build();
+    }
+    private boolean isUniqueTypePaymentComponentId(ComponentProjection component, List<ComponentProjection> components) {
+        log.info("component {}",component);
+        long count = components.stream()
+                .filter(c -> c.getType().equals(component.getType()))
+                .count();
+        return count == 1;
+    }
+    private boolean isUniqueTypePaymentComponentId2(ComponentProjection component) {
+        log.info("component {}",component);
+        List<TypePaymentComponent> allTypePaymentComponents = typePaymentComponentRepository.findAll();
+        long count = allTypePaymentComponents.stream()
+                .filter(c -> c.getId().equals(component.getType()))
+                .count();
+        return count == 1;
+    }
+    public Config getComponentByBu2(String bu) {
+        Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        List<Convenio> convenio = convenioRepository.findAll();
+        List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
+
+        // Obtener todos los componentes
+        List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
+
+        // Filtrar solo los componentes base
+        List<ComponentProjection> baseComponents = allComponents.stream()
+                .filter(ComponentProjection::getIsBase)
+                .collect(Collectors.toList());
+        log.info("baseComponents {}",baseComponents);
+        // Filtrar los componentes que tienen un typePaymentComponentId único
+        List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
+                .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
+                .collect(Collectors.toList());
+        log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
+        // Combinar las dos listas y eliminar duplicados
+        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        log.debug("combinedComponents {}",combinedComponents);
+        return Config.builder()
+                .components(combinedComponents) // usar los componentes combinados
+                .parameters(parameterRepository.getParameterBu(bu))
+                .icon(vbu.getIcon())
+                .money(vbu.getMoney())
+                .vViewPo(vbu.getVViewPo())
+                .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
+                .convenios(convenio)
+                .convenioBonos(convenioBono)
+                .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
+                .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
+                .baseExtern(baseExternRepository.findByBu(vbu.getId())
+                        .stream()
+                        .map(c->OperationResponse
+                                .builder()
+                                .code(c.getCode())
+                                .name(c.getName())
+                                .bu(c.getBu())
+                                .isInput(c.getIsInput())
+                                .build()
                         )
                         .collect(Collectors.toList()))
                 .current(vbu.getCurrent())
@@ -2474,7 +2559,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         for (NominaPaymentComponentLink link : nominaPaymentComponentLinks) {
                             String component = link.getPaymentComponent().getPaymentComponent();
                             double importe = h.getImporte();
-                            if(component.equalsIgnoreCase("0010")){
+                            if(component.equalsIgnoreCase("0010") || component.equalsIgnoreCase("0020")){
                                 importe = h.getQDiasHoras() == 0 ? 0 : (h.getImporte()/h.getQDiasHoras())*30;
                             }
                             componentTotals.put(component, componentTotals.getOrDefault(component, 0.0) + importe);
