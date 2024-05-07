@@ -1265,41 +1265,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             periodFrom(c.getFrom()).periodTo(c.getTo()).
                             build()).collect(Collectors.toList());
             disabledPoHistorialRepository.saveAll(disabledPoHistoricals);
-        //TODO: AGREGAR IDENTIFICADOR PARA USUARIO -> urgente
-        // Obtiene los parámetros atemporales y los transforma en rangos históricos
-        List<RangeBuDTO> parametrosAtemporales = buService.getAllBuWithRangos(projection.getIdBu());
-        List<RangoBuPivotHistorical> rangosHistoricos = parametrosAtemporales.stream().map(r -> {
-            RangoBuPivotHistorical rango = new RangoBuPivotHistorical();
-            rango.setIdHistorial(finalHistorial.getId());
-            // Aquí solo debemos configurar el rango, no los detalles, ya que todavía no hemos persistido 'rango'
-            return rango;
-        }).collect(Collectors.toList());
 
-        // Guardamos los rangos históricos en la base de datos para que se genere su ID
-        rangosHistoricos = rangoBuPivotHistoricalRepository.saveAll(rangosHistoricos);
-
-        // Ahora, ya con los IDs generados, podemos asignar los detalles
-        rangosHistoricos.forEach(rango -> {
-            // Encuentra el DTO correspondiente con este rango
-            RangeBuDTO rDto = parametrosAtemporales.stream()
-                    .filter(rangoDto -> rangoDto.getIdBu().equals(rango.getIdHistorial()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (rDto != null) {
-                List<RangoBuPivotHistoricalDetail> detalles = rDto.getRangeBuDetails().stream().map(d -> {
-                    RangoBuPivotHistoricalDetail detail = new RangoBuPivotHistoricalDetail();
-                    detail.setRangoBuPivotHistorical(rango); // Usamos la entidad, no el ID
-                    detail.setRange(d.getRange());
-                    detail.setValue(d.getValue());
-                    detail.setIdPivot(d.getIdPivot());
-                    return detail;
-                }).collect(Collectors.toList());
-
-                // Guardamos los detalles del rango histórico en la base de datos
-                rangoBuPivotHistoricalDetailRepository.saveAll(detalles);
-            }
-        });
 
         //ADD IF EXTERN IS NOT NULL
             if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
