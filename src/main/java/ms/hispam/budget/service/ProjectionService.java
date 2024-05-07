@@ -30,7 +30,7 @@ public interface ProjectionService {
 
     Boolean deleteHistorical( Integer id);
 
-    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job);
+    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu);
     void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     byte[] downloadProjectionHistorical(Integer id);

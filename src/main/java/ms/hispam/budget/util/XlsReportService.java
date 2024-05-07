@@ -55,7 +55,7 @@ public class XlsReportService {
     public void setService(@Lazy ProjectionService service) {
         this.service = service;
     }
-    public static byte[] generateExcelProjection(ParametersByProjection projection ,ProjectionSecondDTO data, DataBaseMainReponse dataBase,List<ComponentProjection> components){
+    public static byte[] generateExcelProjection(ParametersByProjection projection ,ProjectionSecondDTO data, DataBaseMainReponse dataBase,List<ComponentProjection> components, Integer idBu){
 
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
@@ -63,7 +63,7 @@ public class XlsReportService {
         // vista Input
         generateInput(workbook,dataBase,projection);
         //Vista anual
-        generateMoreView("Vista Anual",workbook,data);
+        generateMoreView("Vista Anual",workbook,data,idBu);
         generateMoreViewMonth("Vista Mensual",workbook,data);
 
         components.stream()
@@ -71,14 +71,14 @@ public class XlsReportService {
                 .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
                 //.limit(30)
                 .forEach(c-> writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),
-                        data.getViewPosition().getPositions()));
+                        data.getViewPosition().getPositions(), idBu));
 
      projection.getBaseExtern()
                 .getHeaders()
                 .stream()
                 .filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r)))
                 .forEach(c-> writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),
-                        data.getViewPosition().getPositions()));
+                        data.getViewPosition().getPositions(), idBu));
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
@@ -251,6 +251,7 @@ public class XlsReportService {
             }*/
             for (ProjectionDTO data : vdata) {
                 for (PaymentComponentDTO component : data.getComponents()) {
+                    //filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
                         // Include the month in the GroupKey
                         GroupKey key = new GroupKey(
@@ -263,7 +264,7 @@ public class XlsReportService {
 
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
-                        groupData.sum += projection.getAmount().doubleValue();
+                            groupData.sum += projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
                     }
                     component.setProjections(null); // Liberar memoria
@@ -517,7 +518,7 @@ public class XlsReportService {
         }
     }
 
-    private static void generateMoreView(String namePage,Workbook workbook ,ProjectionSecondDTO projection){
+    private static void generateMoreView(String namePage,Workbook workbook ,ProjectionSecondDTO projection, Integer idBu){
         Sheet psheet = workbook.createSheet(namePage);
         Row pheader = psheet.createRow(0);
         Cell pheaderCell = pheader.createCell(0);
@@ -600,7 +601,7 @@ public class XlsReportService {
             sheetCreationLock.unlock();
         }
     }
-    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection) {
+    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection, Integer idBu){
         Sheet sheet = createSheetWithUniqueName(workbook, name);
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
@@ -610,8 +611,10 @@ public class XlsReportService {
         headerCell = header.createCell(1);
         headerCell.setCellValue("IDSSFF");
         headerCell = header.createCell(2);
+        headerCell.setCellValue("TIPO DE EMPLEADO");
+        headerCell = header.createCell(3);
         headerCell.setCellValue(Shared.nameMonth(period));
-        int startHeader = 3;
+        int startHeader = 4;
         for (String m : Shared.generateRangeMonth(period, range)) {
             headerCell = header.createCell(startHeader);
             headerCell.setCellValue(m);
@@ -629,6 +632,17 @@ public class XlsReportService {
             cell = row.createCell(1);
             cell.setCellValue(projectionDTO.getIdssff());
             cell.setCellStyle(style); // Reutilizar el estilo
+            //TypeEmployee
+            cell = row.createCell(2);
+            String type;
+            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
+            if(idBu==4){
+                type = isCp ? "CP" : "NO CP";
+            }else{
+                type = projectionDTO.getClassEmployee();
+            }
+            cell.setCellValue(type);
+            cell.setCellStyle(style); // Reutilizar el estilo
             //debug lista de componentes
             List<PaymentComponentDTO> list = projectionDTO
                     .getComponents();
@@ -641,10 +655,10 @@ public class XlsReportService {
                     .findFirst();
             //log.debug("Componente: {}", componentDTO);
             if (componentDTO.isPresent()) {
-                cell = row.createCell(2);
+                cell = row.createCell(3);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                 cell.setCellStyle(style); // Reutilizar el estilo
-                int column = 3;
+                int column = 4;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
                     MonthProjection month = componentDTO.get().getProjections().get(k);
                     cell = row.createCell(column);
@@ -660,12 +674,12 @@ public class XlsReportService {
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     // Modifica este método para que sea asíncrono
-    public  CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase) {
+    public  CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu) {
         return CompletableFuture.supplyAsync(() -> {
             projection.setViewPo(true);
             ProjectionSecondDTO data = service.getNewProjection(projection);
             // Toda la lógica actual de generación de reportes
-            return generateExcelProjection(projection, data, dataBase,components);
+            return generateExcelProjection(projection, data, dataBase,components, idBu);
         }, executorService);
     }
 
@@ -689,8 +703,8 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user) {
-        generateExcelProjectionAsync(projection, components, dataBase)
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu) {
+        generateExcelProjectionAsync(projection, components, dataBase, idBu)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo

@@ -122,7 +122,7 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-                service.downloadProjection(projection, user, jobDB);
+                service.downloadProjection(projection, user, jobDB, idBu);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"

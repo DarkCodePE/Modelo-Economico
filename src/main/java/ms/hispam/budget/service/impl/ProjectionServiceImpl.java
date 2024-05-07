@@ -40,6 +40,7 @@ import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Service
@@ -103,6 +104,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private RangoBuPivotHistoricalRepository rangoBuPivotHistoricalRepository;
     @Autowired
     private rangoBuPivotHistoricalDetailRepository rangoBuPivotHistoricalDetailRepository;
+    @Autowired
+    private TypePaymentComponentRepository typePaymentComponentRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
@@ -422,9 +425,9 @@ public class ProjectionServiceImpl implements ProjectionService {
 
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         log.info("headcount {}",headcount);
-        /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+       /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                 .stream()
-                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
+                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99027314"))
                 .collect(Collectors.toList());
         log.debug("headcount {}",headcount);*/
         /*List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection)
@@ -713,7 +716,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //Genera las proyecciones del rango
         List<ParametersDTO> salaryList = filterParametersByName(projection.getParameters(), "Salario Mínimo Mexico");
         List<ParametersDTO> incrementList = filterParametersByName(projection.getParameters(), "Increm Salario Mín");
-        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial");
+        List<ParametersDTO> revisionList = filterParametersByName(projection.getParameters(), "Revision Salarial Mexico");
         List<ParametersDTO> employeeParticipationList = filterParametersByName(projection.getParameters(), "Participación de los trabajadores");
         List<ParametersDTO> sgmmList = filterParametersByName(projection.getParameters(), "SGMM");
         List<ParametersDTO> dentalInsuranceList = filterParametersByName(projection.getParameters(), "Seguro Dental");
@@ -744,7 +747,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //vales de despensa
         List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "vales");
         headcount.stream()
-                //.filter(h -> h.getPo().equals("PO10039174"))
+                //.filter(h -> h.getPo().equals("PO10002098"))
                 .parallel()
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
@@ -755,7 +758,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     String convenio = headcountData.getConvent();
                     //log.debug("convenioNivel {}",convenioNivel);
                     List<PaymentComponentDTO> component = headcountData.getComponents();
-                    methodsMexico.salary(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
+                    methodsMexico.salary2(component, salaryList, incrementList, revisionList, projection.getPeriod(), projection.getRange(), headcountData.getPoName());
                     methodsMexico.provAguinaldo(component, projection.getPeriod(), projection.getRange());
                     methodsMexico.provVacacionesRefactor(component, projection.getParameters(), headcountData.getClassEmployee(),  projection.getPeriod(), projection.getRange(),  headcountData.getFContra(), headcountData.getFNac(), rangeBuByBU, idBu, headcountData.getPo());
                     methodsMexico.valesDeDespensa(component, valesDespensa, umaMensual, projection.getPeriod(), projection.getRange());
@@ -1069,6 +1072,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .equals(headcount.getPo()))
                 .findFirst()
                 .orElse(null);
+        // Extract areaFuncional from the baseExtern data
+        String areaFuncional = po != null && po.get("areaFuncional") != null ? po.get("areaFuncional").toString() : null;
+
        List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream().
                filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t))).map(
                p->
@@ -1082,7 +1088,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<PaymentComponentDTO> combined = new ArrayList<>(headcount.getComponents());
         combined.addAll(bases);
         headcount.setComponents(combined);
-        //log.debug("headcount.getComponents() {}",headcount.getComponents());
+        // Set areaFuncional to headcount
+        headcount.setAreaFuncional(areaFuncional);
+        log.debug("headcount.getComponents() {}",headcount);
     }
     private void addBaseExternV2(ProjectionDTO headcount, BaseExternResponse baseExtern, String period, Integer range) {
         Map<String, Map<String, Object>> baseExternMap = baseExtern.getData().stream()
@@ -1112,8 +1120,27 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
         List<Convenio> convenio = convenioRepository.findAll();
         List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
+
+        // Obtener todos los componentes
+        List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
+        log.info("allComponents {}",allComponents);
+        // Filtrar solo los componentes base
+        List<ComponentProjection> baseComponents = allComponents.stream()
+                .filter(ComponentProjection::getIsBase)
+                .collect(Collectors.toList());
+        //log.info("baseComponents {}",baseComponents);
+        // Filtrar los componentes que tienen un typePaymentComponentId único
+        List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
+                .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
+                .collect(Collectors.toList());
+        //log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
+        // Combinar las dos listas y eliminar duplicados
+        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        //log.debug("combinedComponents {}",combinedComponents);
         return Config.builder()
-                .components(sharedRepo.getComponentByBu(bu))
+                .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())
                 .money(vbu.getMoney())
@@ -1126,12 +1153,75 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .baseExtern(baseExternRepository.findByBu(vbu.getId())
                         .stream()
                         .map(c->OperationResponse
-                            .builder()
+                                .builder()
                                 .code(c.getCode())
                                 .name(c.getName())
                                 .bu(c.getBu())
                                 .isInput(c.getIsInput())
-                            .build()
+                                .build()
+                        )
+                        .collect(Collectors.toList()))
+                .current(vbu.getCurrent())
+                .build();
+    }
+    private boolean isUniqueTypePaymentComponentId(ComponentProjection component, List<ComponentProjection> components) {
+        log.info("component {}",component);
+        long count = components.stream()
+                .filter(c -> c.getType().equals(component.getType()))
+                .count();
+        return count == 1;
+    }
+    private boolean isUniqueTypePaymentComponentId2(ComponentProjection component) {
+        log.info("component {}",component);
+        List<TypePaymentComponent> allTypePaymentComponents = typePaymentComponentRepository.findAll();
+        long count = allTypePaymentComponents.stream()
+                .filter(c -> c.getId().equals(component.getType()))
+                .count();
+        return count == 1;
+    }
+    public Config getComponentByBu2(String bu) {
+        Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        List<Convenio> convenio = convenioRepository.findAll();
+        List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
+
+        // Obtener todos los componentes
+        List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
+
+        // Filtrar solo los componentes base
+        List<ComponentProjection> baseComponents = allComponents.stream()
+                .filter(ComponentProjection::getIsBase)
+                .collect(Collectors.toList());
+        log.info("baseComponents {}",baseComponents);
+        // Filtrar los componentes que tienen un typePaymentComponentId único
+        List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
+                .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
+                .collect(Collectors.toList());
+        log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
+        // Combinar las dos listas y eliminar duplicados
+        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
+                .distinct()
+                .collect(Collectors.toList());
+        log.debug("combinedComponents {}",combinedComponents);
+        return Config.builder()
+                .components(combinedComponents) // usar los componentes combinados
+                .parameters(parameterRepository.getParameterBu(bu))
+                .icon(vbu.getIcon())
+                .money(vbu.getMoney())
+                .vViewPo(vbu.getVViewPo())
+                .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
+                .convenios(convenio)
+                .convenioBonos(convenioBono)
+                .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
+                .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
+                .baseExtern(baseExternRepository.findByBu(vbu.getId())
+                        .stream()
+                        .map(c->OperationResponse
+                                .builder()
+                                .code(c.getCode())
+                                .name(c.getName())
+                                .bu(c.getBu())
+                                .isInput(c.getIsInput())
+                                .build()
                         )
                         .collect(Collectors.toList()))
                 .current(vbu.getCurrent())
@@ -1353,7 +1443,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Async
     @Override
-    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job) {
+    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu) {
         try {
             Shared.replaceSLash(projection);
 
@@ -1369,7 +1459,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .isComparing(false)
                     .build();
             xlsReportService.generateAndCompleteReportAsync(projection,
-                    componentProjections, getDataBase(dataBase), userContact, job, userContact);
+                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -1407,6 +1497,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
+            //add database external to headcount
+            headcount
+                    .stream()
+                    .parallel()
+                    .forEach(h->{
+                        if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
+                            addBaseExtern(h,projection.getBaseExtern(),
+                                    projection.getPeriod(),projection.getRange());
+                        }
+            });
             xlsReportService.generateAndCompleteReportAsyncCdg(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
@@ -1639,7 +1739,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu
                 (idBu).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
-
         return repository.findPoBaseline(period, String.join(",", entities),
                 String.join(",", typeEmployee),"%"+filter+"%");
     }
@@ -1993,8 +2092,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                 .idssff("")
                                                 .poname(resp.get("name").toString())
                                                 .classEmp(typeEmpl)
-                                                .fContra(fNac)
-                                                .fNac(fContra)
+                                                .fContra(fContra)
+                                                .fNac(fNac)
                                                 .convent(conv)
                                                 .level(level)
                                                 .component(t.getComponent())
@@ -2460,7 +2559,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         for (NominaPaymentComponentLink link : nominaPaymentComponentLinks) {
                             String component = link.getPaymentComponent().getPaymentComponent();
                             double importe = h.getImporte();
-                            if(component.equalsIgnoreCase("0010")){
+                            if(component.equalsIgnoreCase("0010") || component.equalsIgnoreCase("0020")){
                                 importe = h.getQDiasHoras() == 0 ? 0 : (h.getImporte()/h.getQDiasHoras())*30;
                             }
                             componentTotals.put(component, componentTotals.getOrDefault(component, 0.0) + importe);
