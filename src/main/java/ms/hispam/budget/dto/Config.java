@@ -20,6 +20,7 @@ public class Config {
     private List<RangeBuDTO> vTemporal;
     private List<Convenio> convenios;
     private List<ConvenioBono> convenioBonos;
+    private List<NominaPaymentComponentLink> nominaPaymentComponentRelations;
     private String money;
     private String icon;
     private Boolean vViewPo;

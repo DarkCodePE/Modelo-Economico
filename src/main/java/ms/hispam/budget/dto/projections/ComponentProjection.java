@@ -9,4 +9,6 @@ public interface ComponentProjection {
     public Boolean getShow();
     public Integer getTvalor();
     public Boolean getIsBase();
+    //isadditional
+    public Boolean getIsAdditional();
 }
