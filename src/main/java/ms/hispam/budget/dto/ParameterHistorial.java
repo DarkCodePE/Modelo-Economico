@@ -1,6 +1,8 @@
 package ms.hispam.budget.dto;
 
 import lombok.*;
+import ms.hispam.budget.entity.mysql.Convenio;
+import ms.hispam.budget.entity.mysql.ConvenioBono;
 
 import java.util.List;
 
@@ -22,4 +24,7 @@ public class ParameterHistorial {
     private Integer idBu;
     private BaseExternResponse baseExtern;
     private BaseExternResponse bc;
+    private List<RangeBuDTO> temporalParameters;
+    private List<Convenio> convenio;
+    private List<ConvenioBono> convenioBono;
 }

@@ -17,6 +17,7 @@ import javax.persistence.Table;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@Table(name = "type_valor")
 public class TypeValor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -3,14 +3,9 @@ package ms.hispam.budget.entity.mysql;
 import lombok.*;
 
 import java.util.Date;
+import java.util.Set;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
+import javax.persistence.*;
 
 
 @Getter
@@ -48,5 +43,8 @@ public class HistorialProjection {
     private Date updatedAt;
     @Column(name = "id_bu")
     public Integer idBu;
-
+    @OneToMany(mappedBy = "historialProjection")
+    private Set<RangoBuPivotHistorical> rangoBuPivotHistoricals;
+    @OneToMany(mappedBy = "historialProjection")
+    private Set<ConvenioHistorial> convenioHistorials;
 }

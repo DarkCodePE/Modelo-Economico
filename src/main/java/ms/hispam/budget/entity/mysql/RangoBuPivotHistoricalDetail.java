@@ -14,14 +14,20 @@ import javax.persistence.*;
 @Getter
 @Setter
 public class RangoBuPivotHistoricalDetail {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(name = "`range`")
     private String range;
-    private Integer idPivot;
+
+    @Column(name = "value")
     private Double value;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_historial", referencedColumnName = "id")
+    @ManyToOne
+    @JoinColumn(name = "id_pivot", referencedColumnName = "id", insertable = true, updatable = true)
     private RangoBuPivotHistorical rangoBuPivotHistorical;
+
+    // Getters and Setters
 }

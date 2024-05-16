@@ -23,12 +23,16 @@ public class PaymentComponent {
     @Column(name = "payment_component")
     private String paymentComponent;
 
-    @Column(name = "type_payment_component")
-    private Integer typePaymentComponent;
+    @ManyToOne
+    @JoinColumn(name = "type_payment_component", referencedColumnName = "id")
+    private TypePaymentComponent typePaymentComponentEntity;
 
     @Column(name = "is_component")
     private Boolean isComponent;
 
     @Column(name = "`show`")
     private Boolean show;
+    //is_additional
+    @Column(name = "is_additional")
+    private Boolean isAdditional;
 }

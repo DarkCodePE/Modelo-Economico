@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -16,14 +17,32 @@ import java.util.Set;
 @Getter
 @Setter
 public class RangoBuPivotHistorical {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "id_historial")
+    @ManyToOne
+    @JoinColumn(name = "bu_id", referencedColumnName = "id")
+    private Bu bu;
 
-    private Integer idHistorial;
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    @OneToMany(mappedBy = "rangoBuPivotHistorical", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<RangoBuPivotHistoricalDetail> details = new HashSet<>();
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+
+    @ManyToOne
+    @JoinColumn(name = "id_historial", referencedColumnName = "id")
+    private HistorialProjection historialProjection;
+
+    @Column(name = "user_email")
+    private String userEmail;
+
+    @OneToMany(mappedBy = "rangoBuPivotHistorical")
+    private Set<RangoBuPivotHistoricalDetail> rangoBuPivotHistoricalDetails;
+
+    @OneToMany(mappedBy = "rangoBuPivotHistorical")
+    private Set<RangeBuHistorical> rangeBuHistoricals;
+
 }

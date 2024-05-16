@@ -31,9 +31,7 @@ import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
@@ -103,9 +101,13 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private RangoBuPivotHistoricalRepository rangoBuPivotHistoricalRepository;
     @Autowired
-    private rangoBuPivotHistoricalDetailRepository rangoBuPivotHistoricalDetailRepository;
+    private RangoBuPivotHistoricalDetailRepository rangoBuPivotHistoricalDetailRepository;
     @Autowired
     private TypePaymentComponentRepository typePaymentComponentRepository;
+    @Autowired
+    private ConvenioHistorialRepository convenioHistorialRepository;
+    @Autowired
+    private ConvenioBonoHistorialRepository convenioBonoHistorialRepository;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
@@ -1128,16 +1130,24 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ComponentProjection> baseComponents = allComponents.stream()
                 .filter(ComponentProjection::getIsBase)
                 .collect(Collectors.toList());
-        //log.info("baseComponents {}",baseComponents);
+        //filtrar los componentes que no son adicionales
+     /*   List<ComponentProjection> additionalComponents = allComponents.stream()
+                .filter(c -> !c.getIsAdditional())
+                .collect(Collectors.toList());
+        log.info("additionalComponents {}",additionalComponents);*/
         // Filtrar los componentes que tienen un typePaymentComponentId único
         List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
                 .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
+                .filter(c -> !c.getIsAdditional())
                 .collect(Collectors.toList());
         //log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
         // Combinar las dos listas y eliminar duplicados
-        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
+        List<ComponentProjection> combinedComponents =
+                Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
                 .distinct()
                 .collect(Collectors.toList());
+        //list nominaPaymentComponentLink
+        List<NominaPaymentComponentLink> nominaPaymentComponentLink = nominaPaymentComponentLinkRepository.findByBu(vbu.getId());
         //log.debug("combinedComponents {}",combinedComponents);
         return Config.builder()
                 .components(combinedComponents) // usar los componentes combinados
@@ -1150,6 +1160,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .convenioBonos(convenioBono)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
+                .nominaPaymentComponentRelations(nominaPaymentComponentLink)
                 .baseExtern(baseExternRepository.findByBu(vbu.getId())
                         .stream()
                         .map(c->OperationResponse
@@ -1232,7 +1243,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
     public Boolean saveProjection(ParameterHistorial projection,String email) {
-
+            log.info("projection {}",projection);
             HistorialProjection historial = new HistorialProjection();
             historial.setBu(projection.getBu());
             historial.setName(projection.getName());
@@ -1265,43 +1276,38 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             periodFrom(c.getFrom()).periodTo(c.getTo()).
                             build()).collect(Collectors.toList());
             disabledPoHistorialRepository.saveAll(disabledPoHistoricals);
-        //TODO: AGREGAR IDENTIFICADOR PARA USUARIO -> urgente
-        // Obtiene los parámetros atemporales y los transforma en rangos históricos
-        List<RangeBuDTO> parametrosAtemporales = buService.getAllBuWithRangos(projection.getIdBu());
-        List<RangoBuPivotHistorical> rangosHistoricos = parametrosAtemporales.stream().map(r -> {
-            RangoBuPivotHistorical rango = new RangoBuPivotHistorical();
-            rango.setIdHistorial(finalHistorial.getId());
-            // Aquí solo debemos configurar el rango, no los detalles, ya que todavía no hemos persistido 'rango'
-            return rango;
-        }).collect(Collectors.toList());
-
-        // Guardamos los rangos históricos en la base de datos para que se genere su ID
-        rangosHistoricos = rangoBuPivotHistoricalRepository.saveAll(rangosHistoricos);
-
-        // Ahora, ya con los IDs generados, podemos asignar los detalles
-        rangosHistoricos.forEach(rango -> {
-            // Encuentra el DTO correspondiente con este rango
-            RangeBuDTO rDto = parametrosAtemporales.stream()
-                    .filter(rangoDto -> rangoDto.getIdBu().equals(rango.getIdHistorial()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (rDto != null) {
-                List<RangoBuPivotHistoricalDetail> detalles = rDto.getRangeBuDetails().stream().map(d -> {
-                    RangoBuPivotHistoricalDetail detail = new RangoBuPivotHistoricalDetail();
-                    detail.setRangoBuPivotHistorical(rango); // Usamos la entidad, no el ID
-                    detail.setRange(d.getRange());
-                    detail.setValue(d.getValue());
-                    detail.setIdPivot(d.getIdPivot());
-                    return detail;
-                }).collect(Collectors.toList());
-
-                // Guardamos los detalles del rango histórico en la base de datos
-                rangoBuPivotHistoricalDetailRepository.saveAll(detalles);
+            if(projection.getTemporalParameters()!=null && !projection.getTemporalParameters().isEmpty()){
+                buService.saveRangeBuDTO(projection.getTemporalParameters(), historial);
             }
-        });
+            //SAVE CONVENIO AND CONVENIO BONO
+            if(projection.getConvenio()!=null && !projection.getConvenio().isEmpty()){
+                HistorialProjection finalHistorial1 = historial;
+                List<ConvenioHistorial> convenioHistorials = projection.getConvenio().stream().map(c-> {
+                    ConvenioHistorial conven = new ConvenioHistorial();
+                    conven.setHistorialProjection(finalHistorial1);
+                    conven.setId(c.getId());
+                    conven.setName(c.getConvenioName());
+                    conven.setImssPercentage(c.getImssPercentage());
+                    conven.setRetiroPercentage(c.getRetiroPercentage());
+                    conven.setInfonavitPercentage(c.getInfonavitPercentage());
+                    return conven;
+                }).collect(Collectors.toList());
+                convenioHistorialRepository.saveAll(convenioHistorials);
+            }
+            if(projection.getConvenioBono()!=null && !projection.getConvenioBono().isEmpty()){
+                HistorialProjection finalHistorial1 = historial;
+                List<ConvenioBonoHistorial> convenioBonoHistorials = projection.getConvenioBono().stream().map(c-> {
+                    ConvenioBonoHistorial conven = new ConvenioBonoHistorial();
+                    conven.setHistorialProjection(finalHistorial1);
+                    conven.setId(c.getId());
+                    conven.setNivel(c.getConvenioNivel());
+                    conven.setPorcentaje(c.getBonoPercentage());
+                    return conven;
+                }).collect(Collectors.toList());
+                convenioBonoHistorialRepository.saveAll(convenioBonoHistorials);
+            }
 
-        //ADD IF EXTERN IS NOT NULL
+            //ADD IF EXTERN IS NOT NULL
             if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
                List<PoHistorialExtern> extern= new ArrayList<>();
 
@@ -1350,7 +1356,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     @Override
-    public List<HistorialProjectionDTO> getHistorial(String email) {
+    public List<HistorialProjectionDTO> getHistorial(String email, Integer idHistorial) {
+        //Recuperar lo parametros temporales del historial
+        List<RangeBuDTO> temporalParametersHistorical = buService.getTemporalParameterHistoricalProjections(idHistorial);
+        //Recuperar convenios bono del historial
+        List<ConvenioBonoHistorial> convenioBonoHistorial = convenioBonoHistorialRepository.findByHistorialProjection_Id(idHistorial);
+        //Recuperar convenios del historial
+        List<ConvenioHistorial> convenioHistorial = convenioHistorialRepository.findByHistorialProjection_Id(idHistorial);
+
         return historialProjectionRepository.findByCreatedByOrderByCreatedAtDesc(email).stream().map(
                 p->HistorialProjectionDTO.builder()
                         .bu(p.getBu())
@@ -1361,6 +1374,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .vPeriod(p.getVPeriod())
                         .createdAt(p.getCreatedAt())
                         .isTop(p.getIsTop())
+                        .idBu(p.getIdBu())
+                        .temporalParameters(temporalParametersHistorical)
+                        .convenio(convenioHistorial.stream().map(c->ConvenioDTO.builder()
+                                .id(c.getId())
+                                .convenioName(c.getName())
+                                .imssPercentage(c.getImssPercentage())
+                                .retiroPercentage(c.getRetiroPercentage())
+                                .infonavitPercentage(c.getInfonavitPercentage())
+                                .build()).collect(Collectors.toList()))
+                        .convenioBono(convenioBonoHistorial.stream().map(c->ConvenioBonoDTO.builder()
+                                .id(c.getId())
+                                .convenioNivel(c.getNivel())
+                                .bonoPercentage(c.getPorcentaje())
+                                .build()).collect(Collectors.toList()))
                 .build()).collect(Collectors.toList());
     }
 

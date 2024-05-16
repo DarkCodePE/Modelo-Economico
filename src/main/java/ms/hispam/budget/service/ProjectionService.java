@@ -23,7 +23,7 @@ public interface ProjectionService {
 
     Boolean saveProjection( ParameterHistorial projection,String email);
 
-    List<HistorialProjectionDTO> getHistorial( String email);
+    List<HistorialProjectionDTO> getHistorial( String email, Integer idHistorical);
 
 
     ProjectionInformation getHistorialProjection( Integer id);
