@@ -526,10 +526,19 @@ public class Mexico {
                 paymentComponentProvVacations.setAmount(vacationAmount);
                 List<MonthProjection> projections = new ArrayList<>();
                 for (MonthProjection projection : salaryComponent.getProjections()) {
+//                    log.info("projection: {}", projection.getMonth());
+
+                    // Convertir el mes de la proyección a LocalDate
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+                    YearMonth yearMonth = YearMonth.parse(projection.getMonth(), formatter);
+                    LocalDate dateProjection = yearMonth.atDay(1);
+
                     double amountProj = projection.getAmount().doubleValue() / 30;
-                    long seniorityProjection = Math.max(ChronoUnit.YEARS.between(dateContract, dateActual), 0);
-                    dateActual = dateActual.plusMonths(1); // Increase the current date by one month for the next iteration
+                    long seniorityProjection = Math.max(ChronoUnit.YEARS.between(dateContract, dateProjection), 0);
+                    //log.info("dateContract: {}", dateContract);
+//                    log.info("seniorityProjection: {}", seniorityProjection);
                     int vacationsDaysProjection = getCachedVacationsDays(seniorityProjection, daysVacationsMap);
+//                    log.info("vacationsDaysProjection: {}", vacationsDaysProjection);
                     double vacationsDaysPerMonth =  (double) vacationsDaysProjection / 12;
                     BigDecimal newAmount = BigDecimal.valueOf(amountProj *  vacationsDaysPerMonth);
                     MonthProjection vacationProvisionProjection = new MonthProjection();

@@ -426,7 +426,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .collect(Collectors.toList());*/
 
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
-        log.info("headcount {}",headcount);
+        //log.info("headcount {}",headcount);
        /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                 .stream()
                 .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99027314"))
@@ -686,6 +686,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .filter(r -> r.getIdBu().equals(projection.getIdBu()))
                 .findFirst()
                 .orElse(null);
+
         Integer idBu = projection.getIdBu();
         //convenio by ParamwtersProjection
         List<Convenio> convenioList = projection.getConvenios() != null ? projection.getConvenios() : new ArrayList<>();
@@ -749,7 +750,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //vales de despensa
         List<ParametersDTO> valesDespensa = filterParametersByName(projection.getParameters(), "vales");
         headcount.stream()
-                //.filter(h -> h.getPo().equals("PO10002098"))
+                //.filter(h -> h.getPo().equals("PO10002098") || h.getPo().equalsIgnoreCase("PO10038706") || h.getPo().equals("PO9981236"))
                 .parallel()
                 .forEach(headcountData -> {
                     //log.info("getPo {}  -  isCp {}",headcountData.getPo(), headcountData.getPoName().contains("CP"));
@@ -796,6 +797,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         double totalSalarios = calcularTotalSalarios(headcount, "CP", true);
         double totalSalariosNoCP = calcularTotalSalariosNoCP(headcount, "CP", false);
         headcount.stream()
+                //.filter(h -> h.getPo().equals("PO10002098"))
                 .parallel()
                 .forEach(headcountData -> {
                     List<PaymentComponentDTO> component = headcountData.getComponents();
@@ -1122,7 +1124,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
         List<Convenio> convenio = convenioRepository.findAll();
         List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
-
         // Obtener todos los componentes
         List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
         log.info("allComponents {}",allComponents);
@@ -1130,16 +1131,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ComponentProjection> baseComponents = allComponents.stream()
                 .filter(ComponentProjection::getIsBase)
                 .collect(Collectors.toList());
-        //filtrar los componentes que no son adicionales
-     /*   List<ComponentProjection> additionalComponents = allComponents.stream()
-                .filter(c -> !c.getIsAdditional())
-                .collect(Collectors.toList());
-        log.info("additionalComponents {}",additionalComponents);*/
+        log.info("baseComponents {}",baseComponents);
         // Filtrar los componentes que tienen un typePaymentComponentId único
         List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
                 .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
                 .filter(c -> !c.getIsAdditional())
                 .collect(Collectors.toList());
+        log.info("uniqueTypeComponents {}",uniqueTypeComponents);
         //log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
         // Combinar las dos listas y eliminar duplicados
         List<ComponentProjection> combinedComponents =
