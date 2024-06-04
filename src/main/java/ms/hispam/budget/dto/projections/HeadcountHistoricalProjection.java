@@ -38,4 +38,6 @@ public interface HeadcountHistoricalProjection {
     //convent
     public String getConvent();
     public String getLevel();
+    //catergoryLocal
+    public String getCategoryLocal();
 }
