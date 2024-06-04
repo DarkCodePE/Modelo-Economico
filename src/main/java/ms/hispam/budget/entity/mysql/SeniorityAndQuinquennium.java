@@ -1,5 +1,6 @@
-package ms.hispam.budget.repository.mysql;
+package ms.hispam.budget.entity.mysql;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -10,6 +11,7 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "seniority_and_quinquennium")
 @NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
 public class SeniorityAndQuinquennium {
