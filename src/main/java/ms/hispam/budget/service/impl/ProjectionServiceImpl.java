@@ -796,7 +796,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), youngExecutiveSalaryList, internSalaryList, classificationMap);
                         methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
-
+                        methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap, headcountData.getPoName());
+                        methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.topPerformerBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), ejcPeopleBTPList, ejcBonusBTPList, dirPeopleBTPList, dirBonusBTPList, classificationMap);
+                        methodsPeru.epsCredit(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.voluntaryContribution(component, projection.getPeriod(), projection.getRange());
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
