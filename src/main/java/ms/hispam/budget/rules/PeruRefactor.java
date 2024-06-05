@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -2184,7 +2185,7 @@ public class PeruRefactor {
     //=SIFECHA($Y5;CC$34;"y")
     //Y5 = Fecha de Contrato
     //CC$34 = Mes actual
-   /* public void auxSeniorityYearsPo(List<PaymentComponentDTO> component,String hiringDate, String period, Integer range) {
+   public void auxSeniorityYearsPo(List<PaymentComponentDTO> component,String hiringDate, String period, Integer range) {
         PaymentComponentDTO seniorityYearsPoComponent = new PaymentComponentDTO();
         seniorityYearsPoComponent.setPaymentComponent("SENIORITY_YEARS_PO");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
@@ -2203,7 +2204,7 @@ public class PeruRefactor {
         }
         seniorityYearsPoComponent.setProjections(projections);
         component.add(seniorityYearsPoComponent);
-    }*/
+    }
 
     //Antigüedad
     //=CC919*CC37*CC926

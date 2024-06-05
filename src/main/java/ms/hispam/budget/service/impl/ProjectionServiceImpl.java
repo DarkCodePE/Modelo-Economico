@@ -746,9 +746,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     projection.getPeriod(), projection.getRange());
                         }
                         // Obtener el total de horas extras por BU (calculado en addNominal)
-                        double totalHorasExtras = totalHorasExtrasPorBU;
-                        double totalComisiones = totalComisionesPorBU;
-                        double totalIncentivos = totalIncentivosPorBU;
+                        double totalHorasExtras = totalHorasExtrasPorBU == 0 ? 1 : totalHorasExtrasPorBU;
+                        double totalComisiones = totalComisionesPorBU == 0 ? 1 : totalComisionesPorBU;
+                        double totalIncentivos = totalIncentivosPorBU == 0 ? 1 : totalIncentivosPorBU;
                         List<PaymentComponentDTO> component = headcountData.getComponents();
                         methodsPeru.calculateTheoreticalSalary(component, salaryIncreaseList, headcountData.getPoName(), projection.getPeriod(), projection.getRange(), executiveSalaryIncreaseList, directorSalaryIncreaseList, classificationMap);
                         methodsPeru.relocation(component, projection.getPeriod(), projection.getRange());
@@ -760,6 +760,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.housingExpatriates(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationEnjoyment(component, projection.getPeriod(), projection.getRange(), vacationDaysList, vacationSeasonalityList);
                         methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), totalHorasExtras, annualOvertimeValueList, overtimeSeasonalityList);
+                        //log.debug("totalComisiones {}", totalComisiones);
                         methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), totalComisiones, annualCommissionValueList);
                         methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), totalIncentivos, annualIncentiveValueList);
                         methodsPeru.nightBonus(component, projection.getPeriod(), projection.getRange());
@@ -786,6 +787,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.familyAssignment(component, projection.getPeriod(), projection.getRange(),familyAllowanceList, minimumSalaryList);
                         methodsPeru.lumpSumBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), lumpSumBonusList, countEJC, countGER, classificationMap);
                         methodsPeru.signingBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), signingBonusList, countEJC, countGER, classificationMap);
+                        methodsPeru.extraordinaryConventionBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), extraordinaryGratificationList, countEMP, classificationMap);
+                        methodsPeru.extraordinaryBonus(component, projection.getPeriod(), projection.getRange(), extraordinaryBonusList, totalPositions);
+                        methodsPeru.epsContribution(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.schoolAssignment(component, projection.getPeriod(), projection.getRange(), schoolAllowanceSeasonalityList);
+                        methodsPeru.studiesBonus(component, projection.getPeriod(), projection.getRange(), preSchoolAllowanceSeasonalityList);
+                        methodsPeru.foodBenefits(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), classificationMap);
+                        methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getPoName(), youngExecutiveSalaryList, internSalaryList, classificationMap);
+                        methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
+
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
