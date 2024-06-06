@@ -770,7 +770,7 @@ public class PeruRefactor {
         if (commissionsBaseComponent != null) {
             double commissionsBase = commissionsBaseComponent.getAmount().doubleValue();
             double commissionsValue = getCachedValue(commissionsValueMap, nextPeriod);
-            double commissionsPerMonth = (commissionsBase / totalCommissions) * commissionsValue / 12;
+            double commissionsPerMonth = (commissionsBase / totalCommissions) * (commissionsValue / 12);
             commissionsComponent.setAmount(BigDecimal.valueOf(commissionsPerMonth));
             commissionsComponent.setProjections(Shared.generateMonthProjection(period, range, commissionsComponent.getAmount()));
             List<MonthProjection> projections = new ArrayList<>();
@@ -786,7 +786,7 @@ public class PeruRefactor {
                 } else {
                     commissionsValueValue = lastCommissionsValue;
                 }
-                double commissionsPerMonthProjection = (commissionsBaseProjection / totalCommissions) * commissionsValueValue / 12;
+                double commissionsPerMonthProjection = (commissionsBaseProjection / totalCommissions) * (commissionsValueValue / 12);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(commissionsPerMonthProjection));

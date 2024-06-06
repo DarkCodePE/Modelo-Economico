@@ -433,7 +433,7 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .stream()
                 .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
                 .collect(Collectors.toList());*/
-
+        //filter projection by pos
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         //log.info("headcount {}",headcount);
        /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
@@ -1925,7 +1925,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         String.join(",", entities),projection.getPeriod(),String.join(",",
                                 projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent)
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
-                .stream().map(e->HeadcountProjection.builder()
+                .stream()
+                //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
+                .map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
                         .idssff(e.getIdssff())
@@ -1946,7 +1948,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .convent(e.getConvent())
                         .level(e.getLevel())
                         .build()).collect(Collectors.toList());
-
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
         List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                         codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
@@ -2416,18 +2417,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             String component = link.getPaymentComponent().getPaymentComponent();
                             double importe = h.getImporte();
                             componentTotals.put(component, componentTotals.getOrDefault(component, 0.0) + importe);
-                            // Sumar el total de horas extras por BU
-                            if (Arrays.asList("2143", "2153", "2163", "2173", "2183", "2193").contains(component)) {
-                                totalHorasExtrasPorBU += importe;
-                            }
-                            //sumar el total de comisiones por BU
-                            if (Objects.equals("1923", component)) {
-                                totalComisionesPorBU += importe;
-                            }
-                            //sumar el total de incentivos por BU
-                            if (Arrays.asList("4078","1973").contains(component)) {
-                                totalIncentivosPorBU += importe;
-                            }
                         }
                     }
                 }
@@ -2437,8 +2426,24 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     if (total > 0) {
                         projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
                     }
+                    //Sumar el total de horas extras por BU
+                    if("OVERTIME_BASE".equals(component)){
+                      totalHorasExtrasPorBU += total;
+                    }
+                    //sumar el total de comisiones por BU
+                    if("COMMISSIONS_BASE".equals(component)){
+                        totalComisionesPorBU += total;
+                    }
+                    //sumar el total de incentivos por BU
+                    if("INCENTIVES_BASE".equals(component)){
+                        totalIncentivosPorBU += total;
+                    }
                 }
             }
+            log.info("projectionsComponent {}",projectionsComponent);
+            log.info("totalHorasExtrasPorBU {}",totalHorasExtrasPorBU);
+            log.info("totalComisionesPorBU {}",totalComisionesPorBU);
+            log.info("totalIncentivosPorBU {}",totalIncentivosPorBU);
         }else if(projection.getBu().equalsIgnoreCase("T. Uruguay")) {
             //log.debug("ssff {}",list.get(0).getIdssff());
             List<NominaProjection> nominalBySSFF = nominal.stream().filter(g -> g.getIdssff()
