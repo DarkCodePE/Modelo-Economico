@@ -152,36 +152,6 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<groupId>com.microsoft.azure</groupId>
-				<artifactId>azure-webapp-maven-plugin</artifactId>
-				<version>2.5.0</version>
-				<configuration>
-					<schemaVersion>v2</schemaVersion>
-					<subscriptionId>87a1d13f-c4f7-4bd2-8fd7-a6f3ca8e57c7</subscriptionId>
-					<resourceGroup>PRODUCCION</resourceGroup>
-					<appName>ms-hispam-budget</appName>
-					<pricingTier>P1v2</pricingTier>
-					<region>Eastus</region>
-					<appServicePlanName>hispam-PROD</appServicePlanName>
-					<appServicePlanResourceGroup>PRODUCCION</appServicePlanResourceGroup>
-					<runtime>
-						<os>Linux</os>
-						<javaVersion>Java 11</javaVersion>
-						<webContainer>Java SE</webContainer>
-					</runtime>
-					<deployment>
-						<resources>
-							<resource>
-								<directory>${project.basedir}/target</directory>
-								<includes>
-									<include>*.jar</include>
-								</includes>
-							</resource>
-						</resources>
-					</deployment>
-				</configuration>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
@@ -207,6 +177,36 @@
 					</deployment>
 				</configuration>
 			</plugin>-->
+		    <plugin>
+		        <groupId>com.microsoft.azure</groupId>
+		        <artifactId>azure-webapp-maven-plugin</artifactId>
+		        <version>2.13.0</version>
+		        <configuration>
+		            <schemaVersion>v2</schemaVersion>
+		            <subscriptionId>87a1d13f-c4f7-4bd2-8fd7-a6f3ca8e57c7</subscriptionId>
+		            <resourceGroup>PRODUCTION-SD</resourceGroup>
+		            <appName>ms-hispam-budget</appName>
+		            <pricingTier>P1v3</pricingTier>
+		            <region>eastus</region>
+		            <appServicePlanName>ms-hispam-budget-plan</appServicePlanName>
+		            <appServicePlanResourceGroup>PRODUCCION</appServicePlanResourceGroup>
+		            <runtime>
+		                <os>Linux</os>
+		                <javaVersion>Java 17</javaVersion>
+		                <webContainer>Java SE</webContainer>
+		            </runtime>
+		            <deployment>
+		                <resources>
+		                    <resource>
+		                        <directory>${project.basedir}/target</directory>
+		                        <includes>
+		                            <include>*.jar</include>
+		                        </includes>
+		                    </resource>
+		                </resources>
+		            </deployment>
+		        </configuration>
+		    </plugin>
 		</plugins>
 	</build>
 	<repositories>
