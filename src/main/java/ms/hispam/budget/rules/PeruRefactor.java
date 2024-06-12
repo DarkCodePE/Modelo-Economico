@@ -2,6 +2,7 @@ package ms.hispam.budget.rules;
 
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
+import ms.hispam.budget.entity.mysql.ConceptoPresupuestal;
 import ms.hispam.budget.entity.mysql.EmployeeClassification;
 import ms.hispam.budget.entity.mysql.SeniorityAndQuinquennium;
 import ms.hispam.budget.util.Shared;
@@ -1073,6 +1074,77 @@ public class PeruRefactor {
         }
         component.add(vacationBonusComponent);
     }
+    //Bonificación por Destaque
+    //=$BK5*CB$23
+    //BK5 = componentBonificacionDestaqueBase
+    //CB$23 = parametro Valor Bonificación Destaque
+    public void detachmentBonus(List<PaymentComponentDTO> components, String period, Integer range, List<ParametersDTO> detachmentBonusValueList) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        Map<String, ParametersDTO> detachmentBonusValueMap = createCacheMap(detachmentBonusValueList);
+
+        PaymentComponentDTO detachmentBonusBaseComponent = componentMap.get("DETACHMENT_BONUS_BASE");
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+        yearMonth = yearMonth.plusMonths(1);
+        String nextPeriod = yearMonth.format(formatter);
+
+        PaymentComponentDTO detachmentBonusComponent = new PaymentComponentDTO();
+        detachmentBonusComponent.setPaymentComponent("DETACHMENT_BONUS");
+        if (detachmentBonusBaseComponent != null) {
+            double detachmentBonusBase = detachmentBonusBaseComponent.getAmount().doubleValue();
+            double detachmentBonusValue = getCachedValue(detachmentBonusValueMap, nextPeriod);
+            double detachmentBonusPerMonth = detachmentBonusBase * detachmentBonusValue;
+            detachmentBonusComponent.setAmount(BigDecimal.valueOf(detachmentBonusPerMonth));
+            detachmentBonusComponent.setProjections(Shared.generateMonthProjection(period, range, detachmentBonusComponent.getAmount()));
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : detachmentBonusBaseComponent.getProjections()) {
+                String month = projection.getMonth();
+                double detachmentBonusBaseProjection = projection.getAmount().doubleValue();
+                double detachmentBonusPerMonthProjection = detachmentBonusBaseProjection * detachmentBonusValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(detachmentBonusPerMonthProjection));
+                projections.add(monthProjection);
+            }
+            detachmentBonusComponent.setProjections(projections);
+        } else {
+            detachmentBonusComponent.setAmount(BigDecimal.valueOf(0));
+            detachmentBonusComponent.setProjections(Shared.generateMonthProjection(period, range, detachmentBonusComponent.getAmount()));
+        }
+        components.add(detachmentBonusComponent);
+    }
+
+    //Gratificación Extraordinaria por Traslado
+    //=$BM6= componentGratificacionExtraordinariaTrasladoBase
+    public void extraordinaryTransferBonus(List<PaymentComponentDTO> component, String period, Integer range) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
+
+        PaymentComponentDTO extraordinaryTransferBonusBaseComponent = componentMap.get("EXTRAORDINARY_TRANSFER_BONUS_BASE");
+
+        PaymentComponentDTO extraordinaryTransferBonusComponent = new PaymentComponentDTO();
+        extraordinaryTransferBonusComponent.setPaymentComponent("EXTRAORDINARY_TRANSFER_BONUS");
+        if (extraordinaryTransferBonusBaseComponent != null) {
+            double extraordinaryTransferBonusBase = extraordinaryTransferBonusBaseComponent.getAmount().doubleValue();
+            extraordinaryTransferBonusComponent.setAmount(BigDecimal.valueOf(extraordinaryTransferBonusBase));
+            extraordinaryTransferBonusComponent.setProjections(Shared.generateMonthProjection(period, range, extraordinaryTransferBonusComponent.getAmount()));
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : extraordinaryTransferBonusBaseComponent.getProjections()) {
+                String month = projection.getMonth();
+                double extraordinaryTransferBonusBaseProjection = projection.getAmount().doubleValue();
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(extraordinaryTransferBonusBaseProjection));
+                projections.add(monthProjection);
+            }
+            extraordinaryTransferBonusComponent.setProjections(projections);
+        } else {
+            extraordinaryTransferBonusComponent.setAmount(BigDecimal.valueOf(0));
+            extraordinaryTransferBonusComponent.setProjections(Shared.generateMonthProjection(period, range, extraordinaryTransferBonusComponent.getAmount()));
+        }
+        component.add(extraordinaryTransferBonusComponent);
+    }
+
 
     //Gastos de Desplazamiento
     //$BL5 = travelExpensesComponentBase
@@ -2564,4 +2636,1671 @@ public class PeruRefactor {
         }
         components.add(voluntaryContributionComponent);
     }
+    //Gratificación - Salario Teórico
+    //='Modelo PERU'!CC35*$K$3
+    //CC35 = theoricSalary
+    //$K$3 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void theoreticalSalaryGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-TEORIC-SALARY");
+        double theoricSalary = theoricSalaryComponent != null ? theoricSalaryComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Salario Teórico");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = theoricSalary * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (theoricSalaryComponent != null) {
+            for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Provisión de Vacaciones
+    //==CC49*$K$4
+    //CC49 = vacationProvision
+    //$K$4 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void vacationProvisionGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO vacationProvisionComponent = componentMap.get("VACATION_PROVISION");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-VACATION_PROVISION");
+        double vacationProvision = vacationProvisionComponent != null ? vacationProvisionComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Provisión de Vacaciones");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = vacationProvision * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (vacationProvisionComponent != null) {
+            for (MonthProjection projection : vacationProvisionComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Compensación por Vivienda
+    //=CC63*$K$5
+    //CC63 = housingCompensation
+    //$K$5 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingCompensationGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingCompensationComponent = componentMap.get("HOUSING");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-HOUSING");
+        double housingCompensation = housingCompensationComponent != null ? housingCompensationComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Compensación por Vivienda");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = housingCompensation * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingCompensationComponent != null) {
+            for (MonthProjection projection : housingCompensationComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Incremento AFP 10,23%
+    //=CC77*$K$6
+    //CC77 = afpIncrement
+    //$K$6 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void afpIncrementGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO afpIncrementComponent = componentMap.get("INCREASE_AFP_1023");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-AFP_INCREMENT");
+        double afpIncrement = afpIncrementComponent != null ? afpIncrementComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Incremento AFP 10,23%");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = afpIncrement * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (afpIncrementComponent != null) {
+            for (MonthProjection projection : afpIncrementComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Incremento 3,3% + Incremento SNP 3,3%
+    //==+CC85*$K$7
+    //CC85 = snpIncrement
+    //$K$7 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void snpIncrementGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO snpIncrementComponent = componentMap.get("INCREASE_SNP_AND_INCREASE");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-INCREASE_SNP_AND_INCREASE");
+        double snpIncrement = snpIncrementComponent != null ? snpIncrementComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Incremento 3,3% + Incremento SNP 3,3%");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = snpIncrement * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (snpIncrementComponent != null) {
+            for (MonthProjection projection : snpIncrementComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Complemento Sueldo Basico
+    //==CC140*$K$10
+    //CC140 = basicSalaryComplement
+    //$K$10 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void basicSalaryComplementGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO basicSalaryComplementComponent = componentMap.get("BASIC_SALARY_COMPLEMENT");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-BASIC_SALARY_COMPLEMENT");
+        double basicSalaryComplement = basicSalaryComplementComponent != null ? basicSalaryComplementComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Complemento Sueldo Basico");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = basicSalaryComplement * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (basicSalaryComplementComponent != null) {
+            for (MonthProjection projection : basicSalaryComplementComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Asignación Familiar
+    //=CC147*$K$11
+    //CC147 = familyAllowance
+    //$K$11 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void familyAllowanceGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO familyAllowanceComponent = componentMap.get("FAMILY_ASSIGNMENT");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-FAMILY_ASSIGNMENT");
+        double familyAllowance = familyAllowanceComponent != null ? familyAllowanceComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Asignación Familiar");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = familyAllowance * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (familyAllowanceComponent != null) {
+            for (MonthProjection projection : familyAllowanceComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Ley Teletrabajo
+    //=CC148*$K$11
+    //CC148 = teleworkLaw
+    //$K$11 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void teleworkLawGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO teleworkLawComponent = componentMap.get("TELEWORK_LAW");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-TELEWORK_LAW");
+        double teleworkLaw = teleworkLawComponent != null ? teleworkLawComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Ley Teletrabajo");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = teleworkLaw * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (teleworkLawComponent != null) {
+            for (MonthProjection projection : teleworkLawComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bono Top Performer
+    //=CC182*$K$13
+    //CC182 = topPerformerBonus
+    //$K$13 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void topPerformerBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO topPerformerBonusComponent = componentMap.get("TOP_PERFORMER_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-TOP_PERFORMER_BONUS");
+        double topPerformerBonus = topPerformerBonusComponent != null ? topPerformerBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bono Top Performer");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = topPerformerBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (topPerformerBonusComponent != null) {
+            for (MonthProjection projection : topPerformerBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bonificación Responsable Grupo
+    //=CC183*$K$14
+    //CC183 = groupResponsibleBonus
+    //$K$14 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void groupResponsibleBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO groupResponsibleBonusComponent = componentMap.get("GROUP_RESPONSIBLE_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-GROUP_RESPONSIBLE_BONUS");
+        double groupResponsibleBonus = groupResponsibleBonusComponent != null ? groupResponsibleBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bonificación Responsable Grupo");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = groupResponsibleBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (groupResponsibleBonusComponent != null) {
+            for (MonthProjection projection : groupResponsibleBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Jornada Tienda
+    //=CC198*$K$15
+    //CC198 = storeDay
+    //$K$15 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void storeDayGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO storeDayComponent = componentMap.get("STORE_DAY");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-STORE_DAY");
+        double storeDay = storeDayComponent != null ? storeDayComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Jornada Tienda");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = storeDay * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (storeDayComponent != null) {
+            for (MonthProjection projection : storeDayComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Asignación de Vivienda
+    //=CC199*$K$16
+    //CC199 = housingAssignment
+    //$K$16 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingAssignmentGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingAssignmentComponent = componentMap.get("HOUSING_ASSIGNMENT");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-HOUSING_ASSIGNMENT");
+        double housingAssignment = housingAssignmentComponent != null ? housingAssignmentComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Asignación de Vivienda");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = housingAssignment * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingAssignmentComponent != null) {
+            for (MonthProjection projection : housingAssignmentComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Conceptos Mandato Judicial
+    //=CC200*$K$17
+    //CC200 = judicialMandateConcepts
+    //$K$17 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void judicialMandateConceptsGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO judicialMandateConceptsComponent = componentMap.get("JUDICIAL_MANDATE_CONCEPTS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS");
+        double judicialMandateConcepts = judicialMandateConceptsComponent != null ? judicialMandateConceptsComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Conceptos Mandato Judicial");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = judicialMandateConcepts * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (judicialMandateConceptsComponent != null) {
+            for (MonthProjection projection : judicialMandateConceptsComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bonificación Complementaria
+    //=CC201*$K$18
+    //CC201 = complementaryBonus
+    //$K$18 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void complementaryBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO complementaryBonusComponent = componentMap.get("COMPLEMENTARY_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-COMPLEMENTARY_BONUS");
+        double complementaryBonus = complementaryBonusComponent != null ? complementaryBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bonificación Complementaria");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = complementaryBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (complementaryBonusComponent != null) {
+            for (MonthProjection projection : complementaryBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bonificación Días Especiales
+    //=CC202*$K$19
+    //CC202 = specialDaysBonus
+    //$K$19 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void specialDaysBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO specialDaysBonusComponent = componentMap.get("SPECIAL_DAYS_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-SPECIAL_DAYS_BONUS");
+        double specialDaysBonus = specialDaysBonusComponent != null ? specialDaysBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bonificación Días Especiales");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = specialDaysBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (specialDaysBonusComponent != null) {
+            for (MonthProjection projection : specialDaysBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bono disponibilidad
+    //=CC203*$K$20
+    //CC203 = availabilityBonus
+    //$K$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void availabilityBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO availabilityBonusComponent = componentMap.get("AVAILABILITY_PLUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-AVAILABILITY_PLUS");
+        double availabilityBonus = availabilityBonusComponent != null ? availabilityBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bono disponibilidad");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = availabilityBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (availabilityBonusComponent != null) {
+            for (MonthProjection projection : availabilityBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Gratificación - Bono por trabajo nocturno
+    //=CC204*$K$21
+    //CC204 = nightWorkBonus
+    //$K$21 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void nightWorkBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO nightWorkBonusComponent = componentMap.get("NIGHT_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-NIGHT_BONUS");
+        double nightWorkBonus = nightWorkBonusComponent != null ? nightWorkBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bono por trabajo nocturno");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = nightWorkBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (nightWorkBonusComponent != null) {
+            for (MonthProjection projection : nightWorkBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+
+    //Gratificación - Bonificación por Destaque
+    //=CC205*$K$22
+    //=CC205*$K$22
+    //CC205 = detachmentBonus
+    //$K$22 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void detachmentBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO detachmentBonusComponent = componentMap.get("DETACHMENT_BONUS");
+        PaymentComponentDTO gratificationComponent = new PaymentComponentDTO();
+        gratificationComponent.setPaymentComponent("GRATIFICATION-DETACHMENT_BONUS");
+        double detachmentBonus = detachmentBonusComponent != null ? detachmentBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Bonificación por Destaque");
+        double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
+        double gratification = detachmentBonus * gratificationConceptValue;
+        gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
+        gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (detachmentBonusComponent != null) {
+            for (MonthProjection projection : detachmentBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double gratificationProjection = projection.getAmount().doubleValue() * gratificationConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(gratificationProjection));
+                projections.add(monthProjection);
+            }
+            gratificationComponent.setProjections(projections);
+        }else {
+            gratificationComponent.setAmount(BigDecimal.valueOf(0));
+            gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        }
+        components.add(gratificationComponent);
+    }
+    //Bonif. Ext. Temp. - Salario Teórico
+    //=CC36*$N$3
+    //CC36 = theoreticalSalary
+    //$N$3 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void theoreticalSalaryTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoreticalSalaryComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-THEORETICAL_SALARY");
+        double theoreticalSalary = theoreticalSalaryComponent != null ? theoreticalSalaryComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Salario Teórico");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = theoreticalSalary * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (theoreticalSalaryComponent != null) {
+            for (MonthProjection projection : theoreticalSalaryComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Provisión de Vacaciones
+    //=CC37*$N$4
+    //CC37 = vacationProvision
+    //$N$4 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void vacationProvisionTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO vacationProvisionComponent = componentMap.get("VACATION_PROVISION");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-VACATION_PROVISION");
+        double vacationProvision = vacationProvisionComponent != null ? vacationProvisionComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Provisión de Vacaciones");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = vacationProvision * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (vacationProvisionComponent != null) {
+            for (MonthProjection projection : vacationProvisionComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Compensación por Vivienda
+    //=CC38*$N$5
+    //CC38 = housingCompensation
+    //$N$5 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingCompensationTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingCompensationComponent = componentMap.get("HOUSING");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-HOUSING");
+        double housingCompensation = housingCompensationComponent != null ? housingCompensationComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Compensación por Vivienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = housingCompensation * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingCompensationComponent != null) {
+            for (MonthProjection projection : housingCompensationComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Incremento AFP 10,23%
+    //=CC39*$N$6
+    //CC39 = afpIncrement
+    //$N$6 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void afpIncrementTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO afpIncrementComponent = componentMap.get("INCREASE_AFP_1023");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-AFP_INCREMENT");
+        double afpIncrement = afpIncrementComponent != null ? afpIncrementComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Incremento AFP 10,23%");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = afpIncrement * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (afpIncrementComponent != null) {
+            for (MonthProjection projection : afpIncrementComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Incremento 3,3% + Incremento SNP 3,3%
+    //=CC40*$N$7
+    //CC40 = INCREASE_SNP_AND_INCREASE
+    //$N$7 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void increaseSNPAndIncreaseTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO increaseSNPAndIncreaseComponent = componentMap.get("INCREASE_SNP_AND_INCREASE");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-INCREASE_SNP_AND_INCREASE");
+        double increaseSNPAndIncrease = increaseSNPAndIncreaseComponent != null ? increaseSNPAndIncreaseComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Incremento 3,3% + Incremento SNP 3,3%");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = increaseSNPAndIncrease * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (increaseSNPAndIncreaseComponent != null) {
+            for (MonthProjection projection : increaseSNPAndIncreaseComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Complemento Sueldo Basico
+    //=CC41*$N$8
+    //CC41 = basicSalaryComplement
+    //$N$8 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void basicSalaryComplementTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO basicSalaryComplementComponent = componentMap.get("BASIC_SALARY_COMPLEMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-BASIC_SALARY_COMPLEMENT");
+        double basicSalaryComplement = basicSalaryComplementComponent != null ? basicSalaryComplementComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Complemento Sueldo Basico");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = basicSalaryComplement * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (basicSalaryComplementComponent != null) {
+            for (MonthProjection projection : basicSalaryComplementComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Asignación Familiar
+    //=CC42*$N$9
+    //CC42 = familyAssignment
+    //$N$9 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void familyAssignmentTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO familyAssignmentComponent = componentMap.get("FAMILY_ASSIGNMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-FAMILY_ASSIGNMENT");
+        double familyAssignment = familyAssignmentComponent != null ? familyAssignmentComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Asignación Familiar");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = familyAssignment * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (familyAssignmentComponent != null) {
+            for (MonthProjection projection : familyAssignmentComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Ley Teletrabajo
+    //=CC43*$N$10
+    //CC43 = teleworkLaw
+    //$N$10 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void teleworkLawTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO teleworkLawComponent = componentMap.get("TELEWORK_LAW");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-TELEWORK_LAW");
+        double teleworkLaw = teleworkLawComponent != null ? teleworkLawComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Ley Teletrabajo");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = teleworkLaw * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (teleworkLawComponent != null) {
+            for (MonthProjection projection : teleworkLawComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bono Top Performer
+    //=CC44*$N$11
+    //CC44 = topPerformerBonus
+    //$N$11 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void topPerformerBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO topPerformerBonusComponent = componentMap.get("TOP_PERFORMER_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-TOP_PERFORMER_BONUS");
+        double topPerformerBonus = topPerformerBonusComponent != null ? topPerformerBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono Top Performer");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = topPerformerBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (topPerformerBonusComponent != null) {
+            for (MonthProjection projection : topPerformerBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Jornada Tienda
+    //=CC45*$N$12
+    //CC45 = storeDay
+    //$N$12 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void storeDayTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO storeDayComponent = componentMap.get("STORE_DAY");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-STORE_DAY");
+        double storeDay = storeDayComponent != null ? storeDayComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Jornada Tienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = storeDay * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (storeDayComponent != null) {
+            for (MonthProjection projection : storeDayComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Asignación de Vivienda
+    //=CC46*$N$13
+    //CC46 = housingAssignment
+    //$N$13 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingAssignmentTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingAssignmentComponent = componentMap.get("HOUSING_ASSIGNMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-HOUSING_ASSIGNMENT");
+        double housingAssignment = housingAssignmentComponent != null ? housingAssignmentComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Asignación de Vivienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = housingAssignment * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingAssignmentComponent != null) {
+            for (MonthProjection projection : housingAssignmentComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Conceptos Mandato Judicial
+    //=CC47*$N$14
+    //CC47 = judicialMandateConcepts
+    //$N$14 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void judicialMandateConceptsTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO judicialMandateConceptsComponent = componentMap.get("JUDICIAL_MANDATE_CONCEPTS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-JUDICIAL_MANDATE_CONCEPTS");
+        double judicialMandateConcepts = judicialMandateConceptsComponent != null ? judicialMandateConceptsComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Conceptos Mandato Judicial");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = judicialMandateConcepts * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (judicialMandateConceptsComponent != null) {
+            for (MonthProjection projection : judicialMandateConceptsComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bonificación Complementaria
+    //=CC48*$N$15
+    //CC48 = complementaryBonus
+    //$N$15 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void complementaryBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO complementaryBonusComponent = componentMap.get("COMPLEMENTARY_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-COMPLEMENTARY_BONUS");
+        double complementaryBonus = complementaryBonusComponent != null ? complementaryBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Complementaria");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = complementaryBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (complementaryBonusComponent != null) {
+            for (MonthProjection projection : complementaryBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bonificación Días Especiales
+    //=CC49*$N$16
+    //CC49 = specialDaysBonus
+    //$N$16 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void specialDaysBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO specialDaysBonusComponent = componentMap.get("SPECIAL_DAYS_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-SPECIAL_DAYS_BONUS");
+        double specialDaysBonus = specialDaysBonusComponent != null ? specialDaysBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Días Especiales");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = specialDaysBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (specialDaysBonusComponent != null) {
+            for (MonthProjection projection : specialDaysBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bono disponibilidad
+    //=CC50*$N$17
+    //CC50 = availabilityBonus
+    //$N$17 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void availabilityBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO availabilityBonusComponent = componentMap.get("AVAILABILITY_PLUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-AVAILABILITY_PLUS");
+        double availabilityBonus = availabilityBonusComponent != null ? availabilityBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono disponibilidad");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = availabilityBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (availabilityBonusComponent != null) {
+            for (MonthProjection projection : availabilityBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        }else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bono por trabajo nocturno
+    //=CC51*$N$18
+    //CC51 = nightWorkBonus
+    //$N$18 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void nightWorkBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO nightWorkBonusComponent = componentMap.get("NIGHT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-NIGHT_BONUS");
+        double nightWorkBonus = nightWorkBonusComponent != null ? nightWorkBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono por trabajo nocturno");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = nightWorkBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (nightWorkBonusComponent != null) {
+            for (MonthProjection projection : nightWorkBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Bonif. Ext. Temp. - Bonificación por Destaque
+    //=CC52*$N$19
+    //CC52 = detachmentBonus
+    //$N$19 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void detachmentBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO detachmentBonusComponent = componentMap.get("DETACHMENT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-DETACHMENT_BONUS");
+        double detachmentBonus = detachmentBonusComponent != null ? detachmentBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación por Destaque");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getBonifExtTemp().doubleValue() : 0;
+        double temporaryBonus = detachmentBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (detachmentBonusComponent != null) {
+            for (MonthProjection projection : detachmentBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Salario Teórico
+    //=CC53*$N$20
+    //CC53 = theoreticalSalary
+    //$N$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void theoreticalSalaryCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoreticalSalaryCTSComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-THEORETICAL_SALARY");
+        double theoreticalSalaryCTS = theoreticalSalaryCTSComponent != null ? theoreticalSalaryCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Salario Teórico");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = theoreticalSalaryCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (theoreticalSalaryCTSComponent != null) {
+            for (MonthProjection projection : theoreticalSalaryCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Provisión de Vacaciones
+    //=CC54*$N$21
+    //CC54 = vacationProvision
+    //$N$21 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void vacationProvisionCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO vacationProvisionComponent = componentMap.get("VACATION_PROVISION");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-VACATION_PROVISION");
+        double vacationProvision = vacationProvisionComponent != null ? vacationProvisionComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Provisión de Vacaciones");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = vacationProvision * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (vacationProvisionComponent != null) {
+            for (MonthProjection projection : vacationProvisionComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Ley Teletrabajo
+    //=CC55*$N$22
+    //CC55 = teleworkLawCTS
+    //$N$22 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void teleworkLawCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO teleworkLawCTSComponent = componentMap.get("TELEWORK_LAW");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-TELEWORK_LAW");
+        double teleworkLawCTS = teleworkLawCTSComponent != null ? teleworkLawCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Ley Teletrabajo");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = teleworkLawCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (teleworkLawCTSComponent != null) {
+            for (MonthProjection projection : teleworkLawCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bono Top Performer
+    //=CC56*$N$23
+    //CC56 = topPerformerBonus
+    //$N$23 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void topPerformerBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO topPerformerBonusCTSComponent = componentMap.get("TOP_PERFORMER_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-TOP_PERFORMER_BONUS");
+        double topPerformerBonusCTS = topPerformerBonusCTSComponent != null ? topPerformerBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono Top Performer");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = topPerformerBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (topPerformerBonusCTSComponent != null) {
+            for (MonthProjection projection : topPerformerBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bonificación Responsable Grupo
+    //=CC57*$N$24
+    //CC57 = groupResponsibleBonus
+    //$N$24 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void groupResponsibleBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO groupResponsibleBonusCTSComponent = componentMap.get("GROUP_RESPONSIBLE_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-GROUP_RESPONSIBLE_BONUS");
+        double groupResponsibleBonusCTS = groupResponsibleBonusCTSComponent != null ? groupResponsibleBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Responsable Grupo");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = groupResponsibleBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (groupResponsibleBonusCTSComponent != null) {
+            for (MonthProjection projection : groupResponsibleBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Jornada Tienda
+    //=CC58*$N$25
+    //CC58 = storeDay
+    //$N$25 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void storeDayCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO storeDayCTSComponent = componentMap.get("STORE_DAY");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-STORE_DAY");
+        double storeDayCTS = storeDayCTSComponent != null ? storeDayCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Jornada Tienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = storeDayCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (storeDayCTSComponent != null) {
+            for (MonthProjection projection : storeDayCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Asignación de Vivienda
+    //=CC59*$N$26
+    //CC59 = housingAssignment
+    //$N$26 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingAssignmentCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingAssignmentCTSComponent = componentMap.get("HOUSING_ASSIGNMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-HOUSING_ASSIGNMENT");
+        double housingAssignmentCTS = housingAssignmentCTSComponent != null ? housingAssignmentCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Asignación de Vivienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = housingAssignmentCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingAssignmentCTSComponent != null) {
+            for (MonthProjection projection : housingAssignmentCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Conceptos Mandato Judicial
+    //=CC60*$N$27
+    //CC60 = judicialMandateConcepts
+    //$N$27 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void judicialMandateConceptsCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO judicialMandateConceptsCTSComponent = componentMap.get("JUDICIAL_MANDATE_CONCEPTS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-JUDICIAL_MANDATE_CONCEPTS");
+        double judicialMandateConceptsCTS = judicialMandateConceptsCTSComponent != null ? judicialMandateConceptsCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Conceptos Mandato Judicial");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = judicialMandateConceptsCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (judicialMandateConceptsCTSComponent != null) {
+            for (MonthProjection projection : judicialMandateConceptsCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bonificación Complementaria
+    //=CC61*$N$28
+    //CC61 = complementaryBonus
+    //$N$28 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void complementaryBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO complementaryBonusCTSComponent = componentMap.get("COMPLEMENTARY_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-COMPLEMENTARY_BONUS");
+        double complementaryBonusCTS = complementaryBonusCTSComponent != null ? complementaryBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Complementaria");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = complementaryBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (complementaryBonusCTSComponent != null) {
+            for (MonthProjection projection : complementaryBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bonificación Días Especiales
+    //=CC62*$N$29
+    //CC62 = specialDaysBonus
+    //$N$29 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void specialDaysBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO specialDaysBonusCTSComponent = componentMap.get("SPECIAL_DAYS_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-SPECIAL_DAYS_BONUS");
+        double specialDaysBonusCTS = specialDaysBonusCTSComponent != null ? specialDaysBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Días Especiales");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = specialDaysBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (specialDaysBonusCTSComponent != null) {
+            for (MonthProjection projection : specialDaysBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bono disponibilidad
+    //=CC63*$N$30
+    //CC63 = availabilityBonus
+    //$N$30 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void availabilityBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO availabilityBonusCTSComponent = componentMap.get("AVAILABILITY_PLUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-AVAILABILITY_PLUS");
+        double availabilityBonusCTS = availabilityBonusCTSComponent != null ? availabilityBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono disponibilidad");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = availabilityBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (availabilityBonusCTSComponent != null) {
+            for (MonthProjection projection : availabilityBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bono por trabajo nocturno
+    //=CC64*$N$31
+    //CC64 = nightWorkBonus
+    //$N$31 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void nightWorkBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO nightWorkBonusCTSComponent = componentMap.get("NIGHT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-NIGHT_BONUS");
+        double nightWorkBonusCTS = nightWorkBonusCTSComponent != null ? nightWorkBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono por trabajo nocturno");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = nightWorkBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (nightWorkBonusCTSComponent != null) {
+            for (MonthProjection projection : nightWorkBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - Bonificación por Destaque
+    //=CC65*$N$32
+    //CC65 = detachmentBonus
+    //$N$32 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void detachmentBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO detachmentBonusCTSComponent = componentMap.get("DETACHMENT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-DETACHMENT_BONUS");
+        double detachmentBonusCTS = detachmentBonusCTSComponent != null ? detachmentBonusCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación por Destaque");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = detachmentBonusCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (detachmentBonusCTSComponent != null) {
+            for (MonthProjection projection : detachmentBonusCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - TFSP
+    //==+CC288*$L$23
+    //CC288 = tfsp
+    //$L$23 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void tfspCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO tfspCTSComponent = componentMap.get("TFSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-TFSP");
+        double tfspCTS = tfspCTSComponent != null ? tfspCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("TFSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = tfspCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (tfspCTSComponent != null) {
+            for (MonthProjection projection : tfspCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - PSP
+    //==+CC289*$L$24
+    //CC289 = psp
+    //$L$24 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void pspCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO pspCTSComponent = componentMap.get("PSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-PSP");
+        double pspCTS = pspCTSComponent != null ? pspCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("PSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = pspCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (pspCTSComponent != null) {
+            for (MonthProjection projection : pspCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - RSP
+    //==+CC290*$L$25
+    //CC290 = rsp
+    //$L$25 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void rspCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO rspCTSComponent = componentMap.get("RSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-RSP");
+        double rspCTS = rspCTSComponent != null ? rspCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("RSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = rspCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (rspCTSComponent != null) {
+            for (MonthProjection projection : rspCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //CTS - COINV
+    //==+CC291*$L$26
+    //CC291 = coinv
+    //$L$26 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void coinvCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO coinvCTSComponent = componentMap.get("COINV");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("CTS-COINV");
+        double coinvCTS = coinvCTSComponent != null ? coinvCTSComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("COINV");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getCts().doubleValue() : 0;
+        double temporaryBonus = coinvCTS * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (coinvCTSComponent != null) {
+            for (MonthProjection projection : coinvCTSComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+
 }
