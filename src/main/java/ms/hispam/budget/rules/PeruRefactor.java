@@ -4302,5 +4302,261 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+    //Essalud - Salario Teórico
+    //=CC53*$N$20
+    //CC53 = theoreticalSalary
+    //$N$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void theoreticalSalaryEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoreticalSalaryEssaludComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-THEORETICAL_SALARY");
+        double theoreticalSalaryEssalud = theoreticalSalaryEssaludComponent != null ? theoreticalSalaryEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Salario Teórico");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = theoreticalSalaryEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (theoreticalSalaryEssaludComponent != null) {
+            for (MonthProjection projection : theoreticalSalaryEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Provisión de Vacaciones
+    //=CC54*$N$21
+    //CC54 = vacationProvision
+    //$N$21 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void vacationProvisionEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO vacationProvisionEssaludComponent = componentMap.get("VACATION_PROVISION");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-VACATION_PROVISION");
+        double vacationProvisionEssalud = vacationProvisionEssaludComponent != null ? vacationProvisionEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Provisión de Vacaciones");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = vacationProvisionEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (vacationProvisionEssaludComponent != null) {
+            for (MonthProjection projection : vacationProvisionEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Compensación por Vivienda
+    //=CC55*$N$22
+    //CC55 = housingCompensation
+    //$N$22 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void housingCompensationEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO housingCompensationEssaludComponent = componentMap.get("HOUSING");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-HOUSING");
+        double housingCompensationEssalud = housingCompensationEssaludComponent != null ? housingCompensationEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Compensación por Vivienda");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = housingCompensationEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (housingCompensationEssaludComponent != null) {
+            for (MonthProjection projection : housingCompensationEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Incremento AFP 10,23%
+    //=CC56*$N$23
+    //CC56 = afpIncrease
+    //$N$23 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void afpIncreaseEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO afpIncreaseEssaludComponent = componentMap.get("INCREASE_AFP_1023");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-AFP_INCREASE");
+        double afpIncreaseEssalud = afpIncreaseEssaludComponent != null ? afpIncreaseEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Incremento AFP 10,23%");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = afpIncreaseEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (afpIncreaseEssaludComponent != null) {
+            for (MonthProjection projection : afpIncreaseEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Incremento 3,3% + Incremento SNP 3,3%
+    //=CC66*$N$33
+    //CC66 = INCREASE_SNP_AND_INCREASE
+    //$N$33 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void increaseSNPAndIncreaseEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO increaseSNPAndIncreaseEssaludComponent = componentMap.get("INCREASE_SNP_AND_INCREASE");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-INCREASE_SNP_AND_INCREASE");
+        double increaseSNPAndIncreaseEssalud = increaseSNPAndIncreaseEssaludComponent != null ? increaseSNPAndIncreaseEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Incremento 3,3% + Incremento SNP 3,3%");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = increaseSNPAndIncreaseEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (increaseSNPAndIncreaseEssaludComponent != null) {
+            for (MonthProjection projection : increaseSNPAndIncreaseEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bono SRD (100%)
+    //=CC67*$N$34
+    //CC67 = srdBonus
+    //$N$34 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void srdBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO srdBonusEssaludComponent = componentMap.get("SRD_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-SRD_BONUS");
+        double srdBonusEssalud = srdBonusEssaludComponent != null ? srdBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono SRD (100%)");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = srdBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (srdBonusEssaludComponent != null) {
+            for (MonthProjection projection : srdBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Complemento Sueldo Basico
+    //=CC68*$N$35
+    //CC68 = basicSalaryComplement
+    //$N$35 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void basicSalaryComplementEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO basicSalaryComplementEssaludComponent = componentMap.get("BASIC_SALARY_COMPLEMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-BASIC_SALARY_COMPLEMENT");
+        double basicSalaryComplementEssalud = basicSalaryComplementEssaludComponent != null ? basicSalaryComplementEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Complemento Sueldo Basico");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = basicSalaryComplementEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (basicSalaryComplementEssaludComponent != null) {
+            for (MonthProjection projection : basicSalaryComplementEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Asignación Familiar
+    //=CC69*$N$36
+    //CC69 = familyAllowance
+    //$N$36 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void familyAllowanceEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO familyAllowanceEssaludComponent = componentMap.get("FAMILY_ASSIGNMENT");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-FAMILY_ASSIGNMENT");
+        double familyAllowanceEssalud = familyAllowanceEssaludComponent != null ? familyAllowanceEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Asignación Familiar");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = familyAllowanceEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (familyAllowanceEssaludComponent != null) {
+            for (MonthProjection projection : familyAllowanceEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
 
 }

@@ -912,6 +912,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.rspCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void coinvCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.coinvCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void theoreticalSalaryEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.theoreticalSalaryEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);//public void vacationProvisionEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.vacationProvisionEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void housingCompensationEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.housingCompensationEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                            // public void afpIncreaseEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.afpIncreaseEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                            //  public void increaseSNPAndIncreaseEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.increaseSNPAndIncreaseEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void srdBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.srdBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void basicSalaryComplementEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.basicSalaryComplementEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void familyAllowanceEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.familyAllowanceEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
