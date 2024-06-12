@@ -2551,10 +2551,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     }
                 }
             }
-            log.info("projectionsComponent {}",projectionsComponent);
-            log.info("totalHorasExtrasPorBU {}",totalHorasExtrasPorBU);
-            log.info("totalComisionesPorBU {}",totalComisionesPorBU);
-            log.info("totalIncentivosPorBU {}",totalIncentivosPorBU);
+            //log.info("projectionsComponent {}",projectionsComponent);
+            //log.info("totalHorasExtrasPorBU {}",totalHorasExtrasPorBU);
+            //log.info("totalComisionesPorBU {}",totalComisionesPorBU);
+            //log.info("totalIncentivosPorBU {}",totalIncentivosPorBU);
         }else if(projection.getBu().equalsIgnoreCase("T. Uruguay")) {
             //log.debug("ssff {}",list.get(0).getIdssff());
             List<NominaProjection> nominalBySSFF = nominal.stream().filter(g -> g.getIdssff()
