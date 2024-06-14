@@ -201,7 +201,7 @@ public class PeruRefactor {
         components.add(salaryComponent);
     }*/
     public void calculateTheoreticalSalary(List<PaymentComponentDTO> components, List<ParametersDTO> salaryIncreaseList, String localCategory, String period, Integer range, List<ParametersDTO> executiveSalaryIncreaseList, List<ParametersDTO> directorSalaryIncreaseList, Map<String, EmployeeClassification> classificationMap) {
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(localCategory, classificationMap.keySet());
@@ -242,10 +242,10 @@ public class PeruRefactor {
                 default -> executiveSalaryIncrease;
             };
 
-            salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + adjustmentBase)));
-            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
+            salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + (adjustmentBase / 100))));
+            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(salaryBase)));
 
-            List<MonthProjection> projections = calculateProjections(salaryComponent, salaryBase, salaryIncreaseyMap, executiveSalaryIncreaseListMap, directorSalaryIncreaseListMap, typeEmp, componentMap);
+            List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseyMap, executiveSalaryIncreaseListMap, directorSalaryIncreaseListMap, typeEmp, componentMap);
 
             salaryComponent.setProjections(projections);
             components.add(salaryComponent);
@@ -270,7 +270,7 @@ public class PeruRefactor {
         return parameter != null ? parameter.getValue() : 0;
     }
 
-    private List<MonthProjection> calculateProjections(PaymentComponentDTO salaryComponent, double salaryBase, Map<String, ParametersDTO> salaryIncreaseyMap, Map<String, ParametersDTO> executiveSalaryIncreaseListMap, Map<String, ParametersDTO> directorSalaryIncreaseListMap, String typeEmp, Map<String, PaymentComponentDTO> componentMap) {
+    private List<MonthProjection> calculateProjections(PaymentComponentDTO salaryComponent, Map<String, ParametersDTO> salaryIncreaseyMap, Map<String, ParametersDTO> executiveSalaryIncreaseListMap, Map<String, ParametersDTO> directorSalaryIncreaseListMap, String typeEmp, Map<String, PaymentComponentDTO> componentMap) {
         List<MonthProjection> projections = new ArrayList<>();
         double ultimaIncremento = 0;
         double ultimaExecutivoIncremento = 0;
@@ -288,7 +288,8 @@ public class PeruRefactor {
                 default -> incrementoExecutivo;
             };
 
-            double salary = salaryBase * (1 + adjustment);
+            double salaryProjection = projection.getAmount().doubleValue();
+            double salary = salaryProjection * (1 + (adjustment / 100));
             double promo = calculatePromoAdjustment(salary, month, componentMap);
 
             double totalSalary = salary * (1 + promo);
@@ -931,7 +932,7 @@ public class PeruRefactor {
     //W$5:$W$11 = cantidad de EMP
     //CC$28 = PARAMETRO Valor Bono Cierre Pliego Sindical
     public void unionClosingBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> unionClosingBonusValueList, long countEMP, Map<String, EmployeeClassification> classificationMap) {
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -1719,7 +1720,7 @@ public class PeruRefactor {
     public void lumpSumBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> lumpSumBonusAmountList, long countEJC, long countGER, Map<String, EmployeeClassification> classificationMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> lumpSumBonusAmountMap = createCacheMap(lumpSumBonusAmountList);
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
       /*  if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -1776,7 +1777,7 @@ public class PeruRefactor {
     public void signingBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> signingBonusAmountList, long countEJC, long countGER, Map<String, EmployeeClassification> classificationMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> signingBonusAmountMap = createCacheMap(signingBonusAmountList);
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -1832,7 +1833,7 @@ public class PeruRefactor {
     public void extraordinaryConventionBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> extraordinaryConventionBonusAmountList, long countEMP, Map<String, EmployeeClassification> classificationMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> extraordinaryConventionBonusAmountMap = createCacheMap(extraordinaryConventionBonusAmountList);
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -2081,7 +2082,7 @@ public class PeruRefactor {
     //B3:B59 = classificationMap
     //V6 = PoName
     public void foodBenefits(List<PaymentComponentDTO> component, String period, Integer range, String poName, Map<String, EmployeeClassification> classificationMap) {
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         // Si no hay coincidencia exacta, buscar la posición más similar
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -2128,7 +2129,7 @@ public class PeruRefactor {
 
         PaymentComponentDTO internsBaseComponent = componentMap.get("INTERNS_BASE");
         if (internsBaseComponent != null) {
-            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
             // Si no hay coincidencia exacta, buscar la posición más similar
             /*if (optionalEmployeeClassification.isEmpty()) {
                 String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
@@ -2305,7 +2306,7 @@ public class PeruRefactor {
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
 
         if (theoricSalaryComponent != null) {
-            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
             /*if (optionalEmployeeClassification.isEmpty()) {
                 String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
                 optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
@@ -2509,7 +2510,7 @@ public class PeruRefactor {
         double srdBonus = srdBonusComponent != null ? srdBonusComponent.getAmount().doubleValue() : 0;
 
         // Obtener la clase de empleado
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
         /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
