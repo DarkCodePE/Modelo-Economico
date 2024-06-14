@@ -23,4 +23,6 @@ public class DataBaseResponse {
     //nivel
     private String level;
     private List<ComponentAmount> components;
+    private String categoryLocal;
+    private String estadoVacante;
 }

@@ -200,57 +200,61 @@ public class PeruRefactor {
         salaryComponent.setProjections(projections);
         components.add(salaryComponent);
     }*/
-    public void calculateTheoreticalSalary(List<PaymentComponentDTO> components, List<ParametersDTO> salaryIncreaseList, String poName, String period, Integer range, List<ParametersDTO> executiveSalaryIncreaseList, List<ParametersDTO> directorSalaryIncreaseList, Map<String, EmployeeClassification> classificationMap) {
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
+    public void calculateTheoreticalSalary(List<PaymentComponentDTO> components, List<ParametersDTO> salaryIncreaseList, String localCategory, String period, Integer range, List<ParametersDTO> executiveSalaryIncreaseList, List<ParametersDTO> directorSalaryIncreaseList, Map<String, EmployeeClassification> classificationMap) {
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
-            String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
+        /*if (optionalEmployeeClassification.isEmpty()) {
+            String mostSimilarPosition = findMostSimilarPosition(localCategory, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
             //log.info("No se encontró una coincidencia exacta para '{}'. Usando '{}' en su lugar.", poName, mostSimilarPosition);
-        }
-        String typeEmp = "EMP";
+        }*/
+
         if (optionalEmployeeClassification.isPresent()) {
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
-            typeEmp = employeeClassification.getTypeEmp();
-        } else {
-            log.error("Employee classification not found for classEmployee: {}", poName);
+            String typeEmp = employeeClassification.getTypeEmp();
+
+
+            Map<String, ParametersDTO> salaryIncreaseyMap = createCacheMap(salaryIncreaseList);
+            Map<String, ParametersDTO> executiveSalaryIncreaseListMap = createCacheMap(executiveSalaryIncreaseList);
+            Map<String, ParametersDTO> directorSalaryIncreaseListMap = createCacheMap(directorSalaryIncreaseList);
+
+            Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+            PaymentComponentDTO componentPC960400 = componentMap.get("PC960400");
+            PaymentComponentDTO componentPC960401 = componentMap.get("PC960401");
+
+            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue() / 14, componentPC960401.getAmount().doubleValue());
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            yearMonth = yearMonth.plusMonths(1);
+            String nextPeriod = yearMonth.format(formatter);
+
+            double salaryIncrease = getCachedValue(salaryIncreaseyMap, nextPeriod);
+            double executiveSalaryIncrease = getCachedValue(executiveSalaryIncreaseListMap, nextPeriod);
+            double directorSalaryIncrease = getCachedValue(directorSalaryIncreaseListMap, nextPeriod);
+
+            PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+            salaryComponent.setPaymentComponent("THEORETICAL-SALARY");
+
+            double adjustmentBase = switch (typeEmp) {
+                case "EMP" -> salaryIncrease;
+                case "DIR", "DPZ" -> directorSalaryIncrease;
+                default -> executiveSalaryIncrease;
+            };
+
+            salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + adjustmentBase)));
+            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
+
+            List<MonthProjection> projections = calculateProjections(salaryComponent, salaryBase, salaryIncreaseyMap, executiveSalaryIncreaseListMap, directorSalaryIncreaseListMap, typeEmp, componentMap);
+
+            salaryComponent.setProjections(projections);
+            components.add(salaryComponent);
+        }else {
+            PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+            salaryComponent.setAmount(BigDecimal.valueOf(0));
+            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
+            components.add(salaryComponent);
         }
-
-        Map<String, ParametersDTO> salaryIncreaseyMap = createCacheMap(salaryIncreaseList);
-        Map<String, ParametersDTO> executiveSalaryIncreaseListMap = createCacheMap(executiveSalaryIncreaseList);
-        Map<String, ParametersDTO> directorSalaryIncreaseListMap = createCacheMap(directorSalaryIncreaseList);
-
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO componentPC960400 = componentMap.get("PC960400");
-        PaymentComponentDTO componentPC960401 = componentMap.get("PC960401");
-
-        double salaryBase = Math.max(componentPC960400.getAmount().doubleValue() / 14, componentPC960401.getAmount().doubleValue());
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-        YearMonth yearMonth = YearMonth.parse(period, formatter);
-        yearMonth = yearMonth.plusMonths(1);
-        String nextPeriod = yearMonth.format(formatter);
-
-        double salaryIncrease = getCachedValue(salaryIncreaseyMap, nextPeriod);
-        double executiveSalaryIncrease = getCachedValue(executiveSalaryIncreaseListMap, nextPeriod);
-        double directorSalaryIncrease = getCachedValue(directorSalaryIncreaseListMap, nextPeriod);
-
-        PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
-        salaryComponent.setPaymentComponent("THEORETICAL-SALARY");
-
-        double adjustmentBase = switch (typeEmp) {
-            case "EMP" -> salaryIncrease;
-            case "DIR", "DPZ" -> directorSalaryIncrease;
-            default -> executiveSalaryIncrease;
-        };
-
-        salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + adjustmentBase)));
-        salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
-
-        List<MonthProjection> projections = calculateProjections(salaryComponent, salaryBase, salaryIncreaseyMap, executiveSalaryIncreaseListMap, directorSalaryIncreaseListMap, typeEmp, componentMap);
-
-        salaryComponent.setProjections(projections);
-        components.add(salaryComponent);
     }
 
     private Map<String, ParametersDTO> createCacheMap(List<ParametersDTO> parameterList) {
@@ -929,10 +933,10 @@ public class PeruRefactor {
     public void unionClosingBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> unionClosingBonusValueList, long countEMP, Map<String, EmployeeClassification> classificationMap) {
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
+        /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
 
         if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("EMP")) {
             Map<String, ParametersDTO> unionClosingBonusValueMap = createCacheMap(unionClosingBonusValueList);
@@ -1717,10 +1721,10 @@ public class PeruRefactor {
         Map<String, ParametersDTO> lumpSumBonusAmountMap = createCacheMap(lumpSumBonusAmountList);
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
+      /*  if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
 
         if (optionalEmployeeClassification.isPresent() && (optionalEmployeeClassification.get().getTypeEmp().equals("EJC") || optionalEmployeeClassification.get().getTypeEmp().equals("GER"))) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
@@ -1774,10 +1778,10 @@ public class PeruRefactor {
         Map<String, ParametersDTO> signingBonusAmountMap = createCacheMap(signingBonusAmountList);
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
+        /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
 
         if (optionalEmployeeClassification.isPresent() && (optionalEmployeeClassification.get().getTypeEmp().equals("EJC") || optionalEmployeeClassification.get().getTypeEmp().equals("GER"))) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
@@ -1830,12 +1834,12 @@ public class PeruRefactor {
         Map<String, ParametersDTO> extraordinaryConventionBonusAmountMap = createCacheMap(extraordinaryConventionBonusAmountList);
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
+        /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
 
-        if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("Emp")) {
+        if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("EMP")) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
             YearMonth yearMonth = YearMonth.parse(period, formatter);
             yearMonth = yearMonth.plusMonths(1);
@@ -2079,10 +2083,10 @@ public class PeruRefactor {
     public void foodBenefits(List<PaymentComponentDTO> component, String period, Integer range, String poName, Map<String, EmployeeClassification> classificationMap) {
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
         // Si no hay coincidencia exacta, buscar la posición más similar
-        if (optionalEmployeeClassification.isEmpty()) {
+        /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
         if (optionalEmployeeClassification.isPresent()) {
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             //String categoryLocal = employeeClassification.getTypeEmp();
@@ -2126,11 +2130,11 @@ public class PeruRefactor {
         if (internsBaseComponent != null) {
             Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
             // Si no hay coincidencia exacta, buscar la posición más similar
-            if (optionalEmployeeClassification.isEmpty() && optionalEmployeeClassification.get().getTypeEmp().equals("FLJ")) {
+            /*if (optionalEmployeeClassification.isEmpty()) {
                 String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
                 optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-            }
-            if (optionalEmployeeClassification.isPresent()) {
+            }*/
+            if (optionalEmployeeClassification.isPresent()  && optionalEmployeeClassification.get().getTypeEmp().equals("FLJ")) {
                 EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
                 PaymentComponentDTO internsComponent = new PaymentComponentDTO();
                 internsComponent.setPaymentComponent("INTERNS");
@@ -2302,10 +2306,10 @@ public class PeruRefactor {
 
         if (theoricSalaryComponent != null) {
             Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
-            if (optionalEmployeeClassification.isEmpty()) {
+            /*if (optionalEmployeeClassification.isEmpty()) {
                 String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
                 optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-            }
+            }*/
 
             if (optionalEmployeeClassification.isPresent()) {
                 EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
@@ -2506,10 +2510,10 @@ public class PeruRefactor {
 
         // Obtener la clase de empleado
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName));
-        if (optionalEmployeeClassification.isEmpty()) {
+        /*if (optionalEmployeeClassification.isEmpty()) {
             String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
             optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }
+        }*/
 
         double topPerformerBonus = 0;
         if (optionalEmployeeClassification.isPresent()) {
@@ -4558,5 +4562,132 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
-
+    //Essalud - Ley Teletrabajo
+    //=CC70*$N$37
+    //CC70 = teleworkLaw
+    //$N$37 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void teleworkLawEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO teleworkLawEssaludComponent = componentMap.get("TELEWORK_LAW");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-TELEWORK_LAW");
+        double teleworkLawEssalud = teleworkLawEssaludComponent != null ? teleworkLawEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Ley Teletrabajo");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = teleworkLawEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (teleworkLawEssaludComponent != null) {
+            for (MonthProjection projection : teleworkLawEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bono Top Performer
+    //=CC71*$N$38
+    //CC71 = topPerformerBonus
+    //$N$38 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void topPerformerBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO topPerformerBonusEssaludComponent = componentMap.get("TOP_PERFORMER_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-TOP_PERFORMER_BONUS");
+        double topPerformerBonusEssalud = topPerformerBonusEssaludComponent != null ? topPerformerBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono Top Performer");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = topPerformerBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (topPerformerBonusEssaludComponent != null) {
+            for (MonthProjection projection : topPerformerBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bonificación Responsable Grupo
+    //=CC72*$N$39
+    //CC72 = groupResponsibleBonus
+    //$N$39 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void groupResponsibleBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO groupResponsibleBonusEssaludComponent = componentMap.get("GROUP_RESPONSIBLE_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-GROUP_RESPONSIBLE_BONUS");
+        double groupResponsibleBonusEssalud = groupResponsibleBonusEssaludComponent != null ? groupResponsibleBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Responsable Grupo");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = groupResponsibleBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (groupResponsibleBonusEssaludComponent != null) {
+            for (MonthProjection projection : groupResponsibleBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Jornada Tiempo Parcial
+    //=CC73*$N$40
+    //CC73 = partTimeWork
+    //$N$40 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void partTimeWorkEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO partTimeWorkEssaludComponent = componentMap.get("PART_TIME_WORK");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-PART_TIME_WORK");
+        double partTimeWorkEssalud = partTimeWorkEssaludComponent != null ? partTimeWorkEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Jornada Tiempo Parcial");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = partTimeWorkEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (partTimeWorkEssaludComponent != null) {
+            for (MonthProjection projection : partTimeWorkEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
 }

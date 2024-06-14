@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import javax.persistence.Column;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,4 +36,6 @@ public class HeadcountProjection {
     private String cCostos;
     private String convent;
     private String level;
+    private String categoryLocal;  // Mapea con el alias SQL "Categoria_Local"
+    private String estadoVacante;  // Mapea con el alias SQL "Estado_Vacante"
 }
