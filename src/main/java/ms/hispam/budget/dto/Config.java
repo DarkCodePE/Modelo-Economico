@@ -21,6 +21,7 @@ public class Config {
     private List<Convenio> convenios;
     private List<ConvenioBono> convenioBonos;
     private List<NominaPaymentComponentLink> nominaPaymentComponentRelations;
+    private List<EmployeeClassification> employeeClassifications;
     private String money;
     private String icon;
     private Boolean vViewPo;

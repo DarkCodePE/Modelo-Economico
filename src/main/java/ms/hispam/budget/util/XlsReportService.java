@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,13 +41,13 @@ public class XlsReportService {
     private  ProjectionService service;
     private final  ExternalService externalService;
     // Crear un ReentrantLock
-    private static final ReentrantLock lock = new ReentrantLock();
+    //private static final ReentrantLock lock = new ReentrantLock();
     private static final String[] headers = {"po","idssff"};
     private static final String[] headersInput = {"po","idssff","Nombre de la posición", "Tipo de Empleado", "Fecha de Nacimiento", "Fecha de Contratación", "Convenio", "Nivel"};
 
     private final EmailService emailService;
     private static final String[] headerParameter={"Tipo de Parametro","Periodo","Valor","Comparativo","Periodos comparativos","Rango"};
-
+    private static final Set<String> sheetNames = ConcurrentHashMap.newKeySet();
     public XlsReportService(ReportJobRepository reportJobRepository,  ExternalService externalService, EmailService emailService) {
         this.reportJobRepository = reportJobRepository;
         this.externalService = externalService;
@@ -55,30 +57,45 @@ public class XlsReportService {
     public void setService(@Lazy ProjectionService service) {
         this.service = service;
     }
-    public static byte[] generateExcelProjection(ParametersByProjection projection ,ProjectionSecondDTO data, DataBaseMainReponse dataBase,List<ComponentProjection> components, Integer idBu){
-
+    public static byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu) {
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
-        generateParameter(workbook,projection.getParameters());
+        generateParameter(workbook, projection.getParameters());
         // vista Input
-        generateInput(workbook,dataBase,projection);
+        generateInput(workbook, dataBase, projection);
         //Vista anual
-        generateMoreView("Vista Anual",workbook,data,idBu);
-        generateMoreViewMonth("Vista Mensual",workbook,data);
+        generateMoreView("Vista Anual", workbook, data, idBu);
+        generateMoreViewMonth("Vista Mensual", workbook, data);
 
-        components.stream()
-                //.filter(c -> c.getName().equals("Consolidado De Intereses De Cesantias - Temporales"))
-                .filter(c->(c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()))
-                //.limit(30)
-                .forEach(c-> writeExcelPage(workbook,c.getName(),c.getComponent(),projection.getPeriod(),projection.getRange(),
-                        data.getViewPosition().getPositions(), idBu));
 
-     projection.getBaseExtern()
+
+        components.parallelStream()
+                .filter(c -> (c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()) || !c.getIsBase())
+                .forEach(c -> {
+                    synchronized (sheetNames) {
+                        String sheetName = c.getName();
+                        if (!sheetNames.contains(sheetName)) {
+                            sheetNames.add(sheetName);
+                            writeExcelPageNewExcel(workbook, sheetName, c.getComponent(), projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                        }
+                    }
+                });
+
+        projection.getBaseExtern()
                 .getHeaders()
-                .stream()
-                .filter(r-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(r)))
-                .forEach(c-> writeExcelPage(workbook,c,c,projection.getPeriod(),projection.getRange(),
-                        data.getViewPosition().getPositions(), idBu));
+                .parallelStream()
+                .filter(r -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(r)))
+                .forEach(c -> {
+                    synchronized (sheetNames) {
+                        String sheetName = c;
+                        if (!sheetNames.contains(sheetName)) {
+                            sheetNames.add(sheetName);
+                            writeExcelPageNewExcel(workbook, sheetName, sheetName, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                        } else {
+                            writeExcelPageNewExcel(workbook, createSheetWithUniqueName(workbook, sheetName).getSheetName(), sheetName, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                        }
+                    }
+                });
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
@@ -139,70 +156,6 @@ public class XlsReportService {
                         row.createCell(6).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
                         row.createCell(7).setCellValue(projection.getMonth());
                         row.createCell(8).setCellValue(projection.getAmount().doubleValue());
-                    }
-                }
-            }
-
-            // Guarda el libro de Excel en un archivo
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            workbook.close();
-            return outputStream.toByteArray();
-
-        } catch (Exception e) {
-            throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-        }
-    }
-
-    private static byte[] generateCdg2(List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections){
-        try {
-            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
-                    .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
-            // Crea un nuevo libro de Excel
-            Workbook workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("CDG");
-
-
-            // Encabezados
-            Row headerRow = sheet.createRow(0);
-            headerRow.createCell(0).setCellValue("Periodo");
-            headerRow.createCell(1).setCellValue("Escenario");
-            headerRow.createCell(2).setCellValue("Cuenta");
-            headerRow.createCell(3).setCellValue("Ceco");
-            headerRow.createCell(4).setCellValue("Actividad");
-            headerRow.createCell(5).setCellValue("Concepto");
-            headerRow.createCell(6).setCellValue("Moneda");
-            headerRow.createCell(7).setCellValue("Importe");
-            headerRow.createCell(8).setCellValue("año");
-            // Contador para el número de filas
-            int rowNum = 1;
-
-            // Itera sobre la lista de objetos
-            for (ProjectionDTO data : vdata) {
-                // Obtiene la lista de componentes
-                List<PaymentComponentDTO> components = data.getComponents();
-
-                // Recorre la lista de componentes
-                for (PaymentComponentDTO component : components) {
-                    // Obtiene la lista de proyecciones
-                    List<MonthProjection> projections = component.getProjections();
-
-                    // Recorre la lista de proyecciones
-                    for (MonthProjection projection : projections) {
-                        // Crea una nueva fila en el Excel
-                        Row row = sheet.createRow(rowNum++);
-
-                        // Agrega la información a la fila
-                        row.createCell(0).setCellValue(projection.getMonth());
-                        row.createCell(1).setCellValue("PPTO_0");
-                        row.createCell(2).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
-                        row.createCell(3).setCellValue(data.getCCostos());
-                        row.createCell(4).setCellValue("");
-                        row.createCell(5).setCellValue(component.getName());
-                        row.createCell(6).setCellValue(bu.getCurrent());
-                        row.createCell(7).setCellValue(projection.getAmount().doubleValue());
-                        row.createCell(8).setCellValue(projection.getMonth().substring(0,4));
                     }
                 }
             }
@@ -587,22 +540,19 @@ public class XlsReportService {
     }
     private static final ReentrantLock sheetCreationLock = new ReentrantLock();
 
-    private static Sheet  createSheetWithUniqueName(Workbook workbook, String baseName) {
-        sheetCreationLock.lock();
-        try {
-            String uniqueName = baseName;
-            int index = 1;
-            while (workbook.getSheet(uniqueName) != null) {
-                // Si la hoja ya existe, crea un nuevo nombre único
-                uniqueName = baseName + "_" + index++;
-            }
-            return workbook.createSheet(uniqueName);
-        } finally {
-            sheetCreationLock.unlock();
+    /*private static synchronized Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
+        String uniqueName = baseName;
+        int index = 1;
+        while (workbook.getSheet(uniqueName) != null || sheetNames.containsKey(uniqueName)) {
+            uniqueName = baseName + " (" + index++ + ")";
         }
-    }
-    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection, Integer idBu){
+        sheetNames.put(uniqueName, true);
+        return workbook.createSheet(uniqueName);
+    }*/
+
+    /*private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection, Integer idBu){
         Sheet sheet = createSheetWithUniqueName(workbook, name);
+        log.info("Sheet name: {}", sheet.getSheetName());
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
         Row header = sheet.createRow(0);
@@ -669,7 +619,87 @@ public class XlsReportService {
                 start++;
             }
         }
+    }*/
+    private static final Object lock = new Object();
+    private static Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
+        synchronized (lock) {
+            String uniqueName = baseName;
+            int index = 1;
+            while (workbook.getSheet(uniqueName) != null || sheetNames.contains(uniqueName)) {
+                uniqueName = baseName + " (" + index++ + ")";
+            }
+            sheetNames.add(uniqueName);
+            return workbook.createSheet(uniqueName);
+        }
     }
+
+    private static void writeExcelPageNewExcel(Workbook workbook, String name, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
+        Sheet sheet = createSheetWithUniqueName(workbook, name);
+        log.info("Sheet name: {}", sheet.getSheetName());
+        sheet.setColumnWidth(0, 5000);
+        sheet.setColumnWidth(1, 4000);
+        Row header = sheet.createRow(0);
+        Cell headerCell = header.createCell(0);
+        headerCell.setCellValue("POSSFF");
+        headerCell = header.createCell(1);
+        headerCell.setCellValue("IDSSFF");
+        headerCell = header.createCell(2);
+        headerCell.setCellValue("TIPO DE EMPLEADO");
+        headerCell = header.createCell(3);
+        headerCell.setCellValue(Shared.nameMonth(period));
+
+        int startHeader = 4;
+        for (String m : Shared.generateRangeMonth(period, range)) {
+            headerCell = header.createCell(startHeader);
+            headerCell.setCellValue(m);
+            startHeader++;
+        }
+
+        // Crear el estilo de celda una vez
+        CellStyle style = workbook.createCellStyle();
+        style.setWrapText(true);
+        AtomicInteger start = new AtomicInteger(1);
+        projection.parallelStream().forEach(projectionDTO -> {
+            log.info("Sheet name: {}", sheet.getSheetName());
+            log.info("Procesando: {}", projectionDTO.getPo());
+            // Crear fila
+            Row row = sheet.createRow(start.getAndIncrement());
+
+            // Celda de TypeEmployee
+            Cell cell = row.createCell(2);
+            String type;
+            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
+            if (idBu == 4) {
+                type = isCp ? "CP" : "NO CP";
+            } else {
+                type = projectionDTO.getClassEmployee();
+            }
+            cell.setCellValue(type);
+            cell.setCellStyle(style); // Reutilizar el estilo
+
+            // Obtener el componente
+            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
+                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
+                    .findFirst();
+
+            componentDTO.ifPresent(dto -> {
+                // Celda del componente
+                Cell componentCell = row.createCell(3);
+                componentCell.setCellValue(dto.getAmount().doubleValue());
+                componentCell.setCellStyle(style); // Reutilizar el estilo
+
+                // Celdas de las proyecciones
+                int column = 4;
+                for (MonthProjection month : dto.getProjections()) {
+                    Cell monthCell = row.createCell(column);
+                    monthCell.setCellValue(month.getAmount().doubleValue());
+                    monthCell.setCellStyle(style); // Reutilizar el estilo
+                    column++;
+                }
+            });
+        });
+    }
+
     // Añade un ExecutorService para la ejecución de tareas asíncronas
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
@@ -718,11 +748,13 @@ public class XlsReportService {
                 .exceptionally(e -> {
                     job.setStatus("fallido");
                     job.setIdSsff(userContact);
-                    job.setErrorMessage(e.getMessage());
+                    job.setErrorMessage(String.format("Error al generar el reporte: %s - %s- %s", e.getMessage(), e.getCause(), Arrays.toString(e.getStackTrace())));
                     reportJobRepository.save(job);
                     // Notifica al usuario
                     notifyUser("Falló la generación del reporte de proyección para el usuario con el contacto: " + userContact , userContact);
-                    log.error("Error al generar el reporte", e);
+                    log.error("Error al generar el reporte", (Object) e.getStackTrace());
+                    log.info("Error al generar el reporte", e);
+                    log.info("Error al generar el reporte", e.getCause());
                     return null;
                 });
     }
