@@ -67,15 +67,16 @@ public class XlsReportService {
         generateMoreView("Vista Anual", workbook, data, idBu);
         generateMoreViewMonth("Vista Mensual", workbook, data);
 
+        Set<String> localSheetNames = ConcurrentHashMap.newKeySet();
 
-
-        components.parallelStream()
+        components.stream()
                 .filter(c -> (c.getIscomponent() && c.getShow()) || (!c.getIscomponent() && c.getShow()) || !c.getIsBase())
                 .forEach(c -> {
-                    synchronized (sheetNames) {
-                        String sheetName = c.getName();
-                        if (!sheetNames.contains(sheetName)) {
-                            sheetNames.add(sheetName);
+                    String sheetName = c.getName();
+                    log.info("Sheet name generateExcelProjection: {}", sheetName);
+                    synchronized (lock) {
+                        if (!sheetNames.contains(sheetName) && !localSheetNames.contains(sheetName)) {
+                            localSheetNames.add(sheetName);
                             writeExcelPageNewExcel(workbook, sheetName, c.getComponent(), projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
                         }
                     }
@@ -83,13 +84,13 @@ public class XlsReportService {
 
         projection.getBaseExtern()
                 .getHeaders()
-                .parallelStream()
+                .stream()
                 .filter(r -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(r)))
                 .forEach(c -> {
-                    synchronized (sheetNames) {
-                        String sheetName = c;
-                        if (!sheetNames.contains(sheetName)) {
-                            sheetNames.add(sheetName);
+                    String sheetName = c;
+                    synchronized (lock) {
+                        if (!sheetNames.contains(sheetName) && !localSheetNames.contains(sheetName)) {
+                            localSheetNames.add(sheetName);
                             writeExcelPageNewExcel(workbook, sheetName, sheetName, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
                         } else {
                             writeExcelPageNewExcel(workbook, createSheetWithUniqueName(workbook, sheetName).getSheetName(), sheetName, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
@@ -538,88 +539,7 @@ public class XlsReportService {
         }
 
     }
-    private static final ReentrantLock sheetCreationLock = new ReentrantLock();
 
-    /*private static synchronized Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
-        String uniqueName = baseName;
-        int index = 1;
-        while (workbook.getSheet(uniqueName) != null || sheetNames.containsKey(uniqueName)) {
-            uniqueName = baseName + " (" + index++ + ")";
-        }
-        sheetNames.put(uniqueName, true);
-        return workbook.createSheet(uniqueName);
-    }*/
-
-    /*private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection, Integer idBu){
-        Sheet sheet = createSheetWithUniqueName(workbook, name);
-        log.info("Sheet name: {}", sheet.getSheetName());
-        sheet.setColumnWidth(0, 5000);
-        sheet.setColumnWidth(1, 4000);
-        Row header = sheet.createRow(0);
-        Cell headerCell = header.createCell(0);
-        headerCell.setCellValue("POSSFF");
-        headerCell = header.createCell(1);
-        headerCell.setCellValue("IDSSFF");
-        headerCell = header.createCell(2);
-        headerCell.setCellValue("TIPO DE EMPLEADO");
-        headerCell = header.createCell(3);
-        headerCell.setCellValue(Shared.nameMonth(period));
-        int startHeader = 4;
-        for (String m : Shared.generateRangeMonth(period, range)) {
-            headerCell = header.createCell(startHeader);
-            headerCell.setCellValue(m);
-            startHeader++;
-        }
-        // Crear el estilo de celda una vez
-        CellStyle style = workbook.createCellStyle();
-        style.setWrapText(true);
-        int start = 1;
-        for (ProjectionDTO projectionDTO : projection) {
-            Row row = sheet.createRow(start);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(projectionDTO.getPo());
-            cell.setCellStyle(style); // Reutilizar el estilo
-            cell = row.createCell(1);
-            cell.setCellValue(projectionDTO.getIdssff());
-            cell.setCellStyle(style); // Reutilizar el estilo
-            //TypeEmployee
-            cell = row.createCell(2);
-            String type;
-            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
-            if(idBu==4){
-                type = isCp ? "CP" : "NO CP";
-            }else{
-                type = projectionDTO.getClassEmployee();
-            }
-            cell.setCellValue(type);
-            cell.setCellStyle(style); // Reutilizar el estilo
-            //debug lista de componentes
-            List<PaymentComponentDTO> list = projectionDTO
-                    .getComponents();
-            //log.debug("Componentes: {}", list);
-            //log.debug("Componente: {}", component);
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO
-                    .getComponents()
-                    .stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
-                    .findFirst();
-            //log.debug("Componente: {}", componentDTO);
-            if (componentDTO.isPresent()) {
-                cell = row.createCell(3);
-                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style); // Reutilizar el estilo
-                int column = 4;
-                for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
-                    MonthProjection month = componentDTO.get().getProjections().get(k);
-                    cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style); // Reutilizar el estilo
-                    column++;
-                }
-                start++;
-            }
-        }
-    }*/
     private static final Object lock = new Object();
     private static Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
         synchronized (lock) {
@@ -632,9 +552,22 @@ public class XlsReportService {
             return workbook.createSheet(uniqueName);
         }
     }
+    private static Sheet createSheetWithRetry(Workbook workbook, String baseName) {
+        int retryCount = 0;
+        while (retryCount < 3) { // Número máximo de reintentos
+            try {
+                return createSheetWithUniqueName(workbook, baseName);
+            } catch (IllegalArgumentException e) {
+                baseName = baseName + "_" + retryCount;
+                retryCount++;
+            }
+        }
+        throw new RuntimeException("No se pudo crear una hoja con un nombre único después de varios intentos.");
+    }
+
 
     private static void writeExcelPageNewExcel(Workbook workbook, String name, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
-        Sheet sheet = createSheetWithUniqueName(workbook, name);
+        Sheet sheet = createSheetWithRetry(workbook, name);
         log.info("Sheet name: {}", sheet.getSheetName());
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
@@ -660,45 +593,57 @@ public class XlsReportService {
         style.setWrapText(true);
         AtomicInteger start = new AtomicInteger(1);
         projection.parallelStream().forEach(projectionDTO -> {
-            log.info("Sheet name: {}", sheet.getSheetName());
-            log.info("Procesando: {}", projectionDTO.getPo());
-            // Crear fila
-            Row row = sheet.createRow(start.getAndIncrement());
-
-            // Celda de TypeEmployee
-            Cell cell = row.createCell(2);
-            String type;
-            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
-            if (idBu == 4) {
-                type = isCp ? "CP" : "NO CP";
-            } else {
-                type = projectionDTO.getClassEmployee();
-            }
-            cell.setCellValue(type);
-            cell.setCellStyle(style); // Reutilizar el estilo
-
-            // Obtener el componente
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
-                    .findFirst();
-
-            componentDTO.ifPresent(dto -> {
-                // Celda del componente
-                Cell componentCell = row.createCell(3);
-                componentCell.setCellValue(dto.getAmount().doubleValue());
-                componentCell.setCellStyle(style); // Reutilizar el estilo
-
-                // Celdas de las proyecciones
-                int column = 4;
-                for (MonthProjection month : dto.getProjections()) {
-                    Cell monthCell = row.createCell(column);
-                    monthCell.setCellValue(month.getAmount().doubleValue());
-                    monthCell.setCellStyle(style); // Reutilizar el estilo
-                    column++;
+            try {
+                log.info("Sheet name: {}", sheet.getSheetName());
+                log.info("Procesando: {}", projectionDTO.getPo());
+                // Crear fila
+                Row row;
+                synchronized (sheet) {
+                    row = sheet.createRow(start.getAndIncrement());
                 }
-            });
+
+                if (row == null) {
+                    throw new NullPointerException("No se pudo crear la fila en la hoja de cálculo.");
+                }
+
+                // Celda de TypeEmployee
+                Cell cell = row.createCell(2);
+                String type;
+                boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
+                if (idBu == 4) {
+                    type = isCp ? "CP" : "NO CP";
+                } else {
+                    type = projectionDTO.getClassEmployee();
+                }
+                cell.setCellValue(type);
+                cell.setCellStyle(style); // Reutilizar el estilo
+
+                // Obtener el componente
+                Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
+                        .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
+                        .findFirst();
+
+                componentDTO.ifPresent(dto -> {
+                    // Celda del componente
+                    Cell componentCell = row.createCell(3);
+                    componentCell.setCellValue(dto.getAmount().doubleValue());
+                    componentCell.setCellStyle(style); // Reutilizar el estilo
+
+                    // Celdas de las proyecciones
+                    int column = 4;
+                    for (MonthProjection month : dto.getProjections()) {
+                        Cell monthCell = row.createCell(column);
+                        monthCell.setCellValue(month.getAmount().doubleValue());
+                        monthCell.setCellStyle(style); // Reutilizar el estilo
+                        column++;
+                    }
+                });
+            } catch (Exception e) {
+                log.error("Error al procesar la proyección: " + projectionDTO.getPo(), e);
+            }
         });
     }
+
 
     // Añade un ExecutorService para la ejecución de tareas asíncronas
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
