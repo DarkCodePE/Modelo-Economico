@@ -21,6 +21,7 @@ import ms.hispam.budget.util.*;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
@@ -95,6 +96,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private Executor executor;
     @Autowired
+    @Lazy
     private XlsReportService xlsReportService;
     @Autowired
     private ConvenioRepository convenioRepository;
@@ -1634,13 +1636,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     @Override
-    public List<HistorialProjectionDTO> getHistorial(String email, Integer idHistorial) {
+    public List<HistorialProjectionDTO> getHistorial(String email) {
         //Recuperar lo parametros temporales del historial
-        List<RangeBuDTO> temporalParametersHistorical = buService.getTemporalParameterHistoricalProjections(idHistorial);
+        //List<RangeBuDTO> temporalParametersHistorical = buService.getTemporalParameterHistoricalProjections(idHistorial);
         //Recuperar convenios bono del historial
-        List<ConvenioBonoHistorial> convenioBonoHistorial = convenioBonoHistorialRepository.findByHistorialProjection_Id(idHistorial);
+        //List<ConvenioBonoHistorial> convenioBonoHistorial = convenioBonoHistorialRepository.findByHistorialProjection_Id(idHistorial);
         //Recuperar convenios del historial
-        List<ConvenioHistorial> convenioHistorial = convenioHistorialRepository.findByHistorialProjection_Id(idHistorial);
+        //List<ConvenioHistorial> convenioHistorial = convenioHistorialRepository.findByHistorialProjection_Id(idHistorial);
 
         return historialProjectionRepository.findByCreatedByOrderByCreatedAtDesc(email).stream().map(
                 p->HistorialProjectionDTO.builder()
@@ -1653,7 +1655,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .createdAt(p.getCreatedAt())
                         .isTop(p.getIsTop())
                         .idBu(p.getIdBu())
-                        .temporalParameters(temporalParametersHistorical)
+                       /* .temporalParameters(temporalParametersHistorical)
                         .convenio(convenioHistorial.stream().map(c->ConvenioDTO.builder()
                                 .id(c.getId())
                                 .convenioName(c.getName())
@@ -1665,7 +1667,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 .id(c.getId())
                                 .convenioNivel(c.getNivel())
                                 .bonoPercentage(c.getPorcentaje())
-                                .build()).collect(Collectors.toList()))
+                                .build()).collect(Collectors.toList()))*/
                 .build()).collect(Collectors.toList());
     }
 
@@ -1770,6 +1772,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             throw new CompletionException(e);
         }
     }
+
     @Async
     @Override
     public void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {
