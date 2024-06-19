@@ -5,7 +5,9 @@ import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.EmployeeClassification;
 import ms.hispam.budget.entity.mysql.ReportJob;
+import ms.hispam.budget.repository.mysql.EmployeeClassificationRepository;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
 import org.apache.poi.ss.usermodel.*;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -51,15 +54,27 @@ public class XlsReportService {
     private static final Set<String> sheetNames = ConcurrentHashMap.newKeySet();
     private final XlsSheetCreationService xlsSheetCreationService;
 
+    // Repositorios adicionales
+    private final EmployeeClassificationRepository employeeClassificationRepository;
+    private static final Map<String, EmployeeClassification> classificationMap = new ConcurrentHashMap<>();
     @Autowired
     public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service,
                             ExternalService externalService, EmailService emailService,
-                            XlsSheetCreationService xlsSheetCreationService) {
+                            XlsSheetCreationService xlsSheetCreationService, EmployeeClassificationRepository employeeClassificationRepository) {
         this.reportJobRepository = reportJobRepository;
         this.service = service;
         this.externalService = externalService;
         this.emailService = emailService;
         this.xlsSheetCreationService = xlsSheetCreationService;
+        this.employeeClassificationRepository = employeeClassificationRepository;
+    }
+
+    @PostConstruct
+    public void init() {
+        List<EmployeeClassification> classifications = employeeClassificationRepository.findAll();
+        for (EmployeeClassification classification : classifications) {
+            classificationMap.put(classification.getCategory(), classification);
+        }
     }
 
     @Autowired
@@ -598,76 +613,6 @@ public class XlsReportService {
         }
     }
 
-    private static void writeExcelPage(Workbook workbook,String name,String component,String period,Integer range,List<ProjectionDTO> projection, Integer idBu){
-        Sheet sheet = createSheetWithUniqueName(workbook, name);
-        sheet.setColumnWidth(0, 5000);
-        sheet.setColumnWidth(1, 4000);
-        Row header = sheet.createRow(0);
-        Cell headerCell = header.createCell(0);
-        headerCell.setCellValue("POSSFF");
-        headerCell = header.createCell(1);
-        headerCell.setCellValue("IDSSFF");
-        headerCell = header.createCell(2);
-        headerCell.setCellValue("TIPO DE EMPLEADO");
-        headerCell = header.createCell(3);
-        headerCell.setCellValue(Shared.nameMonth(period));
-        int startHeader = 4;
-        for (String m : Shared.generateRangeMonth(period, range)) {
-            headerCell = header.createCell(startHeader);
-            headerCell.setCellValue(m);
-            startHeader++;
-        }
-        // Crear el estilo de celda una vez
-        CellStyle style = workbook.createCellStyle();
-        style.setWrapText(true);
-        int start = 1;
-        for (ProjectionDTO projectionDTO : projection) {
-            Row row = sheet.createRow(start);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(projectionDTO.getPo());
-            cell.setCellStyle(style); // Reutilizar el estilo
-            cell = row.createCell(1);
-            cell.setCellValue(projectionDTO.getIdssff());
-            cell.setCellStyle(style); // Reutilizar el estilo
-            //TypeEmployee
-            cell = row.createCell(2);
-            String type;
-            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
-            if(idBu==4){
-                type = isCp ? "CP" : "NO CP";
-            }else{
-                type = projectionDTO.getClassEmployee();
-            }
-            cell.setCellValue(type);
-            cell.setCellStyle(style); // Reutilizar el estilo
-            //debug lista de componentes
-            List<PaymentComponentDTO> list = projectionDTO
-                    .getComponents();
-            //log.debug("Componentes: {}", list);
-            //log.debug("Componente: {}", component);
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO
-                    .getComponents()
-                    .stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
-                    .findFirst();
-            //log.debug("Componente: {}", componentDTO);
-            if (componentDTO.isPresent()) {
-                cell = row.createCell(3);
-                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style); // Reutilizar el estilo
-                int column = 4;
-                for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
-                    MonthProjection month = componentDTO.get().getProjections().get(k);
-                    cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style); // Reutilizar el estilo
-                    column++;
-                }
-                start++;
-            }
-        }
-    }
-
     private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
         log.info("Sheet name: {}", sheet.getSheetName());
         sheet.setColumnWidth(0, 5000);
@@ -705,16 +650,20 @@ public class XlsReportService {
             boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
             if(idBu==4){
                 type = isCp ? "CP" : "NO CP";
+            }else if (idBu==5){
+                String localCategory = projectionDTO.getCategoryLocal();
+                Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
+                if (optionalEmployeeClassification.isPresent()) {
+                    type = optionalEmployeeClassification.get().getCategory();
+                } else {
+                    type = String.format("No se encontró la categoría %s", localCategory);
+                }
             }else{
                 type = projectionDTO.getClassEmployee();
             }
             cell.setCellValue(type);
             cell.setCellStyle(style); // Reutilizar el estilo
-            //debug lista de componentes
-            List<PaymentComponentDTO> list = projectionDTO
-                    .getComponents();
-            //log.debug("Componentes: {}", list);
-            //log.debug("Componente: {}", component);
+
             Optional<PaymentComponentDTO> componentDTO = projectionDTO
                     .getComponents()
                     .stream()

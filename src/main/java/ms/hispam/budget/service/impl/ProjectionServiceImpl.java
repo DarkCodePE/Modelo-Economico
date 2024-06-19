@@ -2087,7 +2087,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
-                .filter(e->e.getPosition().equals("PO10000755") || e.getPosition().equals("PO10000777") || e.getPosition().equals("PO10033151"))
+                /*.filter(e->e.getPosition().equals("PO10000755") || e.getPosition().equals("PO10000777") || e.getPosition().equals("PO10033151"))*/
                 .map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
