@@ -1349,6 +1349,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
     }
     private void  addBaseExtern(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
+        log.info("BaseExternResponse {}",baseExtern);
         Map<String, Object>  po = baseExtern
                 .getData()
                 .stream()
@@ -1356,19 +1357,30 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .equals(headcount.getPo()))
                 .findFirst()
                 .orElse(null);
+
+        //log.info("baseExtern {}",po);
         // Extract areaFuncional from the baseExtern data
         String areaFuncional = po != null && po.get("areaFuncional") != null ? po.get("areaFuncional").toString() : null;
-
-       List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream().
-               filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t))).map(
-               p->
-                       PaymentComponentDTO.builder()
-                       .paymentComponent(p)
-                       .amount(BigDecimal.valueOf(po!=null && po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0))
-                       .projections(Shared.generateMonthProjection(period,range, BigDecimal.valueOf(po!=null&&
-                               po.get(p)!=null?Double.parseDouble(po.get(p).toString()):0)))
-                       .build()
-       ).collect(Collectors.toList());
+        //log.info("baseExtern {}",baseExtern);
+       List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream()
+                       .filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t)))
+                    .map(p -> {
+                   if (p.equalsIgnoreCase("mes_promo")) {
+                       log.info("p {}",p);
+                       log.info("po.get(p) {}",po.get(p));
+                       return PaymentComponentDTO.builder()
+                               .paymentComponent(p)
+                               .amountString(po != null && po.get(p) != null ? po.get(p).toString() : null)
+                               .build();
+                   } else {
+                       return PaymentComponentDTO.builder()
+                               .paymentComponent(p)
+                               .amount(BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0))
+                               .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0)))
+                               .build();
+                   }
+               })
+               .collect(Collectors.toList());
         List<PaymentComponentDTO> combined = new ArrayList<>(headcount.getComponents());
         combined.addAll(bases);
         headcount.setComponents(combined);
@@ -2075,6 +2087,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
+                .filter(e->e.getPosition().equals("PO10000755") || e.getPosition().equals("PO10000777") || e.getPosition().equals("PO10033151"))
                 .map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
