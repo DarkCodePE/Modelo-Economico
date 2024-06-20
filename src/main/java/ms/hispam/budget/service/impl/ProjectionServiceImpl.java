@@ -1440,6 +1440,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<NominaPaymentComponentLink> nominaPaymentComponentLink = nominaPaymentComponentLinkRepository.findByBu(vbu.getId());
         //log.debug("combinedComponents {}",combinedComponents);
         List<EmployeeClassification> employeeClassifications = employeeClassificationRepository.findAll();
+        //seniorityAndQuinquenniumRepository
+        List<SeniorityAndQuinquennium> seniorityAndQuinquennium = seniorityAndQuinquenniumRepository.findAll();
+        //conceptoPresupuestalRepository
+        List<ConceptoPresupuestal> conceptoPresupuestal = conceptoPresupuestalRepository.findAll();
         return Config.builder()
                 .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
@@ -1450,6 +1454,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .convenios(convenio)
                 .convenioBonos(convenioBono)
                 .employeeClassifications(employeeClassifications)
+                .seniorityAndQuinquenniums(seniorityAndQuinquennium)
+                .conceptoPresupuestals(conceptoPresupuestal)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                 .nominaPaymentComponentRelations(nominaPaymentComponentLink)
