@@ -129,29 +129,43 @@ public class XlsReportService {
         //.info("uniqueHeaderNames: {}", uniqueHeaderNames);
         // private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu)
         // Segunda pasada para crear las hojas físicamente en el workbook
-        CompletableFuture<Void> sheetCreationTasks = components.stream()
-                .map(c -> xlsSheetCreationService.createSheet(workbook, uniqueComponentNames.get(c))
-                        .thenAccept(sheet -> {
-                            if (sheet != null) {
-                                //log.info("Creating sheet for component: {}", c);
-                                writeExcelPageNewExcel(sheet, c.getComponent(), projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+        CompletableFuture<Void> sheetCreationTasks = CompletableFuture.allOf(
+                components.stream()
+                        .map(c -> {
+                            if (hasDataForSheet(c.getComponent(), data.getViewPosition().getPositions())) {
+                                return xlsSheetCreationService.createOrReuseSheet(workbook, uniqueComponentNames.get(c))
+                                        .thenAccept(sheet -> {
+                                            if (sheet != null) {
+                                                log.info("Creating or reusing sheet for component: {}", c.getComponent());
+                                                writeExcelPageNewExcel(sheet, c.getComponent(), projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                                            }
+                                        });
+                            } else {
+                                return CompletableFuture.completedFuture(null);
                             }
-                        }))
-                .reduce(CompletableFuture::allOf)
-                .orElse(CompletableFuture.completedFuture(null));
+                        })
+                        .toArray(CompletableFuture[]::new)
+        );
 
-        CompletableFuture<Void> baseExternTasks = projection.getBaseExtern()
-                .getHeaders()
-                .stream()
-                .filter(r -> !Arrays.stream(headers).anyMatch(c -> c.equalsIgnoreCase(r)))
-                .map(c -> xlsSheetCreationService.createSheet(workbook, uniqueHeaderNames.get(c))
-                        .thenAccept(sheet -> {
-                            if (sheet != null) {
-                                writeExcelPageNewExcel(sheet, c, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+        CompletableFuture<Void> baseExternTasks = CompletableFuture.allOf(
+                projection.getBaseExtern()
+                        .getHeaders()
+                        .stream()
+                        .filter(r -> !Arrays.stream(headers).anyMatch(c -> c.equalsIgnoreCase(r)))
+                        .map(c -> {
+                            if (hasDataForSheet(c, data.getViewPosition().getPositions())) {
+                                return xlsSheetCreationService.createOrReuseSheet(workbook, uniqueHeaderNames.get(c))
+                                        .thenAccept(sheet -> {
+                                            if (sheet != null) {
+                                                writeExcelPageNewExcel(sheet, c, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                                            }
+                                        });
+                            } else {
+                                return CompletableFuture.completedFuture(null);
                             }
-                        }))
-                .reduce(CompletableFuture::allOf)
-                .orElse(CompletableFuture.completedFuture(null));
+                        })
+                        .toArray(CompletableFuture[]::new)
+        );
 
         CompletableFuture.allOf(sheetCreationTasks, baseExternTasks).join();
 
@@ -162,6 +176,12 @@ public class XlsReportService {
             log.error("Error al generar el reporte: " + e.getMessage());
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean hasDataForSheet(String component, List<ProjectionDTO> projections) {
+        return projections.stream()
+                .anyMatch(projectionDTO -> projectionDTO.getComponents().stream()
+                        .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
     private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections){
@@ -669,13 +689,16 @@ public class XlsReportService {
                     .stream()
                     .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
                     .findFirst();
-            //log.debug("Componente: {}", componentDTO);
+            log.info("Componente: {}", componentDTO);
+            log.info("Componente que llega: {}", component);
             if (componentDTO.isPresent()) {
+                log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
                 cell = row.createCell(3);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                 cell.setCellStyle(style); // Reutilizar el estilo
                 int column = 4;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
+                    log.info("Componente x ->: {}", componentDTO.get().getProjections().get(k));
                     MonthProjection month = componentDTO.get().getProjections().get(k);
                     cell = row.createCell(column);
                     cell.setCellValue(month.getAmount().doubleValue());

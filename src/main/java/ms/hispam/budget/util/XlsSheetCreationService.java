@@ -46,14 +46,46 @@ public class XlsSheetCreationService {
         return sheetName.length() > 31 ? sheetName.substring(0, 31) : sheetName;
     }
 
-    public CompletableFuture<Sheet> createSheet(Workbook workbook, String sheetName) {
+    /*public CompletableFuture<Sheet> createSheet(Workbook workbook, String sheetName) {
         return CompletableFuture.supplyAsync(() -> {
             synchronized (syncLock) { // Usar el objeto de sincronización separado
-                if (workbook.getSheet(sheetName) != null) {
-                    log.info("Sheet name already exists, skipping creation: {}", sheetName);
-                    return null; // Return null to indicate the sheet was not created
+                Sheet sheet = workbook.getSheet(sheetName);
+                if (sheet != null) {
+                    // Limpiar la hoja existente antes de reutilizarla
+                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
+                        Row row = sheet.getRow(i);
+                        if (row != null) {
+                            sheet.removeRow(row);
+                        }
+                    }
+                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
+                    return sheet; // Reutilizar la hoja existente
+                } else {
+                    log.info("Creating new sheet: {}", sheetName);
+                    return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe
                 }
-                return workbook.createSheet(sheetName);
+            }
+        }, executorService);
+    }*/
+    private final Object sheetLock = new Object(); // Objeto de bloqueo final
+    public CompletableFuture<Sheet> createOrReuseSheet(Workbook workbook, String sheetName) {
+        return CompletableFuture.supplyAsync(() -> {
+            synchronized (sheetLock) { // Usar el objeto de bloqueo final
+                Sheet sheet = workbook.getSheet(sheetName);
+                if (sheet != null) {
+                    // Limpiar la hoja existente antes de reutilizarla
+                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
+                        Row row = sheet.getRow(i);
+                        if (row != null) {
+                            sheet.removeRow(row);
+                        }
+                    }
+                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
+                    return sheet; // Reutilizar la hoja existente
+                } else {
+                    log.info("Creating new sheet: {}", sheetName);
+                    return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe
+                }
             }
         }, executorService);
     }
