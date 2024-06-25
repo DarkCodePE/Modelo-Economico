@@ -724,11 +724,15 @@ public class XlsReportService {
                 type = isCp ? "CP" : "NO CP";
             }else if (idBu==5){
                 String localCategory = projectionDTO.getCategoryLocal();
-                Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
-                if (optionalEmployeeClassification.isPresent()) {
-                    type = optionalEmployeeClassification.get().getCategory();
-                } else {
-                    type = String.format("No se encontró la categoría %s", localCategory);
+                if(localCategory == null){
+                    type = "No se encontró la categoría";
+                }else{
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
+                    if (optionalEmployeeClassification.isPresent()) {
+                        type = optionalEmployeeClassification.get().getCategory();
+                    } else {
+                        type = String.format("No se encontró la categoría %s", localCategory);
+                    }
                 }
             }else{
                 type = projectionDTO.getClassEmployee();
