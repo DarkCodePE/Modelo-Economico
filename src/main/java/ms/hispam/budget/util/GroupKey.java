@@ -13,12 +13,17 @@ class GroupKey {
     String ceCo;
     String concepto;
     String month;
-    public GroupKey(String cuentaSap, String actividadFuncional, String ceCo, String concepto, String month) {
+    String po;  // Añadimos la posición (ID_PO)
+    String idSsff;  // Añadimos ID_SSFF
+
+    public GroupKey(String cuentaSap, String actividadFuncional, String ceCo, String concepto, String month, String po, String idSsff) {
         this.cuentaSap = cuentaSap;
         this.actividadFuncional = actividadFuncional;
         this.ceCo = ceCo;
         this.concepto = concepto;
         this.month = month;
+        this.po = po;
+        this.idSsff = idSsff;
     }
 
     // Métodos hashCode y equals para que funcione correctamente en un HashMap.
@@ -33,6 +38,7 @@ class GroupKey {
         if (!Objects.equals(actividadFuncional, groupKey.actividadFuncional)) return false;
         if (!Objects.equals(ceCo, groupKey.ceCo)) return false;
         if (!Objects.equals(month, groupKey.month)) return false;
+        if (!Objects.equals(po, groupKey.po)) return false;
         return Objects.equals(concepto, groupKey.concepto);
     }
 
@@ -43,8 +49,9 @@ class GroupKey {
         result = 31 * result + (ceCo != null ? ceCo.hashCode() : 0);
         result = 31 * result + (concepto != null ? concepto.hashCode() : 0);
         result = 31 * result + (month != null ? month.hashCode() : 0);
+        result = 31 * result + (po != null ? po.hashCode() : 0);
+        result = 31 * result + (idSsff != null ? idSsff.hashCode() : 0);
         return result;
     }
     // Considera implementar toString si necesitas imprimir la clave para depuración.
 }
-

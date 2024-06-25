@@ -184,116 +184,32 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections){
+    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
         try {
-
-            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
-                    .collect(Collectors.toMap(AccountProjection::getVcomponent, componente -> componente));
-            // Crea un nuevo libro de Excel
-            Workbook workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("Proyecciones de Pago");
-
-            // Encabezados
-            Row headerRow = sheet.createRow(0);
-            headerRow.createCell(0).setCellValue("ID_PO");
-            headerRow.createCell(1).setCellValue("ID_SSFF");
-            headerRow.createCell(2).setCellValue("AF");
-            headerRow.createCell(3).setCellValue("Segmento");
-            headerRow.createCell(4).setCellValue("CeCo");
-            headerRow.createCell(5).setCellValue("Concepto");
-            headerRow.createCell(6).setCellValue("Cuenta SAP");
-            headerRow.createCell(7).setCellValue("Mes");
-            headerRow.createCell(8).setCellValue("Monto");
-            // Contador para el número de filas
-            int rowNum = 1;
-
-            // Itera sobre la lista de objetos
-            for (ProjectionDTO data : vdata) {
-                // Obtiene la lista de componentes
-                List<PaymentComponentDTO> components = data.getComponents();
-
-                // Recorre la lista de componentes
-                for (PaymentComponentDTO component : components) {
-                    // Obtiene la lista de proyecciones
-                    List<MonthProjection> projections = component.getProjections();
-
-                    // Recorre la lista de proyecciones
-                    for (MonthProjection projection : projections) {
-                        // Crea una nueva fila en el Excel
-                        Row row = sheet.createRow(rowNum++);
-
-                        // Agrega la información a la fila
-                        row.createCell(0).setCellValue(data.getPo());
-                        row.createCell(1).setCellValue(data.getIdssff());
-                        row.createCell(2).setCellValue(data.getAreaFuncional());
-                        row.createCell(3).setCellValue(data.getDivision());
-                        row.createCell(4).setCellValue(data.getCCostos());
-                        row.createCell(5).setCellValue(component.getPaymentComponent());
-                        row.createCell(6).setCellValue(mapaComponentesValidos.get(component.getPaymentComponent()).getAccount());
-                        row.createCell(7).setCellValue(projection.getMonth());
-                        row.createCell(8).setCellValue(projection.getAmount().doubleValue());
-                    }
-                }
-            }
-
-            // Guarda el libro de Excel en un archivo
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            workbook.close();
-            return outputStream.toByteArray();
-
-        } catch (Exception e) {
-            throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-        }
-    }
-
-    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
-        try {
-            // Crea un nuevo libro de Excel
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
-                    .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(),  (existingValue, newValue) -> newValue));
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
             accountProjections = null; // Liberar memoria
-
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
-            //suma de todos los meses juntos
-            /*for (ProjectionDTO data : vdata) {
-                for (PaymentComponentDTO component : data.getComponents()) {
-                    for (MonthProjection projection : component.getProjections()) {
-                        GroupKey key = new GroupKey(
-                                mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                data.getAreaFuncional(),
-                                data.getCCostos(),
-                                component.getPaymentComponent()
-                        );
-
-                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
-                        groupData.meses.add(projection.getMonth());
-                        groupData.sum += projection.getAmount().doubleValue();
-                        groupedData.put(key, groupData);
-                    }
-                    component.setProjections(null); // Liberar memoria
-                }
-                data.setComponents(null); // Liberar memoria
-            }*/
             for (ProjectionDTO data : vdata) {
                 for (PaymentComponentDTO component : data.getComponents()) {
-                    //filter by component name AF
+                    // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
-                        // Include the month in the GroupKey
+                        // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
                                 data.getAreaFuncional(),
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
-                                projection.getMonth()  // Add this line
+                                projection.getMonth(),
+                                data.getPo(),  // Añadir la posición aquí
+                                data.getIdssff()  // Añadir ID_SSFF aquí
                         );
 
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
-                            groupData.sum += projection.getAmount().doubleValue();
+                        groupData.sum = projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
                     }
                     component.setProjections(null); // Liberar memoria
@@ -308,10 +224,23 @@ public class XlsReportService {
             headerStyle.setFont(createBoldFont(workbook));
 
             int sheetNum = 0;
-            Sheet sheet = workbook.createSheet("CDG" + sheetNum);
+            Sheet sheet = workbook.createSheet("PLANNER" + sheetNum);
             int rowNum = 0;
+            Row headerRow = sheet.createRow(rowNum++);
+            headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
+            headerRow.createCell(1).setCellValue("Nombre Proyección");
+            headerRow.createCell(2).setCellValue("ID_PO");
+            headerRow.createCell(3).setCellValue("ID_SSFF");
+            headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+            headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
+            headerRow.createCell(6).setCellValue("Concepto");
+            headerRow.createCell(7).setCellValue("Cuenta SAP");
+            headerRow.createCell(8).setCellValue("Mes");
+            headerRow.createCell(9).setCellValue("Monto");
+            for (int i = 0; i <= 9; i++) {
+                headerRow.getCell(i).setCellStyle(headerStyle);
+            }
 
-            // Al escribir en la hoja de Excel
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
@@ -319,28 +248,151 @@ public class XlsReportService {
                 for (String mes : groupData.meses) {
                     if (rowNum > 1048575) {
                         sheetNum++;
-                        sheet = workbook.createSheet("CDG" + sheetNum);
+                        sheet = workbook.createSheet("PLANNER" + sheetNum);
                         rowNum = 0;
+                        headerRow = sheet.createRow(rowNum++);
+                        headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
+                        headerRow.createCell(1).setCellValue("Nombre Proyección");
+                        headerRow.createCell(2).setCellValue("ID_PO");
+                        headerRow.createCell(3).setCellValue("ID_SSFF");
+                        headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+                        headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
+                        headerRow.createCell(6).setCellValue("Concepto");
+                        headerRow.createCell(7).setCellValue("Cuenta SAP");
+                        headerRow.createCell(8).setCellValue("Mes");
+                        headerRow.createCell(9).setCellValue("Monto");
+                        for (int i = 0; i <= 9; i++) {
+                            headerRow.getCell(i).setCellStyle(headerStyle);
+                        }
                     }
                     Row row = sheet.createRow(rowNum++);
 
-                    row.createCell(0).setCellValue("PPTO_0");
-                    row.createCell(1).setCellValue(key.getCuentaSap());
-                    row.createCell(2).setCellValue(key.getActividadFuncional());
-                    row.createCell(3).setCellValue(key.getCeCo());
-                    row.createCell(4).setCellValue(mes); // Mes individual para cada entrada
-                    row.createCell(5).setCellValue(key.getConcepto());
-                    row.createCell(6).setCellValue(groupData.sum); // Suma de montos
+                    row.createCell(0).setCellValue("mes i -1"); // Periodo ejecución/proyección
+                    row.createCell(1).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
+                    row.createCell(2).setCellValue(key.getPo()); // ID_PO
+                    row.createCell(3).setCellValue(key.getIdSsff()); // ID_SSFF
+                    row.createCell(4).setCellValue(key.getActividadFuncional()); // Actividad Funcional
+                    row.createCell(5).setCellValue(key.getCeCo()); // CeCo
+                    row.createCell(6).setCellValue(key.getConcepto()); // Concepto
+                    row.createCell(7).setCellValue(key.getCuentaSap()); // Cuenta SAP
+                    row.createCell(8).setCellValue(mes); // Mes
+                    row.createCell(9).setCellValue(groupData.sum); // Monto
                 }
             }
-
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             workbook.close();
             return outputStream.toByteArray();
+
         } catch (Exception e) {
-            log.error("Error al generar el reporte", e);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+        }
+    }
+
+    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
+        try {
+            SXSSFWorkbook workbook = new SXSSFWorkbook();
+
+            Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
+                    .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
+            accountProjections = null; // Liberar memoria
+            Map<GroupKey, GroupData> groupedData = new HashMap<>();
+            for (ProjectionDTO data : vdata) {
+                for (PaymentComponentDTO component : data.getComponents()) {
+                    // filter by component name AF
+                    for (MonthProjection projection : component.getProjections()) {
+                        // Include the month and position in the GroupKey
+                        GroupKey key = new GroupKey(
+                                mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
+                                data.getAreaFuncional(),
+                                data.getCCostos(),
+                                component.getPaymentComponent(),
+                                projection.getMonth(),
+                                data.getPo(),  // Añadir la posición aquí
+                                data.getIdssff()  // Añadir ID_SSFF aquí
+                        );
+
+                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
+                        groupData.meses.add(projection.getMonth());
+                        groupData.sum = projection.getAmount().doubleValue();
+                        groupedData.put(key, groupData);
+                    }
+                    component.setProjections(null); // Liberar memoria
+                }
+                data.setComponents(null); // Liberar memoria
+            }
+            vdata = null; // Liberar memoria
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setFont(createBoldFont(workbook));
+
+            int sheetNum = 0;
+            Sheet sheet = workbook.createSheet("PLANNER" + sheetNum);
+            int rowNum = 0;
+            Row headerRow = sheet.createRow(rowNum++);
+            headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
+            headerRow.createCell(1).setCellValue("Nombre Proyección");
+            headerRow.createCell(2).setCellValue("ID_PO");
+            headerRow.createCell(3).setCellValue("ID_SSFF");
+            headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+            headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
+            headerRow.createCell(6).setCellValue("Concepto");
+            headerRow.createCell(7).setCellValue("Cuenta SAP");
+            headerRow.createCell(8).setCellValue("Mes");
+            headerRow.createCell(9).setCellValue("Monto");
+            for (int i = 0; i <= 9; i++) {
+                headerRow.getCell(i).setCellStyle(headerStyle);
+            }
+
+            for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
+                GroupKey key = entry.getKey();
+                GroupData groupData = entry.getValue();
+
+                for (String mes : groupData.meses) {
+                    if (rowNum > 1048575) {
+                        sheetNum++;
+                        sheet = workbook.createSheet("PLANNER" + sheetNum);
+                        rowNum = 0;
+                        headerRow = sheet.createRow(rowNum++);
+                        headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
+                        headerRow.createCell(1).setCellValue("Nombre Proyección");
+                        headerRow.createCell(2).setCellValue("ID_PO");
+                        headerRow.createCell(3).setCellValue("ID_SSFF");
+                        headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+                        headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
+                        headerRow.createCell(6).setCellValue("Concepto");
+                        headerRow.createCell(7).setCellValue("Cuenta SAP");
+                        headerRow.createCell(8).setCellValue("Mes");
+                        headerRow.createCell(9).setCellValue("Monto");
+                        for (int i = 0; i <= 9; i++) {
+                            headerRow.getCell(i).setCellStyle(headerStyle);
+                        }
+                    }
+                    Row row = sheet.createRow(rowNum++);
+
+                    row.createCell(0).setCellValue("mes i -1"); // Periodo ejecución/proyección
+                    row.createCell(1).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
+                    row.createCell(2).setCellValue(key.getPo()); // ID_PO
+                    row.createCell(3).setCellValue(key.getIdSsff()); // ID_SSFF
+                    row.createCell(4).setCellValue(key.getActividadFuncional()); // Actividad Funcional
+                    row.createCell(5).setCellValue(key.getCeCo()); // CeCo
+                    row.createCell(6).setCellValue(key.getConcepto()); // Concepto
+                    row.createCell(7).setCellValue(key.getCuentaSap()); // Cuenta SAP
+                    row.createCell(8).setCellValue(mes); // Mes
+                    row.createCell(9).setCellValue(groupData.sum); // Monto
+                }
+            }
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+
         }
     }
 
@@ -726,6 +778,7 @@ public class XlsReportService {
 
     public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
         return CompletableFuture.supplyAsync(() -> {
+            log.info("vdata: {}", vdata);
            return generatePlanner(vdata,accountProjections);
         });
     }

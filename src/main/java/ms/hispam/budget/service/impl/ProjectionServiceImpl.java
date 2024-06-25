@@ -1802,6 +1802,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
+            //log.info("headcount {}",headcount);
             xlsReportService.generateAndCompleteReportAsyncPlanner(headcount, sharedRepo.getAccount(idBu),job,userContact);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
