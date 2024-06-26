@@ -73,15 +73,8 @@ public class XlsSheetCreationService {
             synchronized (sheetLock) { // Usar el objeto de bloqueo final
                 Sheet sheet = workbook.getSheet(sheetName);
                 if (sheet != null) {
-                    // Limpiar la hoja existente antes de reutilizarla
-                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
-                        Row row = sheet.getRow(i);
-                        if (row != null) {
-                            sheet.removeRow(row);
-                        }
-                    }
-                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
-                    return sheet; // Reutilizar la hoja existente
+                    log.info("Sheet name already exists: {}", sheetName);
+                    return sheet;
                 } else {
                     log.info("Creating new sheet: {}", sheetName);
                     return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe

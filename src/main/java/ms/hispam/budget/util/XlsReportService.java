@@ -684,7 +684,14 @@ public class XlsReportService {
             lock.unlock();
         }
     }
-
+    private void clearSheet(Sheet sheet) {
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row != null) {
+                sheet.removeRow(row);
+            }
+        }
+    }
     private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
         log.info("Sheet name: {}", sheet.getSheetName());
         sheet.setColumnWidth(0, 5000);
