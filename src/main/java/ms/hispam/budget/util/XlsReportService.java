@@ -11,6 +11,9 @@ import ms.hispam.budget.repository.mysql.EmployeeClassificationRepository;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.streaming.SXSSFCell;
+import org.apache.poi.xssf.streaming.SXSSFRow;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -137,7 +140,7 @@ public class XlsReportService {
                                         .thenAccept(sheet -> {
                                             if (sheet != null) {
                                                 log.info("Creating or reusing sheet for component: {}", c.getComponent());
-                                                writeExcelPageNewExcel(sheet, c.getComponent(), projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                                                processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 100, idBu, c.getComponent()); // Procesar en fragmentos de 100
                                             }
                                         });
                             } else {
@@ -684,24 +687,30 @@ public class XlsReportService {
             lock.unlock();
         }
     }
-    private void clearSheet(Sheet sheet) {
-        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            if (row != null) {
-                for (Cell cell : row) {
-                    cell.setCellValue(""); // Limpia el contenido de la celda
+    private final Object sheetLock = new Object();
+    private void clearSheet(SXSSFSheet sheet) {
+        synchronized (sheetLock) {
+            for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+                SXSSFRow row = sheet.getRow(i);
+                if (row != null) {
+                    for (int j = 0; j < row.getLastCellNum(); j++) {
+                        SXSSFCell cell = row.getCell(j);
+                        if (cell != null) {
+                            cell.setCellValue(""); // Limpiar el contenido de la celda
+                        }
+                    }
                 }
             }
         }
     }
-    private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
-        //log.info("Sheet name: {}", sheet.getSheetName());
+
+    private void writeExcelPageNewExcel(SXSSFSheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
 
-        // Verifica si la hoja ya tiene datos antes de escribir
-        if (sheet.getLastRowNum() > 0) {
-            clearSheet(sheet);
+        if (sheet.getPhysicalNumberOfRows() > 0) {
+            // No se pueden limpiar las filas en SXSSF, crear una nueva hoja temporal
+            sheet = createTemporarySheet(sheet.getWorkbook(), sheet.getSheetName());
         }
 
         Row header = sheet.createRow(0);
@@ -719,7 +728,7 @@ public class XlsReportService {
             headerCell.setCellValue(m);
             startHeader++;
         }
-        // Crear el estilo de celda una vez
+
         CellStyle style = sheet.getWorkbook().createCellStyle();
         style.setWrapText(true);
         int start = 1;
@@ -727,21 +736,20 @@ public class XlsReportService {
             Row row = sheet.createRow(start);
             Cell cell = row.createCell(0);
             cell.setCellValue(projectionDTO.getPo());
-            cell.setCellStyle(style); // Reutilizar el estilo
+            cell.setCellStyle(style);
             cell = row.createCell(1);
             cell.setCellValue(projectionDTO.getIdssff());
-            cell.setCellStyle(style); // Reutilizar el estilo
-            //TypeEmployee
+            cell.setCellStyle(style);
             cell = row.createCell(2);
             String type;
             boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
-            if(idBu==4){
+            if (idBu == 4) {
                 type = isCp ? "CP" : "NO CP";
-            }else if (idBu==5){
+            } else if (idBu == 5) {
                 String localCategory = projectionDTO.getCategoryLocal();
-                if(localCategory == null){
+                if (localCategory == null) {
                     type = "No se encontró la categoría";
-                }else{
+                } else {
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
                     if (optionalEmployeeClassification.isPresent()) {
                         type = optionalEmployeeClassification.get().getCategory();
@@ -749,31 +757,26 @@ public class XlsReportService {
                         type = String.format("No se encontró la categoría %s", localCategory);
                     }
                 }
-            }else{
+            } else {
                 type = projectionDTO.getClassEmployee();
             }
             cell.setCellValue(type);
-            cell.setCellStyle(style); // Reutilizar el estilo
+            cell.setCellStyle(style);
 
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO
-                    .getComponents()
-                    .stream()
+            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
                     .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
                     .findFirst();
-            //log.info("Componente: {}", componentDTO);
-            //log.info("Componente que llega: {}", component);
+
             if (componentDTO.isPresent()) {
-                //log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
+                log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
                 cell = row.createCell(3);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style); // Reutilizar el estilo
+                cell.setCellStyle(style);
                 int column = 4;
-                for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
-                    //log.info("Componente x ->: {}", componentDTO.get().getProjections().get(k));
-                    MonthProjection month = componentDTO.get().getProjections().get(k);
+                for (MonthProjection month : componentDTO.get().getProjections()) {
                     cell = row.createCell(column);
                     cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style); // Reutilizar el estilo
+                    cell.setCellStyle(style);
                     column++;
                 }
                 start++;
@@ -781,6 +784,10 @@ public class XlsReportService {
         }
     }
 
+    private SXSSFSheet createTemporarySheet(SXSSFWorkbook workbook, String originalSheetName) {
+        // Crea una nueva hoja temporal con un nombre único
+        return workbook.createSheet(originalSheetName + "_temp");
+    }
 
     // Añade un ExecutorService para la ejecución de tareas asíncronas
     private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -890,5 +897,69 @@ public class XlsReportService {
                     log.error("Error al generar el reporte", e);
                     return null;
                 });
+    }
+
+
+    private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
+        int start = 0;
+        while (start < projections.size()) {
+            int end = Math.min(start + chunkSize, projections.size());
+            List<ProjectionDTO> chunk = projections.subList(start, end);
+            writeChunkToSheet(sheet, chunk, start, idBu, component);
+            start = end;
+        }
+    }
+
+    private void writeChunkToSheet(SXSSFSheet sheet, List<ProjectionDTO> chunk, int startRow, Integer idBu, String component) {
+        int rowNumber = startRow + 1; // Continuar después de la cabecera
+        for (ProjectionDTO projectionDTO : chunk) {
+            Row row = sheet.createRow(rowNumber++);
+            int colNum = 0;
+            Cell cell = row.createCell(colNum++);
+            cell.setCellValue(projectionDTO.getPo());
+
+            cell = row.createCell(colNum++);
+            cell.setCellValue(projectionDTO.getIdssff());
+
+            // Manejo de diferentes tipos de empleados
+            cell = row.createCell(colNum++);
+            String type = determineEmployeeType(projectionDTO, idBu);
+            cell.setCellValue(type);
+
+            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents()
+                    .stream()
+                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
+                    .findFirst();
+
+            if (componentDTO.isPresent()) {
+                cell = row.createCell(colNum++);
+                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
+                for (MonthProjection monthProjection : componentDTO.get().getProjections()) {
+                    cell = row.createCell(colNum++);
+                    cell.setCellValue(monthProjection.getAmount().doubleValue());
+                }
+            }
+        }
+    }
+    private String determineEmployeeType(ProjectionDTO projectionDTO, Integer idBu) {
+        String type;
+        if (idBu == 4) {
+            type = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP") ? "CP" : "NO CP";
+        } else if (idBu == 5) {
+            String localCategory = projectionDTO.getCategoryLocal();
+            if (localCategory == null) {
+                type =  "No se encontró la categoría";
+            } else {
+                Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
+                if (optionalEmployeeClassification.isPresent()) {
+                    type = optionalEmployeeClassification.get().getCategory();
+                } else {
+                    type = String.format("No se encontró la categoría %s", localCategory);
+                }
+            }
+        } else {
+            type = projectionDTO.getClassEmployee();
+        }
+        return type;
     }
 }

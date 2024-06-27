@@ -1,6 +1,8 @@
 package ms.hispam.budget.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -70,25 +72,16 @@ public class XlsSheetCreationService {
         }, executorService);
     }*/
     private final Object sheetLock = new Object(); // Objeto de bloqueo final
-    public CompletableFuture<Sheet> createOrReuseSheet(Workbook workbook, String sheetName) {
+    public CompletableFuture<SXSSFSheet> createOrReuseSheet(SXSSFWorkbook workbook, String sheetName) {
         return CompletableFuture.supplyAsync(() -> {
-            synchronized (sheetLock) { // Usar el objeto de bloqueo final
-                Sheet sheet = workbook.getSheet(sheetName);
+            synchronized (sheetLock) {
+                SXSSFSheet sheet = workbook.getSheet(sheetName);
                 if (sheet != null) {
-                    // Sobrescribir las filas existentes
-                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
-                        Row row = sheet.getRow(i);
-                        if (row != null) {
-                            for (Cell cell : row) {
-                                cell.setCellValue(""); // Limpia el contenido de la celda
-                            }
-                        }
-                    }
-                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
-                    return sheet; // Reutilizar la hoja existente
+                    log.info("Sheet name already exists, reusing: {}", sheetName);
+                    return sheet;
                 } else {
                     log.info("Creating new sheet: {}", sheetName);
-                    return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe
+                    return workbook.createSheet(sheetName);
                 }
             }
         }, executorService);
