@@ -93,8 +93,8 @@ public class XlsReportService {
 
         // Usar un conjunto para rastrear nombres únicos
         Set<String> sheetNames = new HashSet<>();
-        Map<ComponentProjection, String> uniqueComponentNames = new HashMap<>();
-        Map<String, String> uniqueHeaderNames = new HashMap<>();
+        Map<ComponentProjection, String> uniqueComponentNames = new ConcurrentHashMap<>();
+        Map<String, String> uniqueHeaderNames = new ConcurrentHashMap<>();
 
       /*  log.info("List components: {}", components);
         log.info("List components: {}", components.size());
@@ -688,14 +688,22 @@ public class XlsReportService {
         for (int i = 0; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (row != null) {
-                sheet.removeRow(row);
+                for (Cell cell : row) {
+                    cell.setCellValue(""); // Limpia el contenido de la celda
+                }
             }
         }
     }
     private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
-        log.info("Sheet name: {}", sheet.getSheetName());
+        //log.info("Sheet name: {}", sheet.getSheetName());
         sheet.setColumnWidth(0, 5000);
         sheet.setColumnWidth(1, 4000);
+
+        // Verifica si la hoja ya tiene datos antes de escribir
+        if (sheet.getLastRowNum() > 0) {
+            clearSheet(sheet);
+        }
+
         Row header = sheet.createRow(0);
         Cell headerCell = header.createCell(0);
         headerCell.setCellValue("POSSFF");
@@ -752,16 +760,16 @@ public class XlsReportService {
                     .stream()
                     .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
                     .findFirst();
-            log.info("Componente: {}", componentDTO);
-            log.info("Componente que llega: {}", component);
+            //log.info("Componente: {}", componentDTO);
+            //log.info("Componente que llega: {}", component);
             if (componentDTO.isPresent()) {
-                log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
+                //log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
                 cell = row.createCell(3);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                 cell.setCellStyle(style); // Reutilizar el estilo
                 int column = 4;
                 for (int k = 0; k < componentDTO.get().getProjections().size(); k++) {
-                    log.info("Componente x ->: {}", componentDTO.get().getProjections().get(k));
+                    //log.info("Componente x ->: {}", componentDTO.get().getProjections().get(k));
                     MonthProjection month = componentDTO.get().getProjections().get(k);
                     cell = row.createCell(column);
                     cell.setCellValue(month.getAmount().doubleValue());
@@ -789,7 +797,7 @@ public class XlsReportService {
 
     public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
         return CompletableFuture.supplyAsync(() -> {
-            log.info("vdata: {}", vdata);
+            //log.info("vdata: {}", vdata);
            return generatePlanner(vdata,accountProjections);
         });
     }

@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,8 +75,17 @@ public class XlsSheetCreationService {
             synchronized (sheetLock) { // Usar el objeto de bloqueo final
                 Sheet sheet = workbook.getSheet(sheetName);
                 if (sheet != null) {
-                    log.info("Sheet name already exists: {}", sheetName);
-                    return sheet;
+                    // Sobrescribir las filas existentes
+                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
+                        Row row = sheet.getRow(i);
+                        if (row != null) {
+                            for (Cell cell : row) {
+                                cell.setCellValue(""); // Limpia el contenido de la celda
+                            }
+                        }
+                    }
+                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
+                    return sheet; // Reutilizar la hoja existente
                 } else {
                     log.info("Creating new sheet: {}", sheetName);
                     return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe
