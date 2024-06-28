@@ -142,7 +142,8 @@ public class XlsReportService {
         // Pre-crear todas las hojas
         uniqueComponentNames.values().forEach(sheetName -> {
             if (workbook.getSheet(sheetName) == null) {
-                workbook.createSheet(sheetName);
+                SXSSFSheet sheet = workbook.createSheet(sheetName);
+                addHeaders(sheet, projection.getPeriod(), projection.getRange());
             }
         });
         uniqueHeaderNames.values().forEach(sheetName -> {
@@ -923,6 +924,7 @@ public class XlsReportService {
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
         Lock lock = sheetLocks.get(sheet.getSheetName());
+        log.info("Sheet name: {}", sheet.getSheetName());
         if (lock != null) {
             lock.lock();
             try {
@@ -939,11 +941,33 @@ public class XlsReportService {
         }
     }
 
+    private void addHeaders(SXSSFSheet sheet, String period, int range) {
+        Row header = sheet.createRow(0);
+        Cell headerCell = header.createCell(0);
+        headerCell.setCellValue("POSSFF");
+        headerCell = header.createCell(1);
+        headerCell.setCellValue("IDSSFF");
+        headerCell = header.createCell(2);
+        headerCell.setCellValue("TIPO DE EMPLEADO");
+        headerCell = header.createCell(3);
+        headerCell.setCellValue(Shared.nameMonth(period));
+        int startHeader = 4;
+        for (String m : Shared.generateRangeMonth(period, range)) {
+            headerCell = header.createCell(startHeader);
+            headerCell.setCellValue(m);
+            startHeader++;
+        }
+    }
+
+
     private void writeChunkToSheet(SXSSFSheet sheet, List<ProjectionDTO> chunk, int startRow, Integer idBu, String component) {
+        log.info("Writing chunk to sheet: {}", sheet.getSheetName());
         int rowNumber = startRow + 1; // Continuar después de la cabecera
+
         for (ProjectionDTO projectionDTO : chunk) {
             // Verificar si la fila ya ha sido escrita
             if (rowNumber > sheet.getLastRowNum()) {
+                log.info("Creating new row: {}", rowNumber);
                 Row row = sheet.createRow(rowNumber++);
                 int colNum = 0;
                 Cell cell = row.createCell(colNum++);
@@ -963,6 +987,7 @@ public class XlsReportService {
                         .findFirst();
 
                 if (componentDTO.isPresent()) {
+                    log.info("Componente name->: {}", componentDTO.get().getPaymentComponent());
                     cell = row.createCell(colNum++);
                     cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                     for (MonthProjection monthProjection : componentDTO.get().getProjections()) {
