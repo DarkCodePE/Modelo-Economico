@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,16 +61,21 @@ public class XlsReportService {
     // Repositorios adicionales
     private final EmployeeClassificationRepository employeeClassificationRepository;
     private static final Map<String, EmployeeClassification> classificationMap = new ConcurrentHashMap<>();
+    private final ExecutorService executorService;
+    private final ConcurrentHashMap<String, Lock> sheetLocks;
     @Autowired
     public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service,
                             ExternalService externalService, EmailService emailService,
-                            XlsSheetCreationService xlsSheetCreationService, EmployeeClassificationRepository employeeClassificationRepository) {
+                            XlsSheetCreationService xlsSheetCreationService,
+                            EmployeeClassificationRepository employeeClassificationRepository, ExecutorService executorService, ConcurrentHashMap<String, Lock> sheetLocks) {
         this.reportJobRepository = reportJobRepository;
         this.service = service;
         this.externalService = externalService;
         this.emailService = emailService;
         this.xlsSheetCreationService = xlsSheetCreationService;
         this.employeeClassificationRepository = employeeClassificationRepository;
+        this.executorService = executorService;
+        this.sheetLocks = sheetLocks;
     }
 
     @PostConstruct
@@ -132,17 +138,31 @@ public class XlsReportService {
         //.info("uniqueHeaderNames: {}", uniqueHeaderNames);
         // private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu)
         // Segunda pasada para crear las hojas físicamente en el workbook
+        // Pre-crear todas las hojas
+        // Pre-crear todas las hojas
+        uniqueComponentNames.values().forEach(sheetName -> {
+            if (workbook.getSheet(sheetName) == null) {
+                workbook.createSheet(sheetName);
+            }
+        });
+        uniqueHeaderNames.values().forEach(sheetName -> {
+            if (workbook.getSheet(sheetName) == null) {
+                workbook.createSheet(sheetName);
+            }
+        });
+
         CompletableFuture<Void> sheetCreationTasks = CompletableFuture.allOf(
                 components.stream()
                         .map(c -> {
                             if (hasDataForSheet(c.getComponent(), data.getViewPosition().getPositions())) {
-                                return xlsSheetCreationService.createOrReuseSheet(workbook, uniqueComponentNames.get(c))
-                                        .thenAccept(sheet -> {
-                                            if (sheet != null) {
-                                                log.info("Creating or reusing sheet for component: {}", c.getComponent());
-                                                processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 100, idBu, c.getComponent()); // Procesar en fragmentos de 100
-                                            }
-                                        });
+                                String sheetName = uniqueComponentNames.get(c);
+                                SXSSFSheet sheet = workbook.getSheet(sheetName);
+                                return CompletableFuture.runAsync(() -> {
+                                    if (sheet != null) {
+                                        log.info("Filling data in sheet: {}", sheetName);
+                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent());
+                                    }
+                                }, executorService);
                             } else {
                                 return CompletableFuture.completedFuture(null);
                             }
@@ -157,12 +177,13 @@ public class XlsReportService {
                         .filter(r -> !Arrays.stream(headers).anyMatch(c -> c.equalsIgnoreCase(r)))
                         .map(c -> {
                             if (hasDataForSheet(c, data.getViewPosition().getPositions())) {
-                                return xlsSheetCreationService.createOrReuseSheet(workbook, uniqueHeaderNames.get(c))
-                                        .thenAccept(sheet -> {
-                                            if (sheet != null) {
-                                                writeExcelPageNewExcel(sheet, c, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
-                                            }
-                                        });
+                                String sheetName = uniqueHeaderNames.get(c);
+                                SXSSFSheet sheet = workbook.getSheet(sheetName);
+                                return CompletableFuture.runAsync(() -> {
+                                    if (sheet != null) {
+                                        writeExcelPageNewExcel(sheet, c, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                                    }
+                                }, executorService);
                             } else {
                                 return CompletableFuture.completedFuture(null);
                             }
@@ -790,7 +811,7 @@ public class XlsReportService {
     }
 
     // Añade un ExecutorService para la ejecución de tareas asíncronas
-    private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    /*private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());*/
 
     // Modifica este método para que sea asíncrono
     public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu) {
@@ -799,7 +820,7 @@ public class XlsReportService {
             ProjectionSecondDTO data = service.getNewProjection(projection);
             //log.info("Data: {}", data);
             return generateExcelProjection(projection, data, dataBase, components, idBu);
-        }, xlsSheetCreationService.getExecutorService());
+        }, executorService);
     }
 
     public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
@@ -901,42 +922,53 @@ public class XlsReportService {
 
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
-        int start = 0;
-        while (start < projections.size()) {
-            int end = Math.min(start + chunkSize, projections.size());
-            List<ProjectionDTO> chunk = projections.subList(start, end);
-            writeChunkToSheet(sheet, chunk, start, idBu, component);
-            start = end;
+        Lock lock = sheetLocks.get(sheet.getSheetName());
+        if (lock != null) {
+            lock.lock();
+            try {
+                int start = 0;
+                while (start < projections.size()) {
+                    int end = Math.min(start + chunkSize, projections.size());
+                    List<ProjectionDTO> chunk = projections.subList(start, end);
+                    writeChunkToSheet(sheet, chunk, start, idBu, component);
+                    start = end;
+                }
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
     private void writeChunkToSheet(SXSSFSheet sheet, List<ProjectionDTO> chunk, int startRow, Integer idBu, String component) {
         int rowNumber = startRow + 1; // Continuar después de la cabecera
         for (ProjectionDTO projectionDTO : chunk) {
-            Row row = sheet.createRow(rowNumber++);
-            int colNum = 0;
-            Cell cell = row.createCell(colNum++);
-            cell.setCellValue(projectionDTO.getPo());
+            // Verificar si la fila ya ha sido escrita
+            if (rowNumber > sheet.getLastRowNum()) {
+                Row row = sheet.createRow(rowNumber++);
+                int colNum = 0;
+                Cell cell = row.createCell(colNum++);
+                cell.setCellValue(projectionDTO.getPo());
 
-            cell = row.createCell(colNum++);
-            cell.setCellValue(projectionDTO.getIdssff());
-
-            // Manejo de diferentes tipos de empleados
-            cell = row.createCell(colNum++);
-            String type = determineEmployeeType(projectionDTO, idBu);
-            cell.setCellValue(type);
-
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents()
-                    .stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
-                    .findFirst();
-
-            if (componentDTO.isPresent()) {
                 cell = row.createCell(colNum++);
-                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                for (MonthProjection monthProjection : componentDTO.get().getProjections()) {
+                cell.setCellValue(projectionDTO.getIdssff());
+
+                // Manejo de diferentes tipos de empleados
+                cell = row.createCell(colNum++);
+                String type = determineEmployeeType(projectionDTO, idBu);
+                cell.setCellValue(type);
+
+                Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents()
+                        .stream()
+                        .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
+                        .findFirst();
+
+                if (componentDTO.isPresent()) {
                     cell = row.createCell(colNum++);
-                    cell.setCellValue(monthProjection.getAmount().doubleValue());
+                    cell.setCellValue(componentDTO.get().getAmount().doubleValue());
+                    for (MonthProjection monthProjection : componentDTO.get().getProjections()) {
+                        cell = row.createCell(colNum++);
+                        cell.setCellValue(monthProjection.getAmount().doubleValue());
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ package ms.hispam.budget.util;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -24,11 +25,18 @@ import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
 @Slf4j(topic = "XLS_SHEET_CREATION_SERVICE")
 public class XlsSheetCreationService {
 
-    private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    private final Lock lock = new ReentrantLock();
-    private final Object syncLock = new Object(); // Objeto de sincronización separado
+    private final ExecutorService executorService;
+    private final ConcurrentHashMap<String, Lock> sheetLocks;
+
+    @Autowired
+    public XlsSheetCreationService(ConcurrentHashMap<String, Lock> sheetLocks, ExecutorService executorService) {
+        this.sheetLocks = sheetLocks;
+        this.executorService = executorService;
+    }
+
 
     public String generateUniqueSheetName(Workbook workbook, String baseName) {
+        Lock lock = sheetLocks.computeIfAbsent(baseName, k -> new ReentrantLock());
         lock.lock();
         try {
             String uniqueName = truncateSheetName(baseName);
@@ -50,31 +58,11 @@ public class XlsSheetCreationService {
         return sheetName.length() > 31 ? sheetName.substring(0, 31) : sheetName;
     }
 
-    /*public CompletableFuture<Sheet> createSheet(Workbook workbook, String sheetName) {
-        return CompletableFuture.supplyAsync(() -> {
-            synchronized (syncLock) { // Usar el objeto de sincronización separado
-                Sheet sheet = workbook.getSheet(sheetName);
-                if (sheet != null) {
-                    // Limpiar la hoja existente antes de reutilizarla
-                    for (int i = sheet.getLastRowNum(); i >= 0; i--) {
-                        Row row = sheet.getRow(i);
-                        if (row != null) {
-                            sheet.removeRow(row);
-                        }
-                    }
-                    log.info("Sheet name already exists, reusing and clearing: {}", sheetName);
-                    return sheet; // Reutilizar la hoja existente
-                } else {
-                    log.info("Creating new sheet: {}", sheetName);
-                    return workbook.createSheet(sheetName); // Crear una nueva hoja si no existe
-                }
-            }
-        }, executorService);
-    }*/
-    private final Object sheetLock = new Object(); // Objeto de bloqueo final
     public CompletableFuture<SXSSFSheet> createOrReuseSheet(SXSSFWorkbook workbook, String sheetName) {
         return CompletableFuture.supplyAsync(() -> {
-            synchronized (sheetLock) {
+            Lock lock = sheetLocks.computeIfAbsent(sheetName, k -> new ReentrantLock());
+            lock.lock();
+            try {
                 SXSSFSheet sheet = workbook.getSheet(sheetName);
                 if (sheet != null) {
                     log.info("Sheet name already exists, reusing: {}", sheetName);
@@ -83,11 +71,10 @@ public class XlsSheetCreationService {
                     log.info("Creating new sheet: {}", sheetName);
                     return workbook.createSheet(sheetName);
                 }
+            } finally {
+                lock.unlock();
             }
         }, executorService);
     }
 
-    public ExecutorService getExecutorService() {
-        return executorService;
-    }
 }
