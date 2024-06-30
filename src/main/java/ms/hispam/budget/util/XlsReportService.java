@@ -135,8 +135,6 @@ public class XlsReportService {
                     uniqueHeaderNames.put(c, uniqueName); // Actualizar el nombre del header con el nombre único
                 });
 
-        //.info("uniqueHeaderNames: {}", uniqueHeaderNames);
-        // private void writeExcelPageNewExcel(Sheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu)
         // Segunda pasada para crear las hojas físicamente en el workbook
         // Pre-crear todas las hojas
         // Pre-crear todas las hojas
@@ -151,20 +149,23 @@ public class XlsReportService {
                 workbook.createSheet(sheetName);
             }
         });
-
+        log.info("uniqueComponentNames: {}", uniqueComponentNames);
+        log.info("uniqueHeaderNames: {}", uniqueHeaderNames);
         CompletableFuture<Void> sheetCreationTasks = CompletableFuture.allOf(
                 components.stream()
                         .map(c -> {
                             if (hasDataForSheet(c.getComponent(), data.getViewPosition().getPositions())) {
                                 String sheetName = uniqueComponentNames.get(c);
+                                log.info("Sheet name: {}", sheetName);
                                 SXSSFSheet sheet = workbook.getSheet(sheetName);
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
-                                        log.info("Filling data in sheet: {}", sheetName);
+                                        //log.info("Filling data in sheet: {}", sheetName);
                                         processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent());
                                     }
                                 }, executorService);
                             } else {
+                                log.info("No data for sheet: {}", c.getComponent());
                                 return CompletableFuture.completedFuture(null);
                             }
                         })
@@ -924,7 +925,7 @@ public class XlsReportService {
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
         Lock lock = sheetLocks.get(sheet.getSheetName());
-        log.info("Sheet name: {}", sheet.getSheetName());
+        //log.info("Sheet name: {}, component: {}", sheet.getSheetName(), component);
         if (lock != null) {
             lock.lock();
             try {
@@ -961,13 +962,13 @@ public class XlsReportService {
 
 
     private void writeChunkToSheet(SXSSFSheet sheet, List<ProjectionDTO> chunk, int startRow, Integer idBu, String component) {
-        log.info("Writing chunk to sheet: {}", sheet.getSheetName());
+        //log.info("Writing chunk to sheet: {}", sheet.getSheetName());
         int rowNumber = startRow + 1; // Continuar después de la cabecera
 
         for (ProjectionDTO projectionDTO : chunk) {
             // Verificar si la fila ya ha sido escrita
             if (rowNumber > sheet.getLastRowNum()) {
-                log.info("Creating new row: {}", rowNumber);
+                //log.info("Creating new row: {}", rowNumber);
                 Row row = sheet.createRow(rowNumber++);
                 int colNum = 0;
                 Cell cell = row.createCell(colNum++);
@@ -985,9 +986,9 @@ public class XlsReportService {
                         .stream()
                         .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
                         .findFirst();
-
+                //log.info("Componente original->: {}", component);
                 if (componentDTO.isPresent()) {
-                    log.info("Componente name->: {}", componentDTO.get().getPaymentComponent());
+                    //log.info("Componente name->: {}", componentDTO.get().getPaymentComponent());
                     cell = row.createCell(colNum++);
                     cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                     for (MonthProjection monthProjection : componentDTO.get().getProjections()) {
