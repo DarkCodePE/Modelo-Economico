@@ -146,7 +146,8 @@ public class XlsReportService {
         });
         uniqueHeaderNames.values().forEach(sheetName -> {
             if (workbook.getSheet(sheetName) == null) {
-                workbook.createSheet(sheetName);
+                SXSSFSheet sheet = workbook.createSheet(sheetName);
+                addHeaders(sheet, projection.getPeriod(), projection.getRange());
             }
         });
         //log.info("uniqueComponentNames: {}", uniqueComponentNames);
@@ -183,7 +184,8 @@ public class XlsReportService {
                                 SXSSFSheet sheet = workbook.getSheet(sheetName);
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
-                                        writeExcelPageNewExcel(sheet, c, projection.getPeriod(), projection.getRange(), data.getViewPosition().getPositions(), idBu);
+                                        //log.info("Filling data in base extern sheet: {}", sheetName);
+                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c);
                                     }
                                 }, executorService);
                             } else {
