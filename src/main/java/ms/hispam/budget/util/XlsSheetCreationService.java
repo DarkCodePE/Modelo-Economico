@@ -36,7 +36,8 @@ public class XlsSheetCreationService {
 
 
     public String generateUniqueSheetName(Workbook workbook, String baseName) {
-        Lock lock = sheetLocks.computeIfAbsent(baseName, k -> new ReentrantLock());
+        String truncatedBaseName = truncateSheetName(baseName);
+        Lock lock = sheetLocks.computeIfAbsent(truncatedBaseName, k -> new ReentrantLock());
         lock.lock();
         try {
             String uniqueName = truncateSheetName(baseName);

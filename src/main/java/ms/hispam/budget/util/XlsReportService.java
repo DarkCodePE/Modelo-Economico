@@ -149,14 +149,14 @@ public class XlsReportService {
                 workbook.createSheet(sheetName);
             }
         });
-        log.info("uniqueComponentNames: {}", uniqueComponentNames);
-        log.info("uniqueHeaderNames: {}", uniqueHeaderNames);
+        //log.info("uniqueComponentNames: {}", uniqueComponentNames);
+        //log.info("uniqueHeaderNames: {}", uniqueHeaderNames);
         CompletableFuture<Void> sheetCreationTasks = CompletableFuture.allOf(
                 components.stream()
                         .map(c -> {
                             if (hasDataForSheet(c.getComponent(), data.getViewPosition().getPositions())) {
                                 String sheetName = uniqueComponentNames.get(c);
-                                log.info("Sheet name: {}", sheetName);
+                                //log.info("Sheet name: {}", sheetName);
                                 SXSSFSheet sheet = workbook.getSheet(sheetName);
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
@@ -165,7 +165,7 @@ public class XlsReportService {
                                     }
                                 }, executorService);
                             } else {
-                                log.info("No data for sheet: {}", c.getComponent());
+                                //log.info("No data for sheet: {}", c.getComponent());
                                 return CompletableFuture.completedFuture(null);
                             }
                         })
@@ -791,7 +791,7 @@ public class XlsReportService {
                     .findFirst();
 
             if (componentDTO.isPresent()) {
-                log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
+                //log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
                 cell = row.createCell(3);
                 cell.setCellValue(componentDTO.get().getAmount().doubleValue());
                 cell.setCellStyle(style);
@@ -924,6 +924,9 @@ public class XlsReportService {
 
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
+        //String sheetName = sheet.getSheetName();
+        //log.info("Sheet name: {}", sheetName);
+        //String truncatedSheetName = sheetName.length() > 31 ? sheetName.substring(0, 31) : sheetName;
         Lock lock = sheetLocks.get(sheet.getSheetName());
         //log.info("Sheet name: {}, component: {}", sheet.getSheetName(), component);
         if (lock != null) {
