@@ -27,4 +27,6 @@ import java.util.List;
     private String convent;
     private String level;
     //TODO: PARA PERU INCLUIR PUESTOS ESPECIFICOS DE LA CRUZE CON LA TABLA PARAMETRICA
+    private String categoryLocal;
+    private String estadoVacante;
 }

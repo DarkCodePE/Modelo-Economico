@@ -4,6 +4,7 @@ import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ReportJob;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
 
@@ -12,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
 
 public interface ProjectionService {
 
@@ -23,7 +25,7 @@ public interface ProjectionService {
 
     Boolean saveProjection( ParameterHistorial projection,String email);
 
-    List<HistorialProjectionDTO> getHistorial( String email, Integer idHistorical);
+    List<HistorialProjectionDTO> getHistorial( String email);
 
 
     ProjectionInformation getHistorialProjection( Integer id);

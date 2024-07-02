@@ -39,5 +39,7 @@ public interface HeadcountHistoricalProjection {
     public String getConvent();
     public String getLevel();
     //catergoryLocal
-    public String getCategoryLocal();
+    // Mapeo de los nombres de columnas SQL con los nombres de métodos en la interfaz
+    String getCategoria_Local();
+    String getEstado_Vacante();
 }

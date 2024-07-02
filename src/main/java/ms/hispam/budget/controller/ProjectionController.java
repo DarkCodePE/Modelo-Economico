@@ -76,8 +76,8 @@ public class ProjectionController {
         return service.saveProjection(projection,user);
     }
     @GetMapping("/historial")
-    public List<HistorialProjectionDTO> getHistoricalProjection(@RequestHeader String user, @RequestParam Integer idHistorical) {
-        return service.getHistorial(user, idHistorical);
+    public List<HistorialProjectionDTO> getHistoricalProjection(@RequestHeader String user) {
+        return service.getHistorial(user);
     }
 
     @GetMapping("/get-projection-historical")
@@ -193,5 +193,6 @@ public class ProjectionController {
                                                       @RequestParam Integer idBu) {
         return service.getPositionBaseline(period,filter,bu,idBu);
     }
+
 
 }
