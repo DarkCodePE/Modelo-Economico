@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,7 +91,7 @@ public class XlsReportService {
     public void setService(@Lazy ProjectionService service) {
         this.service = service;
     }
-    public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu) {
+    public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user) {
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
         generateParameter(workbook, projection.getParameters());
@@ -212,7 +213,7 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
+    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
@@ -234,10 +235,11 @@ public class XlsReportService {
                                 data.getPo(),  // Añadir la posición aquí
                                 data.getIdssff()  // Añadir ID_SSFF aquí
                         );
-
-                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
+                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
-                        groupData.sum = projection.getAmount().doubleValue();
+                        groupData.montoPorMes.put(projection.getMonth(), projection.getAmount().doubleValue());
+                        double sum = groupData.sum + projection.getAmount().doubleValue();
+                        groupData.sum = sum;
                         groupedData.put(key, groupData);
                     }
                     component.setProjections(null); // Liberar memoria
@@ -255,23 +257,22 @@ public class XlsReportService {
             Sheet sheet = workbook.createSheet("PLANNER" + sheetNum);
             int rowNum = 0;
             Row headerRow = sheet.createRow(rowNum++);
-            headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
-            headerRow.createCell(1).setCellValue("Nombre Proyección");
-            headerRow.createCell(2).setCellValue("ID_PO");
-            headerRow.createCell(3).setCellValue("ID_SSFF");
-            headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
-            headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
-            headerRow.createCell(6).setCellValue("Concepto");
-            headerRow.createCell(7).setCellValue("Cuenta SAP");
-            headerRow.createCell(8).setCellValue("Mes");
-            headerRow.createCell(9).setCellValue("Monto");
-            for (int i = 0; i <= 9; i++) {
+            String[] headers = {
+                    "Periodo ejecución/proyección", "Nombre Proyección", "ID_PO", "ID_SSFF",
+                    "Actividad Funcional (B. Externa OCUP + VAC)", "CeCo (B.Case VAC)", "Concepto",
+                    "Cuenta SAP", "Mes", "Monto", "Fecha Ejecución proyección", "Usuario ejecutador",
+                    "Fecha de traspaso", "Usuario de traspaso", "Q de registros", "Importe Total", "País"
+            };
+
+            for (int i = 0; i < headers.length; i++) {
+                headerRow.createCell(i).setCellValue(headers[i]);
                 headerRow.getCell(i).setCellStyle(headerStyle);
             }
 
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
+                double totalAmount = groupData.sum;
 
                 for (String mes : groupData.meses) {
                     if (rowNum > 1048575) {
@@ -279,17 +280,8 @@ public class XlsReportService {
                         sheet = workbook.createSheet("PLANNER" + sheetNum);
                         rowNum = 0;
                         headerRow = sheet.createRow(rowNum++);
-                        headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
-                        headerRow.createCell(1).setCellValue("Nombre Proyección");
-                        headerRow.createCell(2).setCellValue("ID_PO");
-                        headerRow.createCell(3).setCellValue("ID_SSFF");
-                        headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
-                        headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
-                        headerRow.createCell(6).setCellValue("Concepto");
-                        headerRow.createCell(7).setCellValue("Cuenta SAP");
-                        headerRow.createCell(8).setCellValue("Mes");
-                        headerRow.createCell(9).setCellValue("Monto");
-                        for (int i = 0; i <= 9; i++) {
+                        for (int i = 0; i < headers.length; i++) {
+                            headerRow.createCell(i).setCellValue(headers[i]);
                             headerRow.getCell(i).setCellStyle(headerStyle);
                         }
                     }
@@ -304,7 +296,22 @@ public class XlsReportService {
                     row.createCell(6).setCellValue(key.getConcepto()); // Concepto
                     row.createCell(7).setCellValue(key.getCuentaSap()); // Cuenta SAP
                     row.createCell(8).setCellValue(mes); // Mes
-                    row.createCell(9).setCellValue(groupData.sum); // Monto
+                    row.createCell(9).setCellValue(groupData.montoPorMes.get(mes)); // Monto por Mes
+                    //Fecha Ejecución proyección -> localDateTime
+                    String fechaEjecucionProyeccion = LocalDate.now().toString();
+                    row.createCell(10).setCellValue(fechaEjecucionProyeccion);
+                    //Usuario ejecutador -> user
+                    row.createCell(11).setCellValue(user);
+                    //Fecha de traspaso -> localDateTime
+                    row.createCell(12).setCellValue(reportJob.getCreationDate().toString());
+                    //Usuario de traspaso -> user
+                    row.createCell(13).setCellValue(user);
+                    //Q de registros -> cantidad de registros
+                    row.createCell(14).setCellValue(groupedData.size());
+                    //Importe Total -> suma de los montos
+                    row.createCell(15).setCellValue(totalAmount);
+                    //País -> user
+                    row.createCell(16).setCellValue("Perú");
                 }
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -341,7 +348,7 @@ public class XlsReportService {
                                 data.getIdssff()  // Añadir ID_SSFF aquí
                         );
 
-                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), 0.0));
+                        GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
                         groupData.sum = projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
@@ -818,19 +825,19 @@ public class XlsReportService {
     /*private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());*/
 
     // Modifica este método para que sea asíncrono
-    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu) {
+    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             projection.setViewPo(true);
             ProjectionSecondDTO data = service.getNewProjection(projection);
             //log.info("Data: {}", data);
-            return generateExcelProjection(projection, data, dataBase, components, idBu);
+            return generateExcelProjection(projection, data, dataBase, components, idBu, userContact);
         }, executorService);
     }
 
-    public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections) {
+    public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
-           return generatePlanner(vdata,accountProjections);
+           return generatePlanner(vdata,accountProjections,job,userContact);
         });
     }
     //generateCdgAsync
@@ -849,7 +856,7 @@ public class XlsReportService {
 
     @Async
     public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu) {
-        generateExcelProjectionAsync(projection, components, dataBase, idBu)
+        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
@@ -876,7 +883,7 @@ public class XlsReportService {
     //generatePlannerAsync
     @Async
     public void generateAndCompleteReportAsyncPlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generatePlannerAsync(vdata, accountProjections)
+        generatePlannerAsync(vdata, accountProjections, job, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
