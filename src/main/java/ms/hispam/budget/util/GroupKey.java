@@ -26,6 +26,14 @@ class GroupKey {
         this.idSsff = idSsff;
     }
 
+    public GroupKey(String account, String areaFuncional, String cCostos, String paymentComponent, String month) {
+this.cuentaSap = account;
+        this.actividadFuncional = areaFuncional;
+        this.ceCo = cCostos;
+        this.concepto = paymentComponent;
+        this.month = month;
+    }
+
     // Métodos hashCode y equals para que funcione correctamente en un HashMap.
     @Override
     public boolean equals(Object o) {

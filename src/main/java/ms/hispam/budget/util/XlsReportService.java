@@ -343,9 +343,7 @@ public class XlsReportService {
                                 data.getAreaFuncional(),
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
-                                projection.getMonth(),
-                                data.getPo(),  // Añadir la posición aquí
-                                data.getIdssff()  // Añadir ID_SSFF aquí
+                                projection.getMonth()
                         );
 
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
@@ -368,17 +366,14 @@ public class XlsReportService {
             Sheet sheet = workbook.createSheet("PLANNER" + sheetNum);
             int rowNum = 0;
             Row headerRow = sheet.createRow(rowNum++);
-            headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
-            headerRow.createCell(1).setCellValue("Nombre Proyección");
-            headerRow.createCell(2).setCellValue("ID_PO");
-            headerRow.createCell(3).setCellValue("ID_SSFF");
-            headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
-            headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
-            headerRow.createCell(6).setCellValue("Concepto");
-            headerRow.createCell(7).setCellValue("Cuenta SAP");
-            headerRow.createCell(8).setCellValue("Mes");
-            headerRow.createCell(9).setCellValue("Monto");
-            for (int i = 0; i <= 9; i++) {
+            headerRow.createCell(0).setCellValue("Nombre Proyección");
+            headerRow.createCell(1).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+            headerRow.createCell(2).setCellValue("CeCo (B.Case VAC)");
+            headerRow.createCell(3).setCellValue("Concepto");
+            headerRow.createCell(4).setCellValue("Cuenta SAP");
+            headerRow.createCell(5).setCellValue("Mes");
+            headerRow.createCell(6).setCellValue("Monto");
+            for (int i = 0; i <= 6; i++) {
                 headerRow.getCell(i).setCellStyle(headerStyle);
             }
 
@@ -389,35 +384,29 @@ public class XlsReportService {
                 for (String mes : groupData.meses) {
                     if (rowNum > 1048575) {
                         sheetNum++;
-                        sheet = workbook.createSheet("PLANNER" + sheetNum);
+                        sheet = workbook.createSheet("CDG" + sheetNum);
                         rowNum = 0;
                         headerRow = sheet.createRow(rowNum++);
-                        headerRow.createCell(0).setCellValue("Periodo ejecución/proyección");
-                        headerRow.createCell(1).setCellValue("Nombre Proyección");
-                        headerRow.createCell(2).setCellValue("ID_PO");
-                        headerRow.createCell(3).setCellValue("ID_SSFF");
-                        headerRow.createCell(4).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
-                        headerRow.createCell(5).setCellValue("CeCo (B.Case VAC)");
-                        headerRow.createCell(6).setCellValue("Concepto");
-                        headerRow.createCell(7).setCellValue("Cuenta SAP");
-                        headerRow.createCell(8).setCellValue("Mes");
-                        headerRow.createCell(9).setCellValue("Monto");
-                        for (int i = 0; i <= 9; i++) {
+                        headerRow.createCell(0).setCellValue("Nombre Proyección");
+                        headerRow.createCell(1).setCellValue("Actividad Funcional (B. Externa OCUP + VAC)");
+                        headerRow.createCell(2).setCellValue("CeCo (B.Case VAC)");
+                        headerRow.createCell(3).setCellValue("Concepto");
+                        headerRow.createCell(4).setCellValue("Cuenta SAP");
+                        headerRow.createCell(5).setCellValue("Mes");
+                        headerRow.createCell(6).setCellValue("Monto");
+                        for (int i = 0; i <= 6; i++) {
                             headerRow.getCell(i).setCellStyle(headerStyle);
                         }
                     }
                     Row row = sheet.createRow(rowNum++);
 
-                    row.createCell(0).setCellValue("mes i -1"); // Periodo ejecución/proyección
-                    row.createCell(1).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
-                    row.createCell(2).setCellValue(key.getPo()); // ID_PO
-                    row.createCell(3).setCellValue(key.getIdSsff()); // ID_SSFF
-                    row.createCell(4).setCellValue(key.getActividadFuncional()); // Actividad Funcional
-                    row.createCell(5).setCellValue(key.getCeCo()); // CeCo
-                    row.createCell(6).setCellValue(key.getConcepto()); // Concepto
-                    row.createCell(7).setCellValue(key.getCuentaSap()); // Cuenta SAP
-                    row.createCell(8).setCellValue(mes); // Mes
-                    row.createCell(9).setCellValue(groupData.sum); // Monto
+                    row.createCell(0).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
+                    row.createCell(1).setCellValue(key.getActividadFuncional()); // Actividad Funcional
+                    row.createCell(2).setCellValue(key.getCeCo()); // CeCo
+                    row.createCell(3).setCellValue(key.getConcepto()); // Concepto
+                    row.createCell(4).setCellValue(key.getCuentaSap()); // Cuenta SAP
+                    row.createCell(5).setCellValue(mes); // Mes
+                    row.createCell(6).setCellValue(groupData.sum); // Monto
                 }
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
