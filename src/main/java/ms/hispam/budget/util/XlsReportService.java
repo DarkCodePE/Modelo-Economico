@@ -213,7 +213,7 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
+    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
@@ -225,10 +225,18 @@ public class XlsReportService {
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
+                        //log.debug("Parameter: {}", parametersByProjection);
+                        // Obtener los datos de AF
+                        Optional<Map<String, Object>> baseExternEntry = parametersByProjection.getBaseExtern().getData().stream()
+                                .filter(r -> r.get("po").equals(data.getPo()))
+                                .findFirst();
+                        //log.debug("Base Externa Entry: {}", baseExternEntry);
+                        String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
+                        //log.debug("Area Funcional: {}", areaFuncional);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                data.getAreaFuncional(),
+                                areaFuncional,
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
                                 projection.getMonth(),
@@ -337,10 +345,15 @@ public class XlsReportService {
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
+                        Optional<Map<String, Object>> baseExternEntry = parameters.getBaseExtern().getData().stream()
+                                .filter(r -> r.get("po").equals(data.getPo()))
+                                .findFirst();
+                        //log.debug("Base Externa Entry: {}", baseExternEntry);
+                        String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                data.getAreaFuncional(),
+                                areaFuncional,
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
                                 projection.getMonth()
@@ -823,10 +836,10 @@ public class XlsReportService {
         }, executorService);
     }
 
-    public static CompletableFuture<byte[]> generatePlannerAsync(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
-           return generatePlanner(vdata,accountProjections,job,userContact);
+           return generatePlanner(projection, vdata,accountProjections,job,userContact);
         });
     }
     //generateCdgAsync
@@ -871,8 +884,8 @@ public class XlsReportService {
     }
     //generatePlannerAsync
     @Async
-    public void generateAndCompleteReportAsyncPlanner(List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generatePlannerAsync(vdata, accountProjections, job, userContact)
+    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+        generatePlannerAsync(projection, vdata, accountProjections, job, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
