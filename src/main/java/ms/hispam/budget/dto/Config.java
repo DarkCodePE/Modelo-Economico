@@ -24,6 +24,8 @@ public class Config {
     private List<EmployeeClassification> employeeClassifications;
     private List<SeniorityAndQuinquennium> seniorityAndQuinquenniums;
     private List<ConceptoPresupuestal> conceptoPresupuestals;
+    private List<ValidationRule> validationRules;
+    private List<ParameterGroup> parameterGroups;
     private String money;
     private String icon;
     private Boolean vViewPo;

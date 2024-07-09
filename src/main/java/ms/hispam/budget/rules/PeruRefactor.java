@@ -83,7 +83,7 @@ public class PeruRefactor {
             PaymentComponentDTO componentPC960400 = componentMap.get("PC960400");
             PaymentComponentDTO componentPC960401 = componentMap.get("PC960401");
 
-            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue() / 14, componentPC960401.getAmount().doubleValue());
+            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue(), componentPC960401.getAmount().doubleValue() / 14);
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
             YearMonth yearMonth = YearMonth.parse(period, formatter);

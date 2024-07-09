@@ -10,6 +10,8 @@ import ms.hispam.budget.exception.FormatAmountException;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.repository.sqlserver.ParametersRepository;
 import ms.hispam.budget.rules.*;
+import ms.hispam.budget.rules.configuration.ConfigStrategy;
+import ms.hispam.budget.rules.configuration.ConfigStrategyFactory;
 import ms.hispam.budget.rules.operations.salary.FoodBenefitsOperation;
 import ms.hispam.budget.rules.operations.Operation;
 import ms.hispam.budget.rules.operations.salary.*;
@@ -118,6 +120,12 @@ public class ProjectionServiceImpl implements ProjectionService {
     private SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository;
     @Autowired
     private ConceptoPresupuestalRepository conceptoPresupuestalRepository;
+    @Autowired
+    private ValidationRuleRepository validationRuleRepository;
+    @Autowired
+    private ConventArgRepository conventArgRepository;
+    @Autowired
+    private ConfigStrategyFactory configStrategyFactory;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
@@ -489,6 +497,9 @@ public class ProjectionServiceImpl implements ProjectionService {
             case "T. PERU":
                 isPeru(headcount,projection);
                 break;
+            case "T. ARGENTINA":
+                isArgentina(headcount,projection);
+                break;
             default:
                 break;
         }
@@ -523,6 +534,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                         && componentesMap.get(c.getPaymentComponent()).getVshow() == 1)
                 .collect(Collectors.toList())));*/
         return headcount;
+    }
+
+    private void isArgentina(List<ProjectionDTO> headcount, ParametersByProjection projection) {
+        Argentina argentina = new Argentina();
+        //List<ParametersDTO> parameters = repository.getParameters(projection.getPeriod(), projection.getBu());
     }
 
     private List<ResumenComponentDTO> groupedReales( List<RealesProjection> getReales) {
@@ -1411,11 +1427,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .collect(Collectors.toList());
         headcount.getComponents().addAll(bases);
     }
+
+    @Override
+    public Config getComponentByBuV2(String bu){
+        ConfigStrategy strategy = configStrategyFactory.getStrategy(bu);
+        return strategy.getConfig(bu);
+    }
+
     @Override
     public Config getComponentByBu(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
+        //mexico
         List<Convenio> convenio = convenioRepository.findAll();
         List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
+        //uruguay
         // Obtener todos los componentes
         List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
         //log.info("allComponents {}",allComponents);
@@ -1436,6 +1461,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
                 .distinct()
                 .collect(Collectors.toList());
+        //peru
         //list nominaPaymentComponentLink
         List<NominaPaymentComponentLink> nominaPaymentComponentLink = nominaPaymentComponentLinkRepository.findByBu(vbu.getId());
         //log.debug("combinedComponents {}",combinedComponents);
@@ -1444,6 +1470,29 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<SeniorityAndQuinquennium> seniorityAndQuinquennium = seniorityAndQuinquenniumRepository.findAll();
         //conceptoPresupuestalRepository
         List<ConceptoPresupuestal> conceptoPresupuestal = conceptoPresupuestalRepository.findAll();
+        List<ValidationRule> validationRules = validationRuleRepository.findByBu_Bu(vbu.getId());
+
+        //argentina
+        // Obtener todos los convenios y sus parámetros
+        List<ConventArg> convenios = conventArgRepository.findAll();
+        List<ms.hispam.budget.dto.projections.ParameterProjection> allParameters = parameterRepository.getParameterBu(bu);
+
+        // Agrupar parámetros por convenio
+        Map<String, List<ms.hispam.budget.dto.projections.ParameterProjection>> groupedParameters = allParameters.stream()
+                .collect(Collectors.groupingBy(pa -> convenios.stream()
+                        .filter(conv -> conv.getConvenio().equals(pa.getVparameter()))
+                        .map(ConventArg::getConvenio)
+                        .findFirst()
+                        .orElse("No Convenio")));
+
+        // Crear lista de grupos de parámetros
+        List<ParameterGroup> parameterGroups = groupedParameters.entrySet().stream()
+                .map(entry -> ParameterGroup.builder()
+                        .convenio(entry.getKey())
+                        .parameters(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
+
         return Config.builder()
                 .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
@@ -1470,6 +1519,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 .build()
                         )
                         .collect(Collectors.toList()))
+                .validationRules(validationRules)
                 .current(vbu.getCurrent())
                 .build();
     }
@@ -2031,7 +2081,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     public Boolean saveMoneyOdin(String po,Integer requirement) {
         final boolean[] resp = {false};
         repository.getCostPo(Constant.KEY_BD,po).ifPresent(e->{
-
                 Frecuently fre=    frecuentlyRepository.findById(e.getFrecuencia()).get();
                 double amount = e.getImporte()* fre.getFactor();
             try {

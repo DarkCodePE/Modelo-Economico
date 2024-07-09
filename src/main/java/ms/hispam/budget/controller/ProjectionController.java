@@ -69,6 +69,11 @@ public class ProjectionController {
         return service.getComponentByBu(bu);
     }
 
+    @GetMapping("/componentByCountryV2")
+    public Config getComponentByV2(@RequestParam String bu) {
+        return service.getComponentByBuV2(bu);
+    }
+
     @PostMapping("/save-projection")
     public Boolean saveProjection(@RequestBody ParameterHistorial projection ,@RequestHeader String user) {
         projection.setPeriod(projection.getPeriod().replace("/",""));

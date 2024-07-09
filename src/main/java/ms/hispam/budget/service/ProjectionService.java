@@ -48,4 +48,6 @@ public interface ProjectionService {
     Boolean saveMoneyOdin(String po,Integer requirement);
 
     List<PositionBaseline> getPositionBaseline(String period,String filter,String bu,Integer idBu);
+
+    Config getComponentByBuV2(String bu);
 }
