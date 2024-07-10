@@ -1874,16 +1874,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
-            //add database external to headcount
-            headcount
-                    .stream()
-                    .parallel()
-                    .forEach(h->{
-                        if(projection.getBaseExtern()!=null &&!projection.getBaseExtern().getData().isEmpty()){
-                            addBaseExtern(h,projection.getBaseExtern(),
-                                    projection.getPeriod(),projection.getRange());
-                        }
-            });
             xlsReportService.generateAndCompleteReportAsyncCdg(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
@@ -2443,7 +2433,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
             projectionsComponent.add(createPaymentComponentDTO("TURN", 7, hhee, projection));
             projectionsComponent.add(createPaymentComponentDTO("260", 12, guarderia, projection));
-        } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY")) {
+        } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
             if (!nominalBySSFF.isEmpty()) {
                 Map<String, Double> componentTotals = new ConcurrentHashMap<>();
 

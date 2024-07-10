@@ -3,8 +3,10 @@ package ms.hispam.budget.rules;
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.ParametersDTO;
 import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.util.Shared;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -50,5 +52,26 @@ public class Argentina {
         return component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
     }
-    // Método auxiliar para actualizar el salario en un componente de pago
+    //Sueldo Básico
+    //=SUMA(L6:O6)
+    //L6 = SALARY_BASE_100
+    //M6 = SALARY_BASE_300
+    //N6 = SALARY_BASE_320
+    //O6 = SALARY_BASE_380
+    public void basicSalary(List<PaymentComponentDTO> components, String period, Integer range) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO salaryBase100 = componentMap.get("SALARY_BASE_100");
+        PaymentComponentDTO salaryBase300 = componentMap.get("SALARY_BASE_300");
+        PaymentComponentDTO salaryBase320 = componentMap.get("SALARY_BASE_320");
+        PaymentComponentDTO salaryBase380 = componentMap.get("SALARY_BASE_380");
+        double salaryBase100Value = salaryBase100 != null ? salaryBase100.getAmount().doubleValue() : 0;
+        double salaryBase300Value = salaryBase300 != null ? salaryBase300.getAmount().doubleValue() : 0;
+        double salaryBase320Value = salaryBase320 != null ? salaryBase320.getAmount().doubleValue() : 0;
+        double salaryBase380Value = salaryBase380 != null ? salaryBase380.getAmount().doubleValue() : 0;
+        PaymentComponentDTO basicSalary = new PaymentComponentDTO();
+        basicSalary.setPaymentComponent("BASIC_SALARY");
+        basicSalary.setAmount(BigDecimal.valueOf(salaryBase100Value + salaryBase300Value + salaryBase320Value + salaryBase380Value));
+        basicSalary.setProjections(Shared.generateMonthProjection(period, range, basicSalary.getAmount()));
+        components.add(basicSalary);
+    }
 }

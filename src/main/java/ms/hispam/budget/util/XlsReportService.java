@@ -333,7 +333,7 @@ public class XlsReportService {
         }
     }
 
-    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections) {
+    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
@@ -428,8 +428,8 @@ public class XlsReportService {
             return outputStream.toByteArray();
 
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
+            log.error("Error al generar el reporte: " + e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -843,9 +843,9 @@ public class XlsReportService {
         });
     }
     //generateCdgAsync
-    public static CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections) {
+    public static CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
-            return generateCdg(projection, vdata,bu,accountProjections);
+            return generateCdg(projection, vdata,bu,accountProjections,job,userContact);
         });
     }
 
@@ -910,7 +910,7 @@ public class XlsReportService {
     //generateCdgAsync
     @Async
     public void generateAndCompleteReportAsyncCdg(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generateCdgAsync(projection, vdata, bu, accountProjections)
+        generateCdgAsync(projection, vdata, bu, accountProjections, job, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
