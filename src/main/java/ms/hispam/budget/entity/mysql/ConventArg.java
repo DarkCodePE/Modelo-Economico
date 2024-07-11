@@ -3,6 +3,7 @@ package ms.hispam.budget.entity.mysql;
 import lombok.*;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,4 +25,7 @@ public class ConventArg {
 
     @Column(name = "tipo_convenio", nullable = false)
     private String tipoConvenio;
+
+    @OneToMany(mappedBy = "conventArg")
+    private List<Parameters> parameters;
 }

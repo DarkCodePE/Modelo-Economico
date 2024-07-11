@@ -95,8 +95,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private NominaPaymentComponentLinkRepository nominaPaymentComponentLinkRepository;
     @Autowired
     private ReportGenerationService reportGenerationService;
-    @Autowired
-    private Executor executor;
+    /*@Autowired
+    private Executor executor;*/
     @Autowired
     @Lazy
     private XlsReportService xlsReportService;
@@ -151,7 +151,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Map<String, EmployeeClassification> classificationMap = new HashMap<>();
     private Map<Integer, BigDecimal> quinquenniumMap = new HashMap<>();
     private Map<String, ConceptoPresupuestal> conceptoPresupuestalMap = new HashMap<>();
-
+    //ConventArg
+    private Map<String, ConventArg> conventArgMap = new HashMap<>();
     @PostConstruct
     public void init() {
         operations = new ArrayList<>();
@@ -183,6 +184,12 @@ public class ProjectionServiceImpl implements ProjectionService {
         for (ConceptoPresupuestal concepto : conceptos) {
             conceptoPresupuestalMap.put(concepto.getConceptoPresupuestal(), concepto);
         }
+        // Inicializar ConventArg
+        List<ConventArg> conventArgs = conventArgRepository.findAll();
+        for (ConventArg conventArg : conventArgs) {
+            conventArgMap.put(conventArg.getConvenio(), conventArg);
+        }
+
     }
     public BigDecimal getQuinquenniumValue(int seniority) {
         return quinquenniumMap.getOrDefault(seniority, BigDecimal.ZERO);
@@ -538,7 +545,35 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     private void isArgentina(List<ProjectionDTO> headcount, ParametersByProjection projection) {
         Argentina argentina = new Argentina();
-        //List<ParametersDTO> parameters = repository.getParameters(projection.getPeriod(), projection.getBu());
+        // Parámetros
+        List<ParametersDTO> salaryIncreaseList = filterParametersByRootName(projection.getParameters(), "%Aumento Fuera Conv");
+        List<ParametersDTO> executiveSalaryIncreaseList = filterParametersByRootName(projection.getParameters(), "%Aumento Salarial");
+        List<ParametersDTO> directorSalaryIncreaseList = filterParametersByRootName(projection.getParameters(), "%Aumento Remunerativo");
+        List<ParametersDTO> vacationDaysList = filterParametersByRootName(projection.getParameters(), "%Aumento Viático");
+
+        headcount
+                .stream()
+                .parallel()
+                .forEach(headcountData -> {
+                    //Grupo_de_convenio_LABEL
+                    //Area_de_personal_LABEL
+                    //TODO: reemplazar Grupo_de_convenio_LABEL por headcountData.getGrupo_de_convenio()
+                    String Grupo_de_convenio_LABEL = "FC MVL";
+                    // Obtén el convenio asociado a la posición
+
+                    if (projection.getBaseExtern() != null && !projection.getBaseExtern().getData().isEmpty()) {
+                        addBaseExtern(headcountData, projection.getBaseExtern(),
+                                projection.getPeriod(), projection.getRange());
+                    }
+                    //public void basicSalary(List<PaymentComponentDTO> components, String period, Integer range)
+                    argentina.basicSalary(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    //  public void additionalRemuneration(List<PaymentComponentDTO> components, List<ParametersDTO> parameters, String period, Integer range, Map<String, ConventArg> conventArgMap, String poName)
+                    argentina.additionalRemuneration(headcountData.getComponents(), projection.getParameters(),
+                            projection.getPeriod(), projection.getRange(), conventArgMap, Grupo_de_convenio_LABEL);
+                    // public void discontinuousDay(List<PaymentComponentDTO> components, String period, Integer range) {
+                    argentina.discontinuousDay(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    //
+                });
     }
 
     private List<ResumenComponentDTO> groupedReales( List<RealesProjection> getReales) {
@@ -977,6 +1012,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .filter(p -> Objects.equals(p.getParameter().getDescription(), name))
                 .collect(Collectors.toList());
     }
+    public List<ParametersDTO> filterParametersByRootName(List<ParametersDTO> parameters, String rootName) {
+        return parameters.stream()
+                .filter(p -> p.getParameter().getDescription().startsWith(rootName))
+                .collect(Collectors.toList());
+    }
+
+
     private void isMexico(List<ProjectionDTO>  headcount, ParametersByProjection projection){
         RangeBuDTO rangeBuByBU = projection.getTemporalParameters().stream()
                 .filter(r -> r.getIdBu().equals(projection.getIdBu()))

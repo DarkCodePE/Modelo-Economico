@@ -2,12 +2,7 @@ package ms.hispam.budget.entity.mysql;
 
 import lombok.*;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Getter
 @Setter
@@ -33,4 +28,7 @@ public class Parameters {
     private Boolean allPeriod;
     @Column(name = "month_restringed")
     private String monthRestringed;
+    @ManyToOne
+    @JoinColumn(name = "convent_arg_id", nullable = false)
+    private ConventArg conventArg;
 }

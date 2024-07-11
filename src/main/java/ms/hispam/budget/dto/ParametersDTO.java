@@ -1,6 +1,7 @@
 package ms.hispam.budget.dto;
 
 import lombok.*;
+import ms.hispam.budget.entity.mysql.ConventArg;
 
 @Getter
 @Setter
@@ -17,4 +18,5 @@ public class ParametersDTO {
     private String periodRetroactive;
     private String range;
     private Integer order;
+    private ConventArg conventArg;
 }
