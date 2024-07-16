@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/java/jdk:11-zulu-alpine
+FROM mcr.microsoft.com/java/jdk:17-zulu-alpine
 LABEL mantainer="Hispam" \
       build="docker build --build-arg nombreArtefacto=artefacto -t microservicio:1.0 -f Dockerfile ." \
       run="docker run -dit --restart on-failure:5 --name microservicio -p 8080:8080 microservicio:1.0"
