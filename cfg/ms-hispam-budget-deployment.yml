@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-hispam-budget
+  namespace: hispam
+  labels:
+    app: "ms-hispam-budget"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-hispam-budget
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ms-hispam-budget
+    spec:
+      containers:
+        - name: ms-hispam-budget
+          image: acrhispam.azurecr.io/ms-hispam-budget:0.0.6-SNAPSHOT
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          env:
+           - name: ENV
+             value: ambiente
+           - name: SPRING_APPLICATION_JSON
+             value: '{"spring":{"cloud":{"config":{"uri":"http://ms-hispam-config-server-svc.hispam.svc.cluster.local:4051","profile":"dev"}}}}'
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 3096Mi
+      imagePullSecrets:
+        - name: acr-hispam-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-hispam-budget-svc
+  namespace: hispam
+  labels:
+    app: "ms-hispam-budget"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /actuator/prometheus
+spec:
+  ports:
+    - port: 8082
+      name: http-actuator-metrics
+      targetPort: 8082
+      protocol: TCP
+  selector:
+    app: ms-hispam-budget
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ms-hispam-budget-ingress-nginx
+  namespace: hispam
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "200m"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "request-id, request-date, content-type,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, DELETE, PATCH, OPTIONS"
+    cert-manager.io/cluster-issuer: letsencrypt-dev
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - development-sd-aks.eastus.cloudapp.azure.com
+      secretName: tls-secret
+  rules:
+    - host: development-sd-aks.eastus.cloudapp.azure.com
+      http:
+        paths:
+          - path: /event
+            pathType: Prefix
+            backend:
+              service:
+                name: ms-hispam-budget-svc
+                port:
+                  number: 8082
