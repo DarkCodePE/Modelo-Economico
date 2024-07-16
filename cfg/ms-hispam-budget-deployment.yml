@@ -78,7 +78,7 @@ spec:
     - host: development-sd-aks.eastus.cloudapp.azure.com
       http:
         paths:
-          - path: /event
+          - path: /budget
             pathType: Prefix
             backend:
               service:
