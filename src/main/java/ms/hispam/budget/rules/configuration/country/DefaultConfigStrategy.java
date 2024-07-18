@@ -2,6 +2,7 @@ package ms.hispam.budget.rules.configuration.country;
 
 import ms.hispam.budget.dto.Config;
 import ms.hispam.budget.dto.OperationResponse;
+import ms.hispam.budget.dto.countries.DefaultConfig;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.rules.configuration.ConfigStrategy;
@@ -23,7 +24,7 @@ public class DefaultConfigStrategy extends BaseConfigStrategy {
     @Override
     public Config getConfig(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el BU"));
-        return Config.builder()
+        return DefaultConfig.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())

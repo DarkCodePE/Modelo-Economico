@@ -1,8 +1,10 @@
 package ms.hispam.budget.service;
 
 import ms.hispam.budget.dto.*;
+import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ConventArg;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -40,6 +42,8 @@ public interface ProjectionService {
     DataBaseMainReponse getDataBase(DataRequest dataRequest);
 
     List<Bu> findByBuAccess(String email);
+
+    List<ConventArgDTO> getConventArg();
 
     List<AccountProjection>getAccountsByBu(Integer idBu);
 

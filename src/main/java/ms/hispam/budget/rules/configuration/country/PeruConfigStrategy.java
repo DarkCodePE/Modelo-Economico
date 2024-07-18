@@ -3,6 +3,7 @@ package ms.hispam.budget.rules.configuration.country;
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.Config;
 import ms.hispam.budget.dto.OperationResponse;
+import ms.hispam.budget.dto.countries.DefaultConfig;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.rules.configuration.ConfigStrategy;
@@ -40,7 +41,7 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
         List<SeniorityAndQuinquennium> seniorityAndQuinquennium = seniorityAndQuinquenniumRepository.findAll();
         //conceptoPresupuestalRepository
         List<ConceptoPresupuestal> conceptoPresupuestal = conceptoPresupuestalRepository.findAll();
-        return Config.builder()
+        return DefaultConfig.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())

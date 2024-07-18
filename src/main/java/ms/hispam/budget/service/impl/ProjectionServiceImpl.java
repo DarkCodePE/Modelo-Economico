@@ -2,6 +2,8 @@ package ms.hispam.budget.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
+import ms.hispam.budget.dto.countries.ConventArgDTO;
+import ms.hispam.budget.dto.countries.DefaultConfig;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
@@ -550,7 +552,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         List<ParametersDTO> executiveSalaryIncreaseList = filterParametersByRootName(projection.getParameters(), "%Aumento Salarial");
         List<ParametersDTO> directorSalaryIncreaseList = filterParametersByRootName(projection.getParameters(), "%Aumento Remunerativo");
         List<ParametersDTO> vacationDaysList = filterParametersByRootName(projection.getParameters(), "%Aumento Viático");
-
+        log.debug("salaryIncreaseList {}",projection);
         headcount
                 .stream()
                 .parallel()
@@ -565,14 +567,18 @@ public class ProjectionServiceImpl implements ProjectionService {
                         addBaseExtern(headcountData, projection.getBaseExtern(),
                                 projection.getPeriod(), projection.getRange());
                     }
-                    //public void basicSalary(List<PaymentComponentDTO> components, String period, Integer range)
-                    argentina.basicSalary(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
-                    //  public void additionalRemuneration(List<PaymentComponentDTO> components, List<ParametersDTO> parameters, String period, Integer range, Map<String, ConventArg> conventArgMap, String poName)
+                    argentina.basicSalary(headcountData.getComponents(), projection.getParameters(),
+                            projection.getPeriod(), projection.getRange(), conventArgMap, Grupo_de_convenio_LABEL);
                     argentina.additionalRemuneration(headcountData.getComponents(), projection.getParameters(),
                             projection.getPeriod(), projection.getRange(), conventArgMap, Grupo_de_convenio_LABEL);
-                    // public void discontinuousDay(List<PaymentComponentDTO> components, String period, Integer range) {
                     argentina.discontinuousDay(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
-                    //
+                    argentina.telephoneRate(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    argentina.nonResidentAllowance(headcountData.getComponents(), projection.getParameters(),
+                            projection.getPeriod(), projection.getRange(), conventArgMap, Grupo_de_convenio_LABEL);
+                    argentina.snr(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    argentina.sumConformedSalary(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    argentina.percentageIncreaseConformedSalary(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
+                    argentina.additional(headcountData.getComponents(), projection.getPeriod(), projection.getRange());
                 });
     }
 
@@ -1535,7 +1541,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .build())
                 .collect(Collectors.toList());
 
-        return Config.builder()
+        return DefaultConfig.builder()
                 .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())
@@ -1580,55 +1586,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .count();
         return count == 1;
     }
-    public Config getComponentByBu2(String bu) {
-        Bu vbu = buRepository.findByBu(bu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
-        List<Convenio> convenio = convenioRepository.findAll();
-        List<ConvenioBono> convenioBono = convenioBonoRepository.findAll();
-
-        // Obtener todos los componentes
-        List<ComponentProjection> allComponents = sharedRepo.getComponentByBu(bu);
-
-        // Filtrar solo los componentes base
-        List<ComponentProjection> baseComponents = allComponents.stream()
-                .filter(ComponentProjection::getIsBase)
-                .collect(Collectors.toList());
-        //log.info("baseComponents {}",baseComponents);
-        // Filtrar los componentes que tienen un typePaymentComponentId único
-        List<ComponentProjection> uniqueTypeComponents = allComponents.stream()
-                .filter(component -> isUniqueTypePaymentComponentId(component, allComponents))
-                .collect(Collectors.toList());
-        //log.debug("uniqueTypeComponents {}",uniqueTypeComponents);
-        // Combinar las dos listas y eliminar duplicados
-        List<ComponentProjection> combinedComponents = Stream.concat(baseComponents.stream(), uniqueTypeComponents.stream())
-                .distinct()
-                .collect(Collectors.toList());
-        //log.debug("combinedComponents {}",combinedComponents);
-        return Config.builder()
-                .components(combinedComponents) // usar los componentes combinados
-                .parameters(parameterRepository.getParameterBu(bu))
-                .icon(vbu.getIcon())
-                .money(vbu.getMoney())
-                .vViewPo(vbu.getVViewPo())
-                .vTemporal(buService.getAllBuWithRangos(vbu.getId()))
-                .convenios(convenio)
-                .convenioBonos(convenioBono)
-                .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
-                .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
-                .baseExtern(baseExternRepository.findByBu(vbu.getId())
-                        .stream()
-                        .map(c->OperationResponse
-                                .builder()
-                                .code(c.getCode())
-                                .name(c.getName())
-                                .bu(c.getBu())
-                                .isInput(c.getIsInput())
-                                .build()
-                        )
-                        .collect(Collectors.toList()))
-                .current(vbu.getCurrent())
-                .build();
-    }
-
 
     @Override
     @Transactional(transactionManager = "mysqlTransactionManager")
@@ -2063,6 +2020,19 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public List<Bu> findByBuAccess(String email) {
         return buRepository.findByBuAccess(email);
+    }
+
+    //getConventArg
+    @Override
+    public List<ConventArgDTO> getConventArg(){
+        List<ConventArg> listConventArg = conventArgRepository.findAll();
+        return listConventArg.stream()
+                .map(c->ConventArgDTO.builder()
+                        .id(c.getId())
+                        .convenio(c.getConvenio())
+                        .areaPersonal(c.getAreaPersonal())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @Override

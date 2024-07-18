@@ -2,6 +2,7 @@ package ms.hispam.budget.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.*;
+import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ReportJob;
@@ -49,7 +50,7 @@ public class ProjectionController {
 
     @PostMapping("/new-projection")
     public ProjectionSecondDTO getNewProjection(@RequestBody @Valid ParametersByProjection projection) {
-        //log.debug("Projection: {}", projection);
+        log.debug("Projection: {}", projection);
         Shared.replaceSLash(projection);
         return service.getNewProjection(projection);
     }
@@ -59,6 +60,12 @@ public class ProjectionController {
 
         return service.getDataBase(dataRequest);
     }
+
+    @GetMapping("/convent-arg")
+    public List<ConventArgDTO> getConveniosArg() {
+        return service.getConventArg();
+    }
+
     @GetMapping("/bu")
     public List<Bu> accessBu(@RequestHeader String user) {
 
