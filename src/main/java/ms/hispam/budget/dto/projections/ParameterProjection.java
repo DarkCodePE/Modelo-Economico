@@ -13,5 +13,6 @@ public interface ParameterProjection {
     public String getVname();
     public Boolean getInperiod();
     public String getRestringed();
-
+    public String getConvenio();
+    public String getArea();
 }

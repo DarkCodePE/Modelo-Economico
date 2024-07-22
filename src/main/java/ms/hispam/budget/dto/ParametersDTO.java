@@ -1,6 +1,8 @@
 package ms.hispam.budget.dto;
 
 import lombok.*;
+import ms.hispam.budget.dto.countries.ConventArgDTO;
+import ms.hispam.budget.entity.mysql.ConventArg;
 
 @Getter
 @Setter
@@ -8,13 +10,21 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ParametersDTO {
-
+    private Integer id;
+    private String description;
+    private String vparameter;
+    private Boolean allPeriod;
+    private Boolean inPeriod;
+    private Boolean restringed;
+    private Boolean isRetroactive;
     private ParameterDTO parameter;
+    private Double value;
+    private String range;
     private Integer type;
     private String period;
-    private Double value;
-    private Boolean isRetroactive;
     private String periodRetroactive;
-    private String range;
-    private Integer order;
+    private String order;
+    private ConventArgDTO conventArg;
+    private String vname;
+    private Boolean vrange;
 }

@@ -74,7 +74,6 @@ public class PeruRefactor {
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             String typeEmp = employeeClassification.getTypeEmp();
 
-
             Map<String, ParametersDTO> salaryIncreaseyMap = createCacheMap(salaryIncreaseList);
             Map<String, ParametersDTO> executiveSalaryIncreaseListMap = createCacheMap(executiveSalaryIncreaseList);
             Map<String, ParametersDTO> directorSalaryIncreaseListMap = createCacheMap(directorSalaryIncreaseList);
@@ -194,7 +193,7 @@ public class PeruRefactor {
             promoDate = promoDate.withDayOfMonth(1);
             LocalDate date = LocalDate.parse(month, dateFormat);
             if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) && promoDate.getMonthValue() == date.getMonthValue()) {
-                return salary * promoComponentProject.getAmount().doubleValue();
+                return salary * promoComponentProject.getAmount().doubleValue() / 100;
             }
         }
         return 0;
@@ -498,7 +497,7 @@ public class PeruRefactor {
 
         if (theoreticalSalaryComponent != null && goceVacacionesComponent != null) {
             double theoreticalSalary = theoreticalSalaryComponent.getAmount().doubleValue();
-            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue();
+            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue() / 100;
             double vacationPerDay = theoreticalSalary / 30;
             double vacationPerMonth = (vacationPerDay * vacationDays * goceVacacionesBase) * vacationSeasonality;
             vacationEnjoymentComponent.setAmount(BigDecimal.valueOf(vacationPerMonth * -1));
@@ -2249,8 +2248,8 @@ public class PeruRefactor {
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO PC960451Component = componentMap.get("PC960451");
         PaymentComponentDTO PC960452Component = componentMap.get("PC960452");
-        double bonusBase1 = PC960451Component != null ? PC960451Component.getAmount().doubleValue() : 0;
-        double bonusBase2 = PC960452Component != null ? PC960452Component.getAmount().doubleValue() : 0;
+        double bonusBase1 = PC960451Component != null ? PC960451Component.getAmount().doubleValue() / 100 : 0;
+        double bonusBase2 = PC960452Component != null ? PC960452Component.getAmount().doubleValue() / 100 : 0;
         double theoricSalary = theoricSalaryComponent != null ? theoricSalaryComponent.getAmount().doubleValue() : 0;
         PaymentComponentDTO srdBonusComponent = new PaymentComponentDTO();
         srdBonusComponent.setPaymentComponent("SRD_BONUS");
