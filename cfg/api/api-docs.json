@@ -1,49 +1,49 @@
 {
-  "openapi" : "3.0.1",
-  "info" : {
-    "title" : "Servicio de Modelo Economico",
-    "version" : "v0"
+  "openapi" :"3.0.1",
+  "info" :{
+    "title" :"Servicio de Modelo Economico",
+    "version" :"v0"
   },
-  "servers" : [
+  "servers" :[
     {
-      "url" : "https://development-sd-aks.eastus.cloudapp.azure.com/budget/v1",
-      "description" : "Generated server url"
+      "url" :"https://development-sd-aks.eastus.cloudapp.azure.com/budget/v1",
+      "description" :"Generated server url"
     }
   ],
-  "paths" : {
-    "/save-projection" : {
-      "post" : {
-        "tags" : [
+  "paths" :{
+    "/save-projection" :{
+      "post" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "saveProjection",
-        "parameters" : [
+        "operationId" :"saveProjection",
+        "parameters" :[
           {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ParameterHistorial"
+        "requestBody" :{
+          "content" :{
+            "application/json" :{
+              "schema" :{
+                "$ref" :"#/components/schemas/ParameterHistorial"
               }
             }
           },
-          "required" : true
+          "required" :true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "boolean"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"boolean"
                 }
               }
             }
@@ -51,29 +51,29 @@
         }
       }
     },
-    "/projection" : {
-      "post" : {
-        "tags" : [
+    "/projection" :{
+      "post" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getProjection",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ParametersByProjection"
+        "operationId" :"getProjection",
+        "requestBody" :{
+          "content" :{
+            "application/json" :{
+              "schema" :{
+                "$ref" :"#/components/schemas/ParametersByProjection"
               }
             }
           },
-          "required" : true
+          "required" :true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PageProjectionDTO"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/PageProjectionDTO"
                 }
               }
             }
@@ -81,29 +81,29 @@
         }
       }
     },
-    "/new-projection" : {
-      "post" : {
-        "tags" : [
+    "/new-projection" :{
+      "post" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getNewProjection",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ParametersByProjection"
+        "operationId" :"getNewProjection",
+        "requestBody" :{
+          "content" :{
+            "application/json" :{
+              "schema" :{
+                "$ref" :"#/components/schemas/ParametersByProjection"
               }
             }
           },
-          "required" : true
+          "required" :true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectionSecondDTO"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/ProjectionSecondDTO"
                 }
               }
             }
@@ -111,57 +111,57 @@
         }
       }
     },
-    "/download-projection" : {
-      "post" : {
-        "tags" : [
+    "/download-projection" :{
+      "post" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "downloadProjection",
-        "parameters" : [
+        "operationId" :"downloadProjection",
+        "parameters" :[
           {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           },
           {
-            "name" : "type",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"type",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           },
           {
-            "name" : "idBu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"idBu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ParametersByProjection"
+        "requestBody" :{
+          "content" :{
+            "application/json" :{
+              "schema" :{
+                "$ref" :"#/components/schemas/ParametersByProjection"
               }
             }
           },
-          "required" : true
+          "required" :true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ExcelReportDTO"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/ExcelReportDTO"
                 }
               }
             }
@@ -169,29 +169,29 @@
         }
       }
     },
-    "/data-base" : {
-      "post" : {
-        "tags" : [
+    "/data-base" :{
+      "post" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getDataBase",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/DataRequest"
+        "operationId" :"getDataBase",
+        "requestBody" :{
+          "content" :{
+            "application/json" :{
+              "schema" :{
+                "$ref" :"#/components/schemas/DataRequest"
               }
             }
           },
-          "required" : true
+          "required" :true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/DataBaseMainReponse"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/DataBaseMainReponse"
                 }
               }
             }
@@ -199,38 +199,38 @@
         }
       }
     },
-    "/save-money" : {
-      "get" : {
-        "tags" : [
+    "/save-money" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "saveMoney",
-        "parameters" : [
+        "operationId" :"saveMoney",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           },
           {
-            "name" : "po",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"po",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "boolean"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"boolean"
                 }
               }
             }
@@ -238,32 +238,32 @@
         }
       }
     },
-    "/rosseta" : {
-      "get" : {
-        "tags" : [
+    "/rosseta" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getRosseta",
-        "parameters" : [
+        "operationId" :"getRosseta",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/RosetaDTO"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/RosetaDTO"
                   }
                 }
               }
@@ -272,31 +272,31 @@
         }
       }
     },
-    "/report" : {
-      "get" : {
-        "tags" : [
+    "/report" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getReport",
-        "parameters" : [
+        "operationId" :"getReport",
+        "parameters" :[
           {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ReportJob"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/ReportJob"
                   }
                 }
               }
@@ -305,40 +305,40 @@
         }
       }
     },
-    "/report-bu" : {
-      "get" : {
-        "tags" : [
+    "/report-bu" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getReportBu",
-        "parameters" : [
+        "operationId" :"getReportBu",
+        "parameters" :[
           {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           },
           {
-            "name" : "idBu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"idBu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ReportJob"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/ReportJob"
                   }
                 }
               }
@@ -347,31 +347,31 @@
         }
       }
     },
-    "/historial" : {
-      "get" : {
-        "tags" : [
+    "/historial" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getHistoricalProjection",
-        "parameters" : [
+        "operationId" :"getHistoricalProjection",
+        "parameters" :[
           {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/HistorialProjectionDTO"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/HistorialProjectionDTO"
                   }
                 }
               }
@@ -379,29 +379,29 @@
           }
         }
       },
-      "delete" : {
-        "tags" : [
+      "delete" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "deleteHistorical",
-        "parameters" : [
+        "operationId" :"deleteHistorical",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "boolean"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"boolean"
                 }
               }
             }
@@ -409,30 +409,30 @@
         }
       }
     },
-    "/get-projection-historical" : {
-      "get" : {
-        "tags" : [
+    "/get-projection-historical" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getHistorialProjection",
-        "parameters" : [
+        "operationId" :"getHistorialProjection",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectionInformation"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/ProjectionInformation"
                 }
               }
             }
@@ -440,56 +440,56 @@
         }
       }
     },
-    "/get-position-baseline" : {
-      "get" : {
-        "tags" : [
+    "/get-position-baseline" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getPositionBaseline",
-        "parameters" : [
+        "operationId" :"getPositionBaseline",
+        "parameters" :[
           {
-            "name" : "filter",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"filter",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           },
           {
-            "name" : "period",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"period",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           },
           {
-            "name" : "bu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"bu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           },
           {
-            "name" : "idBu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"idBu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/PositionBaseline"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/PositionBaseline"
                   }
                 }
               }
@@ -498,32 +498,32 @@
         }
       }
     },
-    "/download-report" : {
-      "get" : {
-        "tags" : [
+    "/download-report" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "downloadFile",
-        "parameters" : [
+        "operationId" :"downloadFile",
+        "parameters" :[
           {
-            "name" : "path",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
+            "name" :"path",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "string",
-                    "format" : "byte"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "type" :"string",
+                    "format" :"byte"
                   }
                 }
               }
@@ -532,33 +532,33 @@
         }
       }
     },
-    "/download-historical" : {
-      "get" : {
-        "tags" : [
+    "/download-historical" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "downloadProjectionHistorical",
-        "parameters" : [
+        "operationId" :"downloadProjectionHistorical",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "string",
-                    "format" : "byte"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "type" :"string",
+                    "format" :"byte"
                   }
                 }
               }
@@ -567,91 +567,21 @@
         }
       }
     },
-    "/componentByCountry" : {
-      "get" : {
-        "tags" : [
+    "/convent-arg" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getComponentBy",
-        "parameters" : [
-          {
-            "name" : "bu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
-            }
-          }
-        ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Config"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/componentByCountryV2" : {
-      "get" : {
-        "tags" : [
-          "projection-controller"
-        ],
-        "operationId" : "getComponentByV2",
-        "parameters" : [
-          {
-            "name" : "bu",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
-            }
-          }
-        ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/Config"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/bu" : {
-      "get" : {
-        "tags" : [
-          "projection-controller"
-        ],
-        "operationId" : "accessBu",
-        "parameters" : [
-          {
-            "name" : "user",
-            "in" : "header",
-            "required" : true,
-            "schema" : {
-              "type" : "string"
-            }
-          }
-        ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/Bu"
+        "operationId" :"getConveniosArg",
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/ConventArgDTO"
                   }
                 }
               }
@@ -660,32 +590,125 @@
         }
       }
     },
-    "/account" : {
-      "get" : {
-        "tags" : [
+    "/componentByCountry" :{
+      "get" :{
+        "tags" :[
           "projection-controller"
         ],
-        "operationId" : "getAccount",
-        "parameters" : [
+        "operationId" :"getComponentBy",
+        "parameters" :[
           {
-            "name" : "id",
-            "in" : "query",
-            "required" : true,
-            "schema" : {
-              "type" : "integer",
-              "format" : "int32"
+            "name" :"bu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
             }
           }
         ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/AccountProjection"
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/componentByCountryV2" :{
+      "get" :{
+        "tags" :[
+          "projection-controller"
+        ],
+        "operationId" :"getComponentByV2",
+        "parameters" :[
+          {
+            "name" :"bu",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
+            }
+          }
+        ],
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "$ref" :"#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bu" :{
+      "get" :{
+        "tags" :[
+          "projection-controller"
+        ],
+        "operationId" :"accessBu",
+        "parameters" :[
+          {
+            "name" :"user",
+            "in" :"header",
+            "required" :true,
+            "schema" :{
+              "type" :"string"
+            }
+          }
+        ],
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/Bu"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account" :{
+      "get" :{
+        "tags" :[
+          "projection-controller"
+        ],
+        "operationId" :"getAccount",
+        "parameters" :[
+          {
+            "name" :"id",
+            "in" :"query",
+            "required" :true,
+            "schema" :{
+              "type" :"integer",
+              "format" :"int32"
+            }
+          }
+        ],
+        "responses" :{
+          "200" :{
+            "description" :"OK",
+            "content" :{
+              "*/*" :{
+                "schema" :{
+                  "type" :"array",
+                  "items" :{
+                    "$ref" :"#/components/schemas/AccountProjection"
                   }
                 }
               }
@@ -695,264 +718,306 @@
       }
     }
   },
-  "components" : {
-    "schemas" : {
-      "BaseExternResponse" : {
-        "type" : "object",
-        "properties" : {
-          "headers" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+  "components" :{
+    "schemas" :{
+      "BaseExternResponse" :{
+        "type" :"object",
+        "properties" :{
+          "headers" :{
+            "type" :"array",
+            "items" :{
+              "type" :"string"
             }
           },
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "type" : "object"
+          "data" :{
+            "type" :"array",
+            "items" :{
+              "type" :"object",
+              "additionalProperties" :{
+                "type" :"object"
               }
             }
           }
         }
       },
-      "Convenio" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "Convenio" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "convenioName" : {
-            "type" : "string"
+          "convenioName" :{
+            "type" :"string"
           },
-          "retiroPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "retiroPercentage" :{
+            "type" :"number",
+            "format" :"double"
           },
-          "imssPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "imssPercentage" :{
+            "type" :"number",
+            "format" :"double"
           },
-          "infonavitPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "infonavitPercentage" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "ConvenioBono" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ConvenioBono" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "convenioNivel" : {
-            "type" : "string"
+          "convenioNivel" :{
+            "type" :"string"
           },
-          "bonoPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "bonoPercentage" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "DisabledPoDTO" : {
-        "type" : "object",
-        "properties" : {
-          "po" : {
-            "type" : "string"
+      "ConventArgDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "idssff" : {
-            "type" : "string"
+          "convenio" :{
+            "type" :"string"
           },
-          "from" : {
-            "type" : "string"
-          },
-          "to" : {
-            "type" : "string"
+          "areaPersonal" :{
+            "type" :"string"
           }
         }
       },
-      "ParameterDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "DisabledPoDTO" :{
+        "type" :"object",
+        "properties" :{
+          "po" :{
+            "type" :"string"
           },
-          "name" : {
-            "type" : "string"
+          "idssff" :{
+            "type" :"string"
           },
-          "description" : {
-            "type" : "string"
+          "from" :{
+            "type" :"string"
           },
-          "typeValor" : {
-            "type" : "integer",
-            "format" : "int32"
+          "to" :{
+            "type" :"string"
           }
         }
       },
-      "ParameterHistorial" : {
-        "type" : "object",
-        "properties" : {
-          "bu" : {
-            "type" : "string"
+      "ParameterDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "name" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "period" : {
-            "type" : "string"
+          "description" :{
+            "type" :"string"
           },
-          "range" : {
-            "type" : "integer",
-            "format" : "int32"
+          "typeValor" :{
+            "type" :"integer",
+            "format" :"int32"
+          }
+        }
+      },
+      "ParameterHistorial" :{
+        "type" :"object",
+        "properties" :{
+          "bu" :{
+            "type" :"string"
           },
-          "nominaFrom" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "nominaTo" : {
-            "type" : "string"
+          "period" :{
+            "type" :"string"
           },
-          "disabledPo" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DisabledPoDTO"
+          "range" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "nominaFrom" :{
+            "type" :"string"
+          },
+          "nominaTo" :{
+            "type" :"string"
+          },
+          "disabledPo" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/DisabledPoDTO"
             }
           },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParametersDTO"
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParametersDTO"
             }
           },
-          "isTop" : {
-            "type" : "boolean"
+          "isTop" :{
+            "type" :"boolean"
           },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "baseExtern" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
+          "baseExtern" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
           },
-          "bc" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
+          "bc" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
           },
-          "temporalParameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RangeBuDTO"
+          "temporalParameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RangeBuDTO"
             }
           },
-          "convenio" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Convenio"
+          "convenio" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/Convenio"
             }
           },
-          "convenioBono" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConvenioBono"
-            }
-          }
-        }
-      },
-      "ParametersDTO" : {
-        "type" : "object",
-        "properties" : {
-          "parameter" : {
-            "$ref" : "#/components/schemas/ParameterDTO"
-          },
-          "type" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "period" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "isRetroactive" : {
-            "type" : "boolean"
-          },
-          "periodRetroactive" : {
-            "type" : "string"
-          },
-          "range" : {
-            "type" : "string"
-          },
-          "order" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "RangeBuDTO" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "rangeBuDetails" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RangeBuDetailDTO"
+          "convenioBono" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConvenioBono"
             }
           }
         }
       },
-      "RangeBuDetailDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ParametersDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "range" : {
-            "type" : "string"
+          "description" :{
+            "type" :"string"
           },
-          "idPivot" : {
-            "type" : "integer",
-            "format" : "int32"
+          "vparameter" :{
+            "type" :"string"
           },
-          "value" : {
-            "type" : "number",
-            "format" : "double"
+          "allPeriod" :{
+            "type" :"boolean"
+          },
+          "inPeriod" :{
+            "type" :"boolean"
+          },
+          "restringed" :{
+            "type" :"boolean"
+          },
+          "isRetroactive" :{
+            "type" :"boolean"
+          },
+          "parameter" :{
+            "$ref" :"#/components/schemas/ParameterDTO"
+          },
+          "value" :{
+            "type" :"number",
+            "format" :"double"
+          },
+          "range" :{
+            "type" :"string"
+          },
+          "type" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "period" :{
+            "type" :"string"
+          },
+          "periodRetroactive" :{
+            "type" :"string"
+          },
+          "order" :{
+            "type" :"string"
+          },
+          "conventArg" :{
+            "$ref" :"#/components/schemas/ConventArgDTO"
+          },
+          "vname" :{
+            "type" :"string"
+          },
+          "vrange" :{
+            "type" :"boolean"
           }
         }
       },
-      "ParameterDefault" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "RangeBuDTO" :{
+        "type" :"object",
+        "properties" :{
+          "name" :{
+            "type" :"string"
           },
-          "bu" : {
-            "type" : "integer",
-            "format" : "int32"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "value" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "vparameter" : {
-            "type" : "integer",
-            "format" : "int32"
+          "rangeBuDetails" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RangeBuDetailDTO"
+            }
           }
         }
       },
-      "ParametersByProjection" : {
-        "required" : [
+      "RangeBuDetailDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "range" :{
+            "type" :"string"
+          },
+          "idPivot" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "value" :{
+            "type" :"number",
+            "format" :"double"
+          }
+        }
+      },
+      "ParameterDefault" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "bu" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "value" :{
+            "type" :"number",
+            "format" :"double"
+          },
+          "vparameter" :{
+            "type" :"integer",
+            "format" :"int32"
+          }
+        }
+      },
+      "ParametersByProjection" :{
+        "required" :[
           "bu",
           "idBu",
           "nominaFrom",
@@ -960,1267 +1025,1279 @@
           "period",
           "range"
         ],
-        "type" : "object",
-        "properties" : {
-          "bu" : {
-            "type" : "string"
+        "type" :"object",
+        "properties" :{
+          "bu" :{
+            "type" :"string"
           },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "period" : {
-            "type" : "string"
+          "period" :{
+            "type" :"string"
           },
-          "range" : {
-            "minimum" : 1,
-            "type" : "integer",
-            "format" : "int32"
+          "range" :{
+            "minimum" :1,
+            "type" :"integer",
+            "format" :"int32"
           },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParametersDTO"
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParametersDTO"
             }
           },
-          "paymentComponent" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PaymentComponentType"
+          "paymentComponent" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/PaymentComponentType"
             }
           },
-          "temporalParameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RangeBuDTO"
+          "temporalParameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RangeBuDTO"
             }
           },
-          "convenios" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Convenio"
+          "convenios" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/Convenio"
             }
           },
-          "convenioBonos" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConvenioBono"
+          "convenioBonos" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConvenioBono"
             }
           },
-          "defaultParameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterDefault"
+          "defaultParameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterDefault"
             }
           },
-          "nominaFrom" : {
-            "type" : "string"
+          "nominaFrom" :{
+            "type" :"string"
           },
-          "nominaTo" : {
-            "type" : "string"
+          "nominaTo" :{
+            "type" :"string"
           },
-          "baseExtern" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
+          "baseExtern" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
           },
-          "bc" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
+          "bc" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
           },
-          "current" : {
-            "type" : "string"
+          "current" :{
+            "type" :"string"
           },
-          "disabledPo" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PositionBaselineDTO"
+          "disabledPo" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/PositionBaselineDTO"
             }
           },
-          "viewPo" : {
-            "type" : "boolean"
+          "viewPo" :{
+            "type" :"boolean"
           }
         }
       },
-      "PaymentComponentType" : {
-        "type" : "object",
-        "properties" : {
-          "component" : {
-            "type" : "string"
+      "PaymentComponentType" :{
+        "type" :"object",
+        "properties" :{
+          "component" :{
+            "type" :"string"
           },
-          "name" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "type" : {
-            "type" : "integer",
-            "format" : "int32"
+          "type" :{
+            "type" :"integer",
+            "format" :"int32"
           }
         }
       },
-      "PositionBaselineDTO" : {
-        "type" : "object",
-        "properties" : {
-          "position" : {
-            "type" : "string"
+      "PositionBaselineDTO" :{
+        "type" :"object",
+        "properties" :{
+          "position" :{
+            "type" :"string"
           },
-          "idssff" : {
-            "type" : "string"
+          "idssff" :{
+            "type" :"string"
           },
-          "from" : {
-            "type" : "string"
+          "from" :{
+            "type" :"string"
           },
-          "to" : {
-            "type" : "string"
+          "to" :{
+            "type" :"string"
           }
         }
       },
-      "ComponentAmount" : {
-        "type" : "object",
-        "properties" : {
-          "component" : {
-            "type" : "string"
+      "ComponentAmount" :{
+        "type" :"object",
+        "properties" :{
+          "component" :{
+            "type" :"string"
           },
-          "amount" : {
-            "type" : "number"
+          "amount" :{
+            "type" :"number"
           }
         }
       },
-      "ComponentProjection" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
+      "ComponentProjection" :{
+        "type" :"object",
+        "properties" :{
+          "name" :{
+            "type" :"string"
           },
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "type" : {
-            "type" : "integer",
-            "format" : "int32"
+          "type" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "tvalor" : {
-            "type" : "integer",
-            "format" : "int32"
+          "component" :{
+            "type" :"string"
           },
-          "isBase" : {
-            "type" : "boolean"
+          "iscomponent" :{
+            "type" :"boolean"
           },
-          "show" : {
-            "type" : "boolean"
+          "isAdditional" :{
+            "type" :"boolean"
           },
-          "component" : {
-            "type" : "string"
+          "show" :{
+            "type" :"boolean"
           },
-          "isAdditional" : {
-            "type" : "boolean"
+          "isBase" :{
+            "type" :"boolean"
           },
-          "iscomponent" : {
-            "type" : "boolean"
+          "tvalor" :{
+            "type" :"integer",
+            "format" :"int32"
           }
         }
       },
-      "MonthProjection" : {
-        "type" : "object",
-        "properties" : {
-          "month" : {
-            "type" : "string"
+      "MonthProjection" :{
+        "type" :"object",
+        "properties" :{
+          "month" :{
+            "type" :"string"
           },
-          "amount" : {
-            "type" : "number"
+          "amount" :{
+            "type" :"number"
           }
         }
       },
-      "PageProjectionDTO" : {
-        "type" : "object",
-        "properties" : {
-          "pageNumber" : {
-            "type" : "integer",
-            "format" : "int32"
+      "PageProjectionDTO" :{
+        "type" :"object",
+        "properties" :{
+          "pageNumber" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
+          "totalPages" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "totalResults" : {
-            "type" : "integer",
-            "format" : "int32"
+          "totalResults" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ProjectionDTO"
+          "items" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ProjectionDTO"
             }
           },
-          "resume" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ComponentAmount"
+          "resume" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ComponentAmount"
             }
           },
-          "components" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ComponentProjection"
+          "components" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ComponentProjection"
             }
           },
-          "disabledPo" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DisabledPoDTO"
+          "disabledPo" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/DisabledPoDTO"
             }
           },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParametersDTO"
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParametersDTO"
             }
           },
-          "teuro" : {
-            "type" : "number",
-            "format" : "double"
+          "teuro" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "PaymentComponentDTO" : {
-        "type" : "object",
-        "properties" : {
-          "paymentComponent" : {
-            "type" : "string"
+      "PaymentComponentDTO" :{
+        "type" :"object",
+        "properties" :{
+          "paymentComponent" :{
+            "type" :"string"
           },
-          "type" : {
-            "type" : "integer",
-            "format" : "int32"
+          "type" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "amount" : {
-            "type" : "number"
+          "amount" :{
+            "type" :"number"
           },
-          "amountString" : {
-            "type" : "string"
+          "amountString" :{
+            "type" :"string"
           },
-          "projections" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "projections" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           },
-          "show" : {
-            "type" : "boolean"
+          "show" :{
+            "type" :"boolean"
           },
-          "name" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "salaryType" : {
-            "type" : "string"
+          "salaryType" :{
+            "type" :"string"
           }
         }
       },
-      "ProjectionDTO" : {
-        "type" : "object",
-        "properties" : {
-          "idssff" : {
-            "type" : "string"
+      "ProjectionDTO" :{
+        "type" :"object",
+        "properties" :{
+          "idssff" :{
+            "type" :"string"
           },
-          "po" : {
-            "type" : "string"
+          "po" :{
+            "type" :"string"
           },
-          "poName" : {
-            "type" : "string"
+          "poName" :{
+            "type" :"string"
           },
-          "components" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PaymentComponentDTO"
+          "components" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/PaymentComponentDTO"
             }
           },
-          "classEmployee" : {
-            "type" : "string"
+          "classEmployee" :{
+            "type" :"string"
           },
-          "areaFuncional" : {
-            "type" : "string"
+          "areaFuncional" :{
+            "type" :"string"
           },
-          "division" : {
-            "type" : "string"
+          "division" :{
+            "type" :"string"
           },
-          "convent" : {
-            "type" : "string"
+          "convent" :{
+            "type" :"string"
           },
-          "level" : {
-            "type" : "string"
+          "level" :{
+            "type" :"string"
           },
-          "categoryLocal" : {
-            "type" : "string"
+          "categoryLocal" :{
+            "type" :"string"
           },
-          "estadoVacante" : {
-            "type" : "string"
+          "estadoVacante" :{
+            "type" :"string"
           },
-          "fnac" : {
-            "type" : "string",
-            "format" : "date"
+          "fnac" :{
+            "type" :"string",
+            "format" :"date"
           },
-          "fcontra" : {
-            "type" : "string",
-            "format" : "date"
+          "fcontra" :{
+            "type" :"string",
+            "format" :"date"
           },
-          "ccostos" : {
-            "type" : "string"
+          "ccostos" :{
+            "type" :"string"
           }
         }
       },
-      "ProjectionSecondDTO" : {
-        "type" : "object",
-        "properties" : {
-          "resumeComponent" : {
-            "$ref" : "#/components/schemas/ResumeSpecDTO"
+      "ProjectionSecondDTO" :{
+        "type" :"object",
+        "properties" :{
+          "resumeComponent" :{
+            "$ref" :"#/components/schemas/ResumeSpecDTO"
           },
-          "resumeAccount" : {
-            "$ref" : "#/components/schemas/ResumeSpecDTO"
+          "resumeAccount" :{
+            "$ref" :"#/components/schemas/ResumeSpecDTO"
           },
-          "monthProjections" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "monthProjections" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           },
-          "yearProjections" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "yearProjections" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           },
-          "realesMonth" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ResumenComponentDTO"
+          "realesMonth" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ResumenComponentDTO"
             }
           },
-          "realesYear" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ResumenComponentDTO"
+          "realesYear" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ResumenComponentDTO"
             }
           },
-          "resumeRealesYear" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "resumeRealesYear" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           },
-          "resumeRealesMonth" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "resumeRealesMonth" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           },
-          "viewPosition" : {
-            "$ref" : "#/components/schemas/ViewPosition"
+          "viewPosition" :{
+            "$ref" :"#/components/schemas/ViewPosition"
           },
-          "rosseta" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RosetaDTO"
+          "rosseta" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RosetaDTO"
             }
           },
-          "tcambio" : {
-            "type" : "number"
+          "tcambio" :{
+            "type" :"number"
           }
         }
       },
-      "ResumeSpecDTO" : {
-        "type" : "object",
-        "properties" : {
-          "resumeComponentMonth" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ResumenComponentDTO"
+      "ResumeSpecDTO" :{
+        "type" :"object",
+        "properties" :{
+          "resumeComponentMonth" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ResumenComponentDTO"
             }
           },
-          "resumeComponentYear" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ResumenComponentDTO"
-            }
-          }
-        }
-      },
-      "ResumenComponentDTO" : {
-        "type" : "object",
-        "properties" : {
-          "component" : {
-            "type" : "string"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "account" : {
-            "type" : "string"
-          },
-          "projections" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
+          "resumeComponentYear" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ResumenComponentDTO"
             }
           }
         }
       },
-      "RosetaDTO" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string"
+      "ResumenComponentDTO" :{
+        "type" :"object",
+        "properties" :{
+          "component" :{
+            "type" :"string"
           },
-          "name" : {
-            "type" : "string"
+          "code" :{
+            "type" :"string"
           },
-          "payment" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
+          "account" :{
+            "type" :"string"
           },
-          "projections" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MonthProjection"
-            }
-          },
-          "open" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ViewPosition" : {
-        "type" : "object",
-        "properties" : {
-          "positions" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ProjectionDTO"
-            }
-          },
-          "count" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "ExcelReportDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "url" : {
-            "type" : "string"
-          }
-        }
-      },
-      "DataRequest" : {
-        "type" : "object",
-        "properties" : {
-          "po" : {
-            "type" : "string"
-          },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "bu" : {
-            "type" : "string"
-          },
-          "period" : {
-            "type" : "string"
-          },
-          "nominaFrom" : {
-            "type" : "string"
-          },
-          "nominaTo" : {
-            "type" : "string"
-          },
-          "periodComparing" : {
-            "type" : "string"
-          },
-          "nominaFromComparing" : {
-            "type" : "string"
-          },
-          "nominaToComparing" : {
-            "type" : "string"
-          },
-          "isComparing" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "CodeNomina" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "codeNomina" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        }
-      },
-      "DataBaseMainReponse" : {
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DataBaseResponse"
-            }
-          },
-          "components" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ComponentProjection"
-            }
-          },
-          "nominas" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CodeNomina"
-            }
-          },
-          "comparing" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DataBaseResponse"
+          "projections" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
             }
           }
         }
       },
-      "DataBaseResponse" : {
-        "type" : "object",
-        "properties" : {
-          "po" : {
-            "type" : "string"
+      "RosetaDTO" :{
+        "type" :"object",
+        "properties" :{
+          "code" :{
+            "type" :"string"
           },
-          "idssff" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "poName" : {
-            "type" : "string"
-          },
-          "typeEmployee" : {
-            "type" : "string"
-          },
-          "birthDate" : {
-            "type" : "string"
-          },
-          "hiringDate" : {
-            "type" : "string"
-          },
-          "convent" : {
-            "type" : "string"
-          },
-          "level" : {
-            "type" : "string"
-          },
-          "components" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ComponentAmount"
+          "payment" :{
+            "type" :"array",
+            "items" :{
+              "type" :"string"
             }
           },
-          "categoryLocal" : {
-            "type" : "string"
+          "projections" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/MonthProjection"
+            }
           },
-          "estadoVacante" : {
-            "type" : "string"
+          "open" :{
+            "type" :"boolean"
           }
         }
       },
-      "ParameterBu" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ViewPosition" :{
+        "type" :"object",
+        "properties" :{
+          "positions" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ProjectionDTO"
+            }
           },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "idParameter" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "reportJob" : {
-            "$ref" : "#/components/schemas/ReportJob"
+          "count" :{
+            "type" :"integer",
+            "format" :"int32"
           }
         }
       },
-      "ReportJob" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ExcelReportDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "status" : {
-            "type" : "string"
+          "code" :{
+            "type" :"string"
           },
-          "errorMessage" : {
-            "type" : "string"
+          "status" :{
+            "type" :"string"
           },
-          "reportUrl" : {
-            "type" : "string"
-          },
-          "idSsff" : {
-            "type" : "string"
-          },
-          "monthBase" : {
-            "type" : "string"
-          },
-          "nominaRange" : {
-            "type" : "string"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "creationDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterBu"
-            }
-          },
-          "typeReport" : {
-            "type" : "integer",
-            "format" : "int32"
+          "url" :{
+            "type" :"string"
           }
         }
       },
-      "ConvenioBonoDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "DataRequest" :{
+        "type" :"object",
+        "properties" :{
+          "po" :{
+            "type" :"string"
           },
-          "convenioNivel" : {
-            "type" : "string"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "bonoPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "bu" :{
+            "type" :"string"
+          },
+          "period" :{
+            "type" :"string"
+          },
+          "nominaFrom" :{
+            "type" :"string"
+          },
+          "nominaTo" :{
+            "type" :"string"
+          },
+          "periodComparing" :{
+            "type" :"string"
+          },
+          "nominaFromComparing" :{
+            "type" :"string"
+          },
+          "nominaToComparing" :{
+            "type" :"string"
+          },
+          "isComparing" :{
+            "type" :"boolean"
           }
         }
       },
-      "ConvenioDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "CodeNomina" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "convenioName" : {
-            "type" : "string"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "retiroPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "codeNomina" :{
+            "type" :"string"
           },
-          "imssPercentage" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "infonavitPercentage" : {
-            "type" : "number",
-            "format" : "double"
+          "name" :{
+            "type" :"string"
           }
         }
       },
-      "HistorialProjectionDTO" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "bu" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "isTop" : {
-            "type" : "boolean"
-          },
-          "idBu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "baseExtern" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
-          },
-          "bc" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
-          },
-          "temporalParameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RangeBuDTO"
+      "DataBaseMainReponse" :{
+        "type" :"object",
+        "properties" :{
+          "data" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/DataBaseResponse"
             }
           },
-          "convenio" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConvenioDTO"
+          "components" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ComponentProjection"
             }
           },
-          "convenioBono" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConvenioBonoDTO"
+          "nominas" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/CodeNomina"
             }
           },
-          "vdate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "vrange" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "vperiod" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ParameterProjectionBD" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "visretroactive" : {
-            "type" : "boolean"
-          },
-          "vperiodretroactive" : {
-            "type" : "string"
-          },
-          "tvalor" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "vrange" : {
-            "type" : "string"
-          },
-          "idbu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "vbu" : {
-            "type" : "string"
-          },
-          "vperiod" : {
-            "type" : "string"
-          },
-          "vtype" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "hperiod" : {
-            "type" : "string"
-          },
-          "hrange" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "nfrom" : {
-            "type" : "string"
-          },
-          "nto" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ProjectionInformation" : {
-        "type" : "object",
-        "properties" : {
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterProjectionBD"
-            }
-          },
-          "poDisableds" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DisabledPoDTO"
-            }
-          },
-          "baseExtern" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
-          },
-          "bc" : {
-            "$ref" : "#/components/schemas/BaseExternResponse"
-          },
-          "parametersTemporal" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterProjectionBD"
+          "comparing" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/DataBaseResponse"
             }
           }
         }
       },
-      "PositionBaseline" : {
-        "type" : "object",
-        "properties" : {
-          "position" : {
-            "type" : "string"
+      "DataBaseResponse" :{
+        "type" :"object",
+        "properties" :{
+          "po" :{
+            "type" :"string"
           },
-          "from" : {
-            "type" : "string"
+          "idssff" :{
+            "type" :"string"
           },
-          "idssff" : {
-            "type" : "string"
+          "poName" :{
+            "type" :"string"
           },
-          "to" : {
-            "type" : "string"
+          "typeEmployee" :{
+            "type" :"string"
           },
-          "vname" : {
-            "type" : "string"
+          "birthDate" :{
+            "type" :"string"
           },
-          "department" : {
-            "type" : "string"
+          "hiringDate" :{
+            "type" :"string"
+          },
+          "convent" :{
+            "type" :"string"
+          },
+          "level" :{
+            "type" :"string"
+          },
+          "components" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ComponentAmount"
+            }
+          },
+          "categoryLocal" :{
+            "type" :"string"
+          },
+          "estadoVacante" :{
+            "type" :"string"
           }
         }
       },
-      "BaseExtern" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ParameterBu" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "code" : {
-            "type" : "string"
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "name" : {
-            "type" : "string"
+          "idParameter" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "bu" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "isInput" : {
-            "type" : "boolean"
+          "reportJob" :{
+            "$ref" :"#/components/schemas/ReportJob"
           }
         }
       },
-      "ConceptoPresupuestal" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ReportJob" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "conceptoPresupuestal" : {
-            "type" : "string"
+          "status" :{
+            "type" :"string"
           },
-          "gratificacion" : {
-            "type" : "number"
+          "errorMessage" :{
+            "type" :"string"
           },
-          "cts" : {
-            "type" : "number"
+          "reportUrl" :{
+            "type" :"string"
           },
-          "essalud" : {
-            "type" : "number"
+          "idSsff" :{
+            "type" :"string"
           },
-          "bonifExtTemp" : {
-            "type" : "number"
+          "monthBase" :{
+            "type" :"string"
+          },
+          "nominaRange" :{
+            "type" :"string"
+          },
+          "code" :{
+            "type" :"string"
+          },
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "creationDate" :{
+            "type" :"string",
+            "format" :"date-time"
+          },
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterBu"
+            }
+          },
+          "typeReport" :{
+            "type" :"integer",
+            "format" :"int32"
           }
         }
       },
-      "Config" : {
-        "type" : "object",
-        "properties" : {
-          "components" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ComponentProjection"
-            }
+      "ConvenioBonoDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterProjection"
-            }
+          "convenioNivel" :{
+            "type" :"string"
           },
-          "baseExtern" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/OperationResponse"
-            }
-          },
-          "nominas" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CodeNomina"
-            }
-          },
-          "convenios" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Convenio"
-            }
-          },
-          "convenioBonos" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConvenioBono"
-            }
-          },
-          "nominaPaymentComponentRelations" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/NominaPaymentComponentLink"
-            }
-          },
-          "employeeClassifications" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/EmployeeClassification"
-            }
-          },
-          "seniorityAndQuinquenniums" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SeniorityAndQuinquennium"
-            }
-          },
-          "conceptoPresupuestals" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConceptoPresupuestal"
-            }
-          },
-          "validationRules" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ValidationRule"
-            }
-          },
-          "parameterGroups" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterGroup"
-            }
-          },
-          "money" : {
-            "type" : "string"
-          },
-          "icon" : {
-            "type" : "string"
-          },
-          "current" : {
-            "type" : "string"
-          },
-          "vdefault" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterDefault"
-            }
-          },
-          "vtemporal" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RangeBuDTO"
-            }
-          },
-          "vviewPo" : {
-            "type" : "boolean"
+          "bonoPercentage" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "EmployeeClassification" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
+      "ConvenioDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "category" : {
-            "type" : "string"
+          "convenioName" :{
+            "type" :"string"
           },
-          "typeEmp" : {
-            "type" : "string"
+          "retiroPercentage" :{
+            "type" :"number",
+            "format" :"double"
           },
-          "valueAllowance" : {
-            "type" : "number",
-            "format" : "double"
+          "imssPercentage" :{
+            "type" :"number",
+            "format" :"double"
+          },
+          "infonavitPercentage" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "NominaPaymentComponentLink" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "HistorialProjectionDTO" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "nominaConcept" : {
-            "$ref" : "#/components/schemas/CodeNomina"
+          "bu" :{
+            "type" :"string"
           },
-          "paymentComponent" : {
-            "$ref" : "#/components/schemas/PaymentComponent"
+          "name" :{
+            "type" :"string"
+          },
+          "createdAt" :{
+            "type" :"string",
+            "format" :"date-time"
+          },
+          "isTop" :{
+            "type" :"boolean"
+          },
+          "idBu" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "baseExtern" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
+          },
+          "bc" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
+          },
+          "temporalParameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RangeBuDTO"
+            }
+          },
+          "convenio" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConvenioDTO"
+            }
+          },
+          "convenioBono" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConvenioBonoDTO"
+            }
+          },
+          "vdate" :{
+            "type" :"string",
+            "format" :"date-time"
+          },
+          "vrange" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "vperiod" :{
+            "type" :"string"
           }
         }
       },
-      "OperationResponse" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string"
+      "ParameterProjectionBD" :{
+        "type" :"object",
+        "properties" :{
+          "description" :{
+            "type" :"string"
           },
-          "name" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "bu" : {
-            "type" : "integer",
-            "format" : "int32"
+          "value" :{
+            "type" :"number",
+            "format" :"double"
           },
-          "isInput" : {
-            "type" : "boolean"
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "visretroactive" :{
+            "type" :"boolean"
+          },
+          "vperiodretroactive" :{
+            "type" :"string"
+          },
+          "idbu" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "vbu" :{
+            "type" :"string"
+          },
+          "tvalor" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "vrange" :{
+            "type" :"string"
+          },
+          "vperiod" :{
+            "type" :"string"
+          },
+          "vtype" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "hperiod" :{
+            "type" :"string"
+          },
+          "hrange" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "nfrom" :{
+            "type" :"string"
+          },
+          "nto" :{
+            "type" :"string"
           }
         }
       },
-      "ParameterGroup" : {
-        "type" : "object",
-        "properties" : {
-          "convenio" : {
-            "type" : "string"
+      "ProjectionInformation" :{
+        "type" :"object",
+        "properties" :{
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterProjectionBD"
+            }
           },
-          "parameters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ParameterProjection"
+          "poDisableds" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/DisabledPoDTO"
+            }
+          },
+          "baseExtern" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
+          },
+          "bc" :{
+            "$ref" :"#/components/schemas/BaseExternResponse"
+          },
+          "parametersTemporal" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterProjectionBD"
             }
           }
         }
       },
-      "ParameterProjection" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "type" : "string"
+      "PositionBaseline" :{
+        "type" :"object",
+        "properties" :{
+          "position" :{
+            "type" :"string"
           },
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+          "from" :{
+            "type" :"string"
           },
-          "tvalor" : {
-            "type" : "integer",
-            "format" : "int32"
+          "department" :{
+            "type" :"string"
           },
-          "typec" : {
-            "type" : "integer",
-            "format" : "int32"
+          "idssff" :{
+            "type" :"string"
           },
-          "vrange" : {
-            "type" : "boolean"
+          "to" :{
+            "type" :"string"
           },
-          "vname" : {
-            "type" : "string"
-          },
-          "retroactive" : {
-            "type" : "boolean"
-          },
-          "allperiod" : {
-            "type" : "boolean"
-          },
-          "inperiod" : {
-            "type" : "boolean"
-          },
-          "restringed" : {
-            "type" : "string"
-          },
-          "vparameter" : {
-            "type" : "string"
+          "vname" :{
+            "type" :"string"
           }
         }
       },
-      "PaymentComponent" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "BaseExtern" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "bu" : {
-            "type" : "integer",
-            "format" : "int32"
+          "code" :{
+            "type" :"string"
           },
-          "paymentComponent" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "typePaymentComponentEntity" : {
-            "$ref" : "#/components/schemas/TypePaymentComponent"
+          "bu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "isComponent" : {
-            "type" : "boolean"
-          },
-          "show" : {
-            "type" : "boolean"
-          },
-          "isAdditional" : {
-            "type" : "boolean"
+          "isInput" :{
+            "type" :"boolean"
           }
         }
       },
-      "SeniorityAndQuinquennium" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "ConceptoPresupuestal" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "seniority" : {
-            "type" : "integer",
-            "format" : "int32"
+          "conceptoPresupuestal" :{
+            "type" :"string"
           },
-          "quinquennium" : {
-            "type" : "number"
+          "gratificacion" :{
+            "type" :"number"
+          },
+          "cts" :{
+            "type" :"number"
+          },
+          "essalud" :{
+            "type" :"number"
+          },
+          "bonifExtTemp" :{
+            "type" :"number"
           }
         }
       },
-      "TypePaymentComponent" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "Config" :{
+        "type" :"object",
+        "properties" :{
+          "components" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ComponentProjection"
+            }
           },
-          "paymentComponent" : {
-            "type" : "string"
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "type" :"object"
+            }
           },
-          "typeValor" : {
-            "$ref" : "#/components/schemas/TypeValor"
+          "baseExtern" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/OperationResponse"
+            }
+          },
+          "nominas" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/CodeNomina"
+            }
+          },
+          "convenios" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/Convenio"
+            }
+          },
+          "convenioBonos" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConvenioBono"
+            }
+          },
+          "nominaPaymentComponentRelations" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/NominaPaymentComponentLink"
+            }
+          },
+          "employeeClassifications" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/EmployeeClassification"
+            }
+          },
+          "seniorityAndQuinquenniums" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/SeniorityAndQuinquennium"
+            }
+          },
+          "conceptoPresupuestals" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConceptoPresupuestal"
+            }
+          },
+          "validationRules" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ValidationRule"
+            }
+          },
+          "parameterGroups" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterGroup"
+            }
+          },
+          "conventArgs" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ConventArgDTO"
+            }
+          },
+          "money" :{
+            "type" :"string"
+          },
+          "icon" :{
+            "type" :"string"
+          },
+          "current" :{
+            "type" :"string"
+          },
+          "vtemporal" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/RangeBuDTO"
+            }
+          },
+          "vdefault" :{
+            "type" :"array",
+            "items" :{
+              "type" :"object"
+            }
+          },
+          "vviewPo" :{
+            "type" :"boolean"
           }
         }
       },
-      "TypeValor" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "EmployeeClassification" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int64"
           },
-          "name" : {
-            "type" : "string"
+          "category" :{
+            "type" :"string"
+          },
+          "typeEmp" :{
+            "type" :"string"
+          },
+          "valueAllowance" :{
+            "type" :"number",
+            "format" :"double"
           }
         }
       },
-      "ValidationRule" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
+      "NominaPaymentComponentLink" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "fieldName" : {
-            "type" : "string"
+          "nominaConcept" :{
+            "$ref" :"#/components/schemas/CodeNomina"
           },
-          "dataType" : {
-            "type" : "string"
-          },
-          "validationMessage" : {
-            "type" : "string"
-          },
-          "errorLevel" : {
-            "type" : "string"
-          },
-          "bu" : {
-            "$ref" : "#/components/schemas/BaseExtern"
-          },
-          "required" : {
-            "type" : "boolean"
+          "paymentComponent" :{
+            "$ref" :"#/components/schemas/PaymentComponent"
           }
         }
       },
-      "Bu" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int32"
+      "OperationResponse" :{
+        "type" :"object",
+        "properties" :{
+          "code" :{
+            "type" :"string"
           },
-          "bu" : {
-            "type" : "string"
+          "name" :{
+            "type" :"string"
           },
-          "money" : {
-            "type" : "string"
+          "bu" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "icon" : {
-            "type" : "string"
-          },
-          "flag" : {
-            "type" : "string"
-          },
-          "current" : {
-            "type" : "string"
-          },
-          "vviewPo" : {
-            "type" : "boolean"
+          "isInput" :{
+            "type" :"boolean"
           }
         }
       },
-      "AccountProjection" : {
-        "type" : "object",
-        "properties" : {
-          "account" : {
-            "type" : "string"
+      "ParameterGroup" :{
+        "type" :"object",
+        "properties" :{
+          "convenio" :{
+            "type" :"string"
           },
-          "vname" : {
-            "type" : "string"
+          "parameters" :{
+            "type" :"array",
+            "items" :{
+              "$ref" :"#/components/schemas/ParameterProjection"
+            }
+          }
+        }
+      },
+      "ParameterProjection" :{
+        "type" :"object",
+        "properties" :{
+          "description" :{
+            "type" :"string"
           },
-          "vshow" : {
-            "type" : "integer",
-            "format" : "int32"
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
           },
-          "nameaccount" : {
-            "type" : "string"
+          "restringed" :{
+            "type" :"string"
           },
-          "vcomponent" : {
-            "type" : "string"
+          "vparameter" :{
+            "type" :"string"
+          },
+          "convenio" :{
+            "type" :"string"
+          },
+          "retroactive" :{
+            "type" :"boolean"
+          },
+          "inperiod" :{
+            "type" :"boolean"
+          },
+          "allperiod" :{
+            "type" :"boolean"
+          },
+          "vname" :{
+            "type" :"string"
+          },
+          "area" :{
+            "type" :"string"
+          },
+          "tvalor" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "vrange" :{
+            "type" :"boolean"
+          },
+          "typec" :{
+            "type" :"integer",
+            "format" :"int32"
+          }
+        }
+      },
+      "PaymentComponent" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "bu" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "paymentComponent" :{
+            "type" :"string"
+          },
+          "typePaymentComponentEntity" :{
+            "$ref" :"#/components/schemas/TypePaymentComponent"
+          },
+          "isComponent" :{
+            "type" :"boolean"
+          },
+          "show" :{
+            "type" :"boolean"
+          },
+          "isAdditional" :{
+            "type" :"boolean"
+          }
+        }
+      },
+      "SeniorityAndQuinquennium" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "seniority" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "quinquennium" :{
+            "type" :"number"
+          }
+        }
+      },
+      "TypePaymentComponent" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "paymentComponent" :{
+            "type" :"string"
+          },
+          "typeValor" :{
+            "$ref" :"#/components/schemas/TypeValor"
+          }
+        }
+      },
+      "TypeValor" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "name" :{
+            "type" :"string"
+          }
+        }
+      },
+      "ValidationRule" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int64"
+          },
+          "fieldName" :{
+            "type" :"string"
+          },
+          "dataType" :{
+            "type" :"string"
+          },
+          "validationMessage" :{
+            "type" :"string"
+          },
+          "errorLevel" :{
+            "type" :"string"
+          },
+          "bu" :{
+            "$ref" :"#/components/schemas/BaseExtern"
+          },
+          "required" :{
+            "type" :"boolean"
+          }
+        }
+      },
+      "Bu" :{
+        "type" :"object",
+        "properties" :{
+          "id" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "bu" :{
+            "type" :"string"
+          },
+          "money" :{
+            "type" :"string"
+          },
+          "icon" :{
+            "type" :"string"
+          },
+          "flag" :{
+            "type" :"string"
+          },
+          "current" :{
+            "type" :"string"
+          },
+          "vviewPo" :{
+            "type" :"boolean"
+          }
+        }
+      },
+      "AccountProjection" :{
+        "type" :"object",
+        "properties" :{
+          "nameaccount" :{
+            "type" :"string"
+          },
+          "vcomponent" :{
+            "type" :"string"
+          },
+          "vname" :{
+            "type" :"string"
+          },
+          "vshow" :{
+            "type" :"integer",
+            "format" :"int32"
+          },
+          "account" :{
+            "type" :"string"
           }
         }
       }
