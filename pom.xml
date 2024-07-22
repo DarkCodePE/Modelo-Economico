@@ -13,7 +13,7 @@
 	<name>ms-hispam-budget</name>
 	<description>Proyecto de Simulaciones de presupuesto</description>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -53,7 +53,8 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<optional>true</optional>
+			<version>1.18.30</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -133,7 +134,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.7</version> <!-- Utiliza la última versión disponible -->
+				<version>0.8.12</version> <!-- Utiliza la última versión disponible -->
 				<executions>
 					<execution>
 						<id>prepare-agent</id>
@@ -152,11 +153,8 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<source>14</source>
-					<target>14</target>
-				</configuration>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.1.0</version>
 			</plugin>
 		</plugins>
 	</build>
