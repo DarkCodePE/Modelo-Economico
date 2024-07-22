@@ -76,6 +76,8 @@ public class Argentina {
     //SI($H4="UPJET TASA";  'Parámetros'!N$15;0)))))))))))))))*(1+SI(Y(MES(N$2)=MES($K4);AÑO(N$2)=AÑO($K4));$L4;0))
     //Adicionales Rem (Salario Conf)
     public void basicSalary(List<PaymentComponentDTO> components, List<ParametersDTO> parameters, String period, Integer range, Map<String, ConventArg> conventArgMap, String convenio) {
+        log.info("basicSalary", convenio);
+        log.info("basicSalary, {}", parameters);
         List<ParametersDTO> relevantParameters = filterParametersByConvenio(parameters, convenio);
         Map<String, ParametersDTO> parameterMap = createCacheMap(relevantParameters);
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);

@@ -1,8 +1,10 @@
 package ms.hispam.budget.rules.configuration.country;
 
+import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.Config;
 import ms.hispam.budget.dto.OperationResponse;
 import ms.hispam.budget.dto.countries.DefaultConfig;
+import ms.hispam.budget.dto.projections.ParameterProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.repository.mysql.*;
 import ms.hispam.budget.rules.configuration.ConfigStrategy;
@@ -11,9 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j(topic = "DEFAULT")
 public class DefaultConfigStrategy extends BaseConfigStrategy {
 
     @Autowired
@@ -24,6 +28,8 @@ public class DefaultConfigStrategy extends BaseConfigStrategy {
     @Override
     public Config getConfig(String bu) {
         Bu vbu = buRepository.findByBu(bu).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el BU"));
+        List<ParameterProjection> parameters = parameterRepository.getParameterBu(bu);
+        log.info("parameters {}", parameters);
         return DefaultConfig.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
