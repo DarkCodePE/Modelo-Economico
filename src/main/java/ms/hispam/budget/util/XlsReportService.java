@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.LinkOption;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -221,11 +222,13 @@ public class XlsReportService {
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
             accountProjections = null; // Liberar memoria
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
+            double sum = 0.0;
             for (ProjectionDTO data : vdata) {
+                //TODO AGREGAR EL POS DE BASE EXTERNA
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
-                        //log.debug("Parameter: {}", parametersByProjection);
+                        log.info("Position desde report -> : {}", data.getPo());
                         // Obtener los datos de AF
                         Optional<Map<String, Object>> baseExternEntry = parametersByProjection.getBaseExtern().getData().stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
@@ -236,7 +239,7 @@ public class XlsReportService {
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                areaFuncional,
+                                data.getAreaFuncional(),
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
                                 projection.getMonth(),
@@ -246,7 +249,7 @@ public class XlsReportService {
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
                         groupData.montoPorMes.put(projection.getMonth(), projection.getAmount().doubleValue());
-                        double sum = groupData.sum + projection.getAmount().doubleValue();
+                        sum = groupData.sum + projection.getAmount().doubleValue();
                         groupData.sum = sum;
                         groupedData.put(key, groupData);
                     }
@@ -280,7 +283,11 @@ public class XlsReportService {
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
-                double totalAmount = groupData.sum;
+                //double totalAmount = groupData.sum;
+              /*  if (key.getPo().equals("BC123")) {
+                    log.debug("GroupKey: {}", key);
+                    log.debug("GroupData: {}", groupData);
+                }*/
 
                 for (String mes : groupData.meses) {
                     if (rowNum > 1048575) {
@@ -317,7 +324,7 @@ public class XlsReportService {
                     //Q de registros -> cantidad de registros
                     row.createCell(14).setCellValue(groupedData.size());
                     //Importe Total -> suma de los montos
-                    row.createCell(15).setCellValue(totalAmount);
+                    row.createCell(15).setCellValue(sum);
                     //País -> user
                     row.createCell(16).setCellValue("Perú");
                 }
@@ -328,8 +335,8 @@ public class XlsReportService {
             return outputStream.toByteArray();
 
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
+            log.error("Error al generar el planner", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar el planner", e);
         }
     }
 
@@ -348,8 +355,14 @@ public class XlsReportService {
                         Optional<Map<String, Object>> baseExternEntry = parameters.getBaseExtern().getData().stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
                                 .findFirst();
+                        Map<String, Object> baseExtern = parameters.getBaseExtern().getData().stream()
+                                .filter(r -> r.get("po").equals("BC123")).findFirst().orElse(null);
+                        if (baseExtern != null) {
+                            log.debug("Base Externa Entry: {}", baseExtern);
+                        }
                         //log.debug("Base Externa Entry: {}", baseExternEntry);
                         String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
+                        log.debug("Area Funcional: {}", areaFuncional);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
