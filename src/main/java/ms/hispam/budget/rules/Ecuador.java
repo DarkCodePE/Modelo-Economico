@@ -124,10 +124,15 @@ public class Ecuador {
 
     public List<PaymentComponentDTO>  adjustSalaryAdjustment(List<PaymentComponentDTO> componentDTO,ParametersDTO dto){
         componentDTO.stream().filter(f->( f.getType()==1|| f.getType()==2 || f.getType()==7) ).forEach(o->{
+            // Asegurarse de que las proyecciones estén inicializadas
+            if (o.getProjections() == null || o.getProjections().isEmpty()) {
+                o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
+            }
             int idx = Shared.getIndex(o.getProjections().stream()
                     .map(d->d.getMonth()).collect(Collectors.toList()),dto.getPeriod());
             for (int i = idx; i < o.getProjections().size(); i++) {
-                double amount = i==0?o.getProjections().get(i).getAmount().doubleValue(): o.getProjections().get(i-1).getAmount().doubleValue();
+                double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
+                        : o.getProjections().get(i-1).getAmount().doubleValue();
                 o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                 if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
                     AtomicReference<Double> coa = new AtomicReference<>((double) 0);
@@ -282,16 +287,22 @@ public class Ecuador {
         for(PaymentComponentDTO o : componentDTO.stream().filter(f->(
                 f.getType()==1|| f.getType()==2 || f.getType()==7)).collect(Collectors.toList())){
 
+            // Asegurarse de que las proyecciones estén inicializadas
+            if (o.getProjections() == null || o.getProjections().isEmpty()) {
+                o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
+            }
+
             int idx = Shared.getIndex(o.getProjections().stream()
                     .map(MonthProjection::getMonth).collect(Collectors.toList()),dto.getPeriod());
             for (int i = idx; i < o.getProjections().size(); i++) {
                 double v=0;
-                double amount = i==0?o.getProjections().get(i).getAmount().doubleValue(): o.getProjections().get(i-1).getAmount().doubleValue();
+                double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
+                        : o.getProjections().get(i-1).getAmount().doubleValue();
                 o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
                 if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
                     if(o.getType()==1 ||o.getType()==7|| o.getType()==2 ){
                         if(o.getType()==7){
-                            amount=o.getAmount().doubleValue();
+                            amount = o.getAmount() != null ? o.getAmount().doubleValue() : 0.0;
                         }
                         v = amount* (1+(differPercent>=percent?0:percent-differPercent));
                     }

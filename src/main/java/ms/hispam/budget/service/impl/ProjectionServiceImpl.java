@@ -1510,7 +1510,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     private List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
-        log.info("BaseExternResponse {}", baseExtern);
+        //log.info("BaseExternResponse {}", baseExtern);
 
         // Obtener los headers relevantes una sola vez
         List<String> relevantHeaders = baseExtern.getHeaders().stream()
@@ -1524,7 +1524,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         // Procesar todas las entradas en baseExtern.getData()
         for (Map<String, Object> po : baseExtern.getData()) {
             String currentPo = (String) po.get("po");
-            log.info("currentPo {}", currentPo);
+            //log.info("currentPo {}", currentPo);
             ProjectionDTO currentProjection = positionsMap.getOrDefault(currentPo,
                     ProjectionDTO.builder()
                             .po(currentPo)
@@ -1570,7 +1570,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         log.debug("Updated projection for PO {}: {}", projection.getPo(), projection);
     }
     private void  addBaseExtern2(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
-        log.info("BaseExternResponse {}",baseExtern);
+        //log.info("BaseExternResponse {}",baseExtern);
         Map<String, Object>  po = baseExtern
                 .getData()
                 .stream()
@@ -1958,7 +1958,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             List<ComponentProjection> componentProjections = sharedRepo.getComponentByBu(projection.getBu());
 
             DataRequest dataBase = DataRequest.builder()
-                    .idBu(projection.getIdBu())
                     .idBu(projection.getIdBu())
                     .bu(projection.getBu())
                     .period(projection.getPeriod())
