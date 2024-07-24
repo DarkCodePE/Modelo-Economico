@@ -228,7 +228,7 @@ public class XlsReportService {
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
-                        log.info("Position desde report -> : {}", data.getPo());
+                        //log.info("Position desde report -> : {}", data.getPo());
                         // Obtener los datos de AF
                         Optional<Map<String, Object>> baseExternEntry = parametersByProjection.getBaseExtern().getData().stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
@@ -241,7 +241,7 @@ public class XlsReportService {
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
                                 data.getAreaFuncional(),
                                 data.getCCostos(),
-                                component.getPaymentComponent(),
+                                component.getName(),
                                 projection.getMonth(),
                                 data.getPo(),  // Añadir la posición aquí
                                 data.getIdssff()  // Añadir ID_SSFF aquí
@@ -302,8 +302,8 @@ public class XlsReportService {
                     }
                     Row row = sheet.createRow(rowNum++);
 
-                    row.createCell(0).setCellValue("mes i -1"); // Periodo ejecución/proyección
-                    row.createCell(1).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
+                    row.createCell(0).setCellValue(parametersByProjection.getPeriod()); // Periodo ejecución/proyección
+                    row.createCell(1).setCellValue(""); // Nombre Proyección (ejemplo)
                     row.createCell(2).setCellValue(key.getPo()); // ID_PO
                     row.createCell(3).setCellValue(key.getIdSsff()); // ID_SSFF
                     row.createCell(4).setCellValue(key.getActividadFuncional()); // Actividad Funcional
