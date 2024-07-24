@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: ms-hispam-budget
-          image: acrhispam.azurecr.io/ms-hispam-budget:0.1.1-SNAPSHOT
+          image: acrhispam.azurecr.io/ms-hispam-budget:0.1.2-SNAPSHOT
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
