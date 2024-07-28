@@ -214,7 +214,7 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
+    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob reportJob, String user) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
@@ -326,7 +326,7 @@ public class XlsReportService {
                     //Importe Total -> suma de los montos
                     row.createCell(15).setCellValue(sum);
                     //País -> user
-                    row.createCell(16).setCellValue("Perú");
+                    row.createCell(16).setCellValue(bu.getBu());
                 }
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -849,10 +849,10 @@ public class XlsReportService {
         }, executorService);
     }
 
-    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
-           return generatePlanner(projection, vdata,accountProjections,job,userContact);
+           return generatePlanner(projection, vdata,accountProjections, bu, job,userContact);
         });
     }
     //generateCdgAsync
@@ -897,8 +897,8 @@ public class XlsReportService {
     }
     //generatePlannerAsync
     @Async
-    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generatePlannerAsync(projection, vdata, accountProjections, job, userContact)
+    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+        generatePlannerAsync(projection, vdata, accountProjections, bu, job, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo

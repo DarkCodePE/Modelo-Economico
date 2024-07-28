@@ -109,7 +109,7 @@ public class PeruRefactor {
 
             salaryComponent.setProjections(projections);
             components.add(salaryComponent);
-        }else {
+        } else {
             PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
             salaryComponent.setAmount(BigDecimal.valueOf(0));
             salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
@@ -944,6 +944,7 @@ public class PeruRefactor {
         }
         component.add(vacationBonusComponent);
     }
+
     //Bonificación por Destaque
     //=$BK5*CB$23
     //BK5 = componentBonificacionDestaqueBase
@@ -2000,7 +2001,7 @@ public class PeruRefactor {
                 String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
                 optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
             }*/
-            if (optionalEmployeeClassification.isPresent()  && optionalEmployeeClassification.get().getTypeEmp().equals("FLJ")) {
+            if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("FLJ")) {
                 EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
                 PaymentComponentDTO internsComponent = new PaymentComponentDTO();
                 internsComponent.setPaymentComponent("INTERNS");
@@ -2124,6 +2125,7 @@ public class PeruRefactor {
             component.add(vacationProvisionComponentEmpty);
         }
     }
+
     //calcular la antigüedad en años de la PO
     //=SIFECHA($Y5;CC$34;"y")
     //Y5 = Fecha de Contrato
@@ -2143,6 +2145,7 @@ public class PeruRefactor {
 
         return ChronoUnit.YEARS.between(hiringDate, yearMonth.atEndOfMonth());
     }
+
     //Auxiliar en excel para calcular quinquenios ganados
     //= SI.ERROR(BUSCARV(CC913;$P$3:$Q$11;2;0);0)
     //CC913 =SENIORITY_YEARS_PO
@@ -2208,14 +2211,14 @@ public class PeruRefactor {
                     seniorityComponent.setProjections(projections);
                     components.add(seniorityComponent);
                 }
-            }else {
+            } else {
                 PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
                 seniorityComponentEmpty.setPaymentComponent("SENIORITY");
                 seniorityComponentEmpty.setAmount(BigDecimal.valueOf(0));
                 seniorityComponentEmpty.setProjections(Shared.generateMonthProjection(period, range, seniorityComponentEmpty.getAmount()));
                 components.add(seniorityComponentEmpty);
             }
-        }else {
+        } else {
             PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
             seniorityComponentEmpty.setPaymentComponent("SENIORITY");
             seniorityComponentEmpty.setAmount(BigDecimal.valueOf(0));
@@ -2223,6 +2226,7 @@ public class PeruRefactor {
             components.add(seniorityComponentEmpty);
         }
     }
+
     //[Auxiliar en excel para calcular bono]
     //==SI(MES(CL$34)=10;CL35*14*MAX($AB5;$AC5)/12;0)
     //CL$34 = Mes actual
@@ -2237,6 +2241,7 @@ public class PeruRefactor {
         }
         return 0;
     }
+
     //Bono SRD (100%)
     //=SI(AÑO(CE$34)=AÑO($CL$34);$CL126;$CX126)
     //CE$34 = Mes actual
@@ -2267,6 +2272,7 @@ public class PeruRefactor {
         }
         components.add(srdBonusComponent);
     }
+
     //Bono Top Performer
     //=CC134*SI($W6="EJC";CC$17*CC$18;SI($W6="DIR";CC$19*CC$20;0))*12
     //CC134 = Bono SRD
@@ -2449,6 +2455,7 @@ public class PeruRefactor {
     private double getCachedOrLastValue(Map<String, ParametersDTO> map, String period, double lastValue) {
         return map.get(period) != null ? map.get(period).getValue() : lastValue;
     }
+
     //Crédito EPS (devolución ESSALUD)
     //=-1*CC897
     //CC897 = componentCreditEPS
@@ -2462,6 +2469,7 @@ public class PeruRefactor {
         epsCreditComponent.setProjections(Shared.generateMonthProjection(period, range, epsCreditComponent.getAmount()));
         components.add(epsCreditComponent);
     }
+
     //Plan Prev Dir Aport Vol Emp
     //=$BQ5 VOLUNTARY_CONTRIBUTION_BASE
     //=SI(CC35<>0;CB1001*(CC35/CB35);0)
@@ -2486,7 +2494,7 @@ public class PeruRefactor {
         voluntaryContributionComponent.setAmount(BigDecimal.valueOf(voluntaryContribution));
         voluntaryContributionComponent.setProjections(Shared.generateMonthProjection(period, range, voluntaryContributionComponent.getAmount()));
         List<MonthProjection> projections = new ArrayList<>();
-        if (theoricSalaryComponent != null){
+        if (theoricSalaryComponent != null) {
             for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
                 String month = projection.getMonth();
                 double voluntaryContributionProjection = 0;
@@ -2500,12 +2508,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             voluntaryContributionComponent.setProjections(projections);
-        }else {
+        } else {
             voluntaryContributionComponent.setAmount(BigDecimal.valueOf(0));
             voluntaryContributionComponent.setProjections(Shared.generateMonthProjection(period, range, voluntaryContributionComponent.getAmount()));
         }
         components.add(voluntaryContributionComponent);
     }
+
     //Gratificación - Salario Teórico
     //='Modelo PERU'!CC35*$K$3
     //CC35 = theoricSalary
@@ -2532,12 +2541,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Provisión de Vacaciones
     //==CC49*$K$4
     //CC49 = vacationProvision
@@ -2564,12 +2574,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Compensación por Vivienda
     //=CC63*$K$5
     //CC63 = housingCompensation
@@ -2596,12 +2607,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Incremento AFP 10,23%
     //=CC77*$K$6
     //CC77 = afpIncrement
@@ -2628,12 +2640,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Incremento 3,3% + Incremento SNP 3,3%
     //==+CC85*$K$7
     //CC85 = snpIncrement
@@ -2660,12 +2673,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Complemento Sueldo Basico
     //==CC140*$K$10
     //CC140 = basicSalaryComplement
@@ -2692,12 +2706,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Asignación Familiar
     //=CC147*$K$11
     //CC147 = familyAllowance
@@ -2724,12 +2739,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Ley Teletrabajo
     //=CC148*$K$11
     //CC148 = teleworkLaw
@@ -2756,12 +2772,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bono Top Performer
     //=CC182*$K$13
     //CC182 = topPerformerBonus
@@ -2788,12 +2805,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bonificación Responsable Grupo
     //=CC183*$K$14
     //CC183 = groupResponsibleBonus
@@ -2820,12 +2838,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Jornada Tienda
     //=CC198*$K$15
     //CC198 = storeDay
@@ -2852,12 +2871,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Asignación de Vivienda
     //=CC199*$K$16
     //CC199 = housingAssignment
@@ -2884,12 +2904,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Conceptos Mandato Judicial
     //=CC200*$K$17
     //CC200 = judicialMandateConcepts
@@ -2916,12 +2937,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bonificación Complementaria
     //=CC201*$K$18
     //CC201 = complementaryBonus
@@ -2948,12 +2970,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bonificación Días Especiales
     //=CC202*$K$19
     //CC202 = specialDaysBonus
@@ -2980,12 +3003,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bono disponibilidad
     //=CC203*$K$20
     //CC203 = availabilityBonus
@@ -3012,12 +3036,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Gratificación - Bono por trabajo nocturno
     //=CC204*$K$21
     //CC204 = nightWorkBonus
@@ -3044,7 +3069,7 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
@@ -3078,12 +3103,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             gratificationComponent.setProjections(projections);
-        }else {
+        } else {
             gratificationComponent.setAmount(BigDecimal.valueOf(0));
             gratificationComponent.setProjections(Shared.generateMonthProjection(period, range, gratificationComponent.getAmount()));
         }
         components.add(gratificationComponent);
     }
+
     //Bonif. Ext. Temp. - Salario Teórico
     //=CC36*$N$3
     //CC36 = theoreticalSalary
@@ -3110,12 +3136,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Provisión de Vacaciones
     //=CC37*$N$4
     //CC37 = vacationProvision
@@ -3142,12 +3169,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Compensación por Vivienda
     //=CC38*$N$5
     //CC38 = housingCompensation
@@ -3174,12 +3202,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Incremento AFP 10,23%
     //=CC39*$N$6
     //CC39 = afpIncrement
@@ -3206,12 +3235,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Incremento 3,3% + Incremento SNP 3,3%
     //=CC40*$N$7
     //CC40 = INCREASE_SNP_AND_INCREASE
@@ -3238,12 +3268,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Complemento Sueldo Basico
     //=CC41*$N$8
     //CC41 = basicSalaryComplement
@@ -3270,12 +3301,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Asignación Familiar
     //=CC42*$N$9
     //CC42 = familyAssignment
@@ -3302,12 +3334,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Ley Teletrabajo
     //=CC43*$N$10
     //CC43 = teleworkLaw
@@ -3334,12 +3367,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bono Top Performer
     //=CC44*$N$11
     //CC44 = topPerformerBonus
@@ -3366,12 +3400,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Jornada Tienda
     //=CC45*$N$12
     //CC45 = storeDay
@@ -3398,12 +3433,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Asignación de Vivienda
     //=CC46*$N$13
     //CC46 = housingAssignment
@@ -3430,12 +3466,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Conceptos Mandato Judicial
     //=CC47*$N$14
     //CC47 = judicialMandateConcepts
@@ -3462,12 +3499,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bonificación Complementaria
     //=CC48*$N$15
     //CC48 = complementaryBonus
@@ -3494,12 +3532,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bonificación Días Especiales
     //=CC49*$N$16
     //CC49 = specialDaysBonus
@@ -3526,12 +3565,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bono disponibilidad
     //=CC50*$N$17
     //CC50 = availabilityBonus
@@ -3558,12 +3598,13 @@ public class PeruRefactor {
                 projections.add(monthProjection);
             }
             temporaryBonusComponent.setProjections(projections);
-        }else {
+        } else {
             temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bono por trabajo nocturno
     //=CC51*$N$18
     //CC51 = nightWorkBonus
@@ -3596,6 +3637,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Bonif. Ext. Temp. - Bonificación por Destaque
     //=CC52*$N$19
     //CC52 = detachmentBonus
@@ -3628,6 +3670,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Salario Teórico
     //=CC53*$N$20
     //CC53 = theoreticalSalary
@@ -3660,6 +3703,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Provisión de Vacaciones
     //=CC54*$N$21
     //CC54 = vacationProvision
@@ -3692,6 +3736,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Ley Teletrabajo
     //=CC55*$N$22
     //CC55 = teleworkLawCTS
@@ -3724,6 +3769,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bono Top Performer
     //=CC56*$N$23
     //CC56 = topPerformerBonus
@@ -3756,6 +3802,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bonificación Responsable Grupo
     //=CC57*$N$24
     //CC57 = groupResponsibleBonus
@@ -3788,6 +3835,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Jornada Tienda
     //=CC58*$N$25
     //CC58 = storeDay
@@ -3820,6 +3868,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Asignación de Vivienda
     //=CC59*$N$26
     //CC59 = housingAssignment
@@ -3852,6 +3901,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Conceptos Mandato Judicial
     //=CC60*$N$27
     //CC60 = judicialMandateConcepts
@@ -3884,6 +3934,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bonificación Complementaria
     //=CC61*$N$28
     //CC61 = complementaryBonus
@@ -3916,6 +3967,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bonificación Días Especiales
     //=CC62*$N$29
     //CC62 = specialDaysBonus
@@ -3948,6 +4000,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bono disponibilidad
     //=CC63*$N$30
     //CC63 = availabilityBonus
@@ -3980,6 +4033,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bono por trabajo nocturno
     //=CC64*$N$31
     //CC64 = nightWorkBonus
@@ -4012,6 +4066,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - Bonificación por Destaque
     //=CC65*$N$32
     //CC65 = detachmentBonus
@@ -4044,6 +4099,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - TFSP
     //==+CC288*$L$23
     //CC288 = tfsp
@@ -4076,6 +4132,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - PSP
     //==+CC289*$L$24
     //CC289 = psp
@@ -4108,6 +4165,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - RSP
     //==+CC290*$L$25
     //CC290 = rsp
@@ -4140,6 +4198,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //CTS - COINV
     //==+CC291*$L$26
     //CC291 = coinv
@@ -4172,6 +4231,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Salario Teórico
     //=CC53*$N$20
     //CC53 = theoreticalSalary
@@ -4204,6 +4264,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Provisión de Vacaciones
     //=CC54*$N$21
     //CC54 = vacationProvision
@@ -4236,6 +4297,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Compensación por Vivienda
     //=CC55*$N$22
     //CC55 = housingCompensation
@@ -4268,6 +4330,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Incremento AFP 10,23%
     //=CC56*$N$23
     //CC56 = afpIncrease
@@ -4300,6 +4363,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Incremento 3,3% + Incremento SNP 3,3%
     //=CC66*$N$33
     //CC66 = INCREASE_SNP_AND_INCREASE
@@ -4332,6 +4396,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Bono SRD (100%)
     //=CC67*$N$34
     //CC67 = srdBonus
@@ -4364,6 +4429,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Complemento Sueldo Basico
     //=CC68*$N$35
     //CC68 = basicSalaryComplement
@@ -4396,6 +4462,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Asignación Familiar
     //=CC69*$N$36
     //CC69 = familyAllowance
@@ -4428,6 +4495,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Ley Teletrabajo
     //=CC70*$N$37
     //CC70 = teleworkLaw
@@ -4460,6 +4528,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Bono Top Performer
     //=CC71*$N$38
     //CC71 = topPerformerBonus
@@ -4492,6 +4561,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Bonificación Responsable Grupo
     //=CC72*$N$39
     //CC72 = groupResponsibleBonus
@@ -4524,6 +4594,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Jornada Tienda
     //=CC73*$N$40
     //CC73 = storeDay
@@ -4556,6 +4627,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Asignación de Vivienda
     //=CC74*$N$41
     //CC74 = housingAssignment
@@ -4588,6 +4660,7 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
     //Essalud - Conceptos Mandato Judicial
     //=CC75*$N$42
     //CC75 = judicialMandateConcepts
@@ -4619,5 +4692,336 @@ public class PeruRefactor {
             temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         }
         components.add(temporaryBonusComponent);
+    }
+
+    //Essalud - Bonificación Complementaria
+    //=+CC217*$M$18
+    //CC217 = complementaryBonus
+    //$M$18 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void complementaryBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO complementaryBonusEssaludComponent = componentMap.get("COMPLEMENTARY_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-COMPLEMENTARY_BONUS");
+        double complementaryBonusEssalud = complementaryBonusEssaludComponent != null ? complementaryBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Complementaria");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = complementaryBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (complementaryBonusEssaludComponent != null) {
+            for (MonthProjection projection : complementaryBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+
+    //Essalud - Bonificación Días Especiales
+    //=+CC238*$M$19
+    //CC238 = specialDaysBonus
+    //$M$19 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void specialDaysBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO specialDaysBonusEssaludComponent = componentMap.get("SPECIAL_DAYS_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-SPECIAL_DAYS_BONUS");
+        double specialDaysBonusEssalud = specialDaysBonusEssaludComponent != null ? specialDaysBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Días Especiales");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = specialDaysBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (specialDaysBonusEssaludComponent != null) {
+            for (MonthProjection projection : specialDaysBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bonificación por Destaque
+    //=+CC239*$M$20
+    //CC239 = detachmentBonus
+    //$M$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void detachmentBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO detachmentBonusEssaludComponent = componentMap.get("DETACHMENT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-DETACHMENT_BONUS");
+        double detachmentBonusEssalud = detachmentBonusEssaludComponent != null ? detachmentBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación por Destaque");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = detachmentBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (detachmentBonusEssaludComponent != null) {
+            for (MonthProjection projection : detachmentBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bono disponibilidad
+    //=+CC240*$M$21
+    //CC240 = availabilityBonus
+    //$M$21 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void availabilityBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO availabilityBonusEssaludComponent = componentMap.get("AVAILABILITY_PLUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-AVAILABILITY_PLUS");
+        double availabilityBonusEssalud = availabilityBonusEssaludComponent != null ? availabilityBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono disponibilidad");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = availabilityBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (availabilityBonusEssaludComponent != null) {
+            for (MonthProjection projection : availabilityBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - Bono por trabajo nocturno
+    //=+CC241*$M$22
+    //CC241 = nightWorkBonus
+    //$M$22 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void nightWorkBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO nightWorkBonusEssaludComponent = componentMap.get("NIGHT_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-NIGHT_BONUS");
+        double nightWorkBonusEssalud = nightWorkBonusEssaludComponent != null ? nightWorkBonusEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bono por trabajo nocturno");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = nightWorkBonusEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (nightWorkBonusEssaludComponent != null) {
+            for (MonthProjection projection : nightWorkBonusEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - COINV
+    //=+CC242*$M$23
+    //CC242 = COINV
+    //$M$23 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void COINVEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO COINVEssaludComponent = componentMap.get("COINV");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-COINV");
+        double COINVEssalud = COINVEssaludComponent != null ? COINVEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("COINV");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = COINVEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (COINVEssaludComponent != null) {
+            for (MonthProjection projection : COINVEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - PSP
+    //=+CC243*$M$24
+    //CC243 = PSP
+    //$M$24 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void PSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO PSPEssaludComponent = componentMap.get("PSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-PSP");
+        double PSPEssalud = PSPEssaludComponent != null ? PSPEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("PSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = PSPEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (PSPEssaludComponent != null) {
+            for (MonthProjection projection : PSPEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - RSP
+    //=+CC244*$M$25
+    //CC244 = RSP
+    //$M$25 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void RSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO RSPEssaludComponent = componentMap.get("RSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-RSP");
+        double RSPEssalud = RSPEssaludComponent != null ? RSPEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("RSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = RSPEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (RSPEssaludComponent != null) {
+            for (MonthProjection projection : RSPEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Essalud - TFSP
+    //=+CC245*$M$26
+    //CC245 = TFSP
+    //$M$26 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void TFSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO TFSPEssaludComponent = componentMap.get("TFSP");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("ESSALUD-TFSP");
+        double TFSPEssalud = TFSPEssaludComponent != null ? TFSPEssaludComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("TFSP");
+        double temporaryBonusConceptValue = temporaryBonusConcept != null ? temporaryBonusConcept.getEssalud().doubleValue() : 0;
+        double temporaryBonus = TFSPEssalud * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (TFSPEssaludComponent != null) {
+            for (MonthProjection projection : TFSPEssaludComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(Shared.generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+    //Plan Prev Dir Aport Vol Emp.
+    //=SI(CC35<>0;CB1001*(CC35/CB35);0)
+    //CB1001 = PLAN_PREV_DIR_APORT_VOL_EMP_BASE
+    //CC35 = salaryCurrentMonth
+    //CB35 = salaryPreviousMonth
+    public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+
+        PaymentComponentDTO planPrevDirAportVolEmpBase = componentMap.get("PLAN_PREV_DIR_APORT_VOL_EMP_BASE");
+        log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase);
+        PaymentComponentDTO salaryComponent = componentMap.get("THEORETICAL-SALARY");
+        PaymentComponentDTO planPrevDirAportVolEmp = new PaymentComponentDTO();
+        planPrevDirAportVolEmp.setPaymentComponent("PLAN_PREV_DIR_APORT_VOL_EMP");
+
+        if (planPrevDirAportVolEmpBase != null && salaryComponent != null) {
+            List<MonthProjection> baseProjections = planPrevDirAportVolEmpBase.getProjections();
+            List<MonthProjection> salaryProjections = salaryComponent.getProjections();
+            List<MonthProjection> resultProjections = new ArrayList<>();
+
+            for (int i = 0; i < baseProjections.size() - 1; i++) {
+                double baseAmount = baseProjections.get(i).getAmount().doubleValue();
+                double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
+                double previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
+
+                double result = (currentSalary != 0) ? baseAmount * (currentSalary / previousSalary) : 0;
+
+                MonthProjection resultProjection = new MonthProjection();
+                resultProjection.setMonth(baseProjections.get(i).getMonth());
+                resultProjection.setAmount(BigDecimal.valueOf(result));
+                resultProjections.add(resultProjection);
+            }
+
+            planPrevDirAportVolEmp.setProjections(resultProjections);
+            planPrevDirAportVolEmp.setAmount(resultProjections.get(0).getAmount());
+        } else {
+            planPrevDirAportVolEmp.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.ZERO));
+            planPrevDirAportVolEmp.setAmount(BigDecimal.ZERO);
+        }
+
+        components.add(planPrevDirAportVolEmp);
     }
 }
