@@ -22,13 +22,15 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
     private final EmployeeClassificationRepository employeeClassificationRepository;
     private final SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository;
     private final ConceptoPresupuestalRepository conceptoPresupuestalRepository;
+    private final EdadSVRepository edadSVRepository;
 
     @Autowired
-    protected PeruConfigStrategy(DemoRepository sharedRepo, ParameterRepository parameterRepository, BuRepository buRepository, CodeNominaRepository codeNominaRepository, BaseExternRepository baseExternRepository, ParameterDefaultRepository parameterDefaultRepository, ValidationRuleRepository validationRuleRepository, EmployeeClassificationRepository employeeClassificationRepository, SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository, ConceptoPresupuestalRepository conceptoPresupuestalRepository) {
+    protected PeruConfigStrategy(DemoRepository sharedRepo, ParameterRepository parameterRepository, BuRepository buRepository, CodeNominaRepository codeNominaRepository, BaseExternRepository baseExternRepository, ParameterDefaultRepository parameterDefaultRepository, ValidationRuleRepository validationRuleRepository, EmployeeClassificationRepository employeeClassificationRepository, SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository, ConceptoPresupuestalRepository conceptoPresupuestalRepository, EdadSVRepository edadSVRepository) {
         super(sharedRepo, parameterRepository, buRepository, codeNominaRepository, baseExternRepository, parameterDefaultRepository, validationRuleRepository);
         this.employeeClassificationRepository = employeeClassificationRepository;
         this.seniorityAndQuinquenniumRepository = seniorityAndQuinquenniumRepository;
         this.conceptoPresupuestalRepository = conceptoPresupuestalRepository;
+        this.edadSVRepository = edadSVRepository;
     }
 
 
@@ -41,6 +43,8 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
         List<SeniorityAndQuinquennium> seniorityAndQuinquennium = seniorityAndQuinquenniumRepository.findAll();
         //conceptoPresupuestalRepository
         List<ConceptoPresupuestal> conceptoPresupuestal = conceptoPresupuestalRepository.findAll();
+        //edadSVRepository
+        List<EdadSV> edadSV = edadSVRepository.findAll();
         return DefaultConfig.builder()
                 .components(sharedRepo.getComponentByBu(bu))
                 .parameters(parameterRepository.getParameterBu(bu))
@@ -50,6 +54,7 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
                 .employeeClassifications(employeeClassifications)
                 .seniorityAndQuinquenniums(seniorityAndQuinquennium)
                 .conceptoPresupuestals(conceptoPresupuestal)
+                .edadSV(edadSV)
                 .vDefault(parameterDefaultRepository.findByBu(vbu.getId()))
                 .nominas(codeNominaRepository.findByIdBu(vbu.getId()))
                 .baseExtern(baseExternRepository.findByBu(vbu.getId())

@@ -22,6 +22,7 @@ public abstract class Config {
     private List<EmployeeClassification> employeeClassifications;
     private List<SeniorityAndQuinquennium> seniorityAndQuinquenniums;
     private List<ConceptoPresupuestal> conceptoPresupuestals;
+    private List<EdadSV> edadSV;
     private List<ValidationRule> validationRules;
     private List<ParameterGroup> parameterGroups;
     private List<ConventArgDTO> conventArgs;

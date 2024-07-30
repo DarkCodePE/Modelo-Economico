@@ -6,6 +6,7 @@ import ms.hispam.budget.entity.mysql.ConceptoPresupuestal;
 import ms.hispam.budget.entity.mysql.EmployeeClassification;
 import ms.hispam.budget.entity.mysql.SeniorityAndQuinquennium;
 import ms.hispam.budget.util.Shared;
+import ms.hispam.budget.util.Tuple;
 import org.springframework.stereotype.Component;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import java.math.BigDecimal;
@@ -192,13 +193,53 @@ public class PeruRefactor {
             }
             promoDate = promoDate.withDayOfMonth(1);
             LocalDate date = LocalDate.parse(month, dateFormat);
-            if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) && promoDate.getMonthValue() == date.getMonthValue()) {
+            log.info("Promo month: {}, Current month: {}", promoDate, date);
+            if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) || promoDate.getMonthValue() == date.getMonthValue()) {
                 return salary * promoComponentProject.getAmount().doubleValue() / 100;
             }
         }
         return 0;
     }
 
+    private double calculatePromoAdjustment2(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
+        PaymentComponentDTO promoMonthComponent = componentMap.get("mes_promo");
+        PaymentComponentDTO promoComponent = componentMap.get("promo");
+        if (promoMonthComponent != null && promoComponent != null && promoMonthComponent.getAmountString() != null) {
+            PaymentComponentDTO promoComponentProject = new PaymentComponentDTO();
+            promoComponentProject.setPaymentComponent("promotion");
+            promoComponentProject.setAmount(promoComponent.getAmount());
+            promoComponentProject.setAmountString(promoMonthComponent.getAmountString());
+
+            YearMonth currentYearMonth = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyyMM"));
+            YearMonth promoYearMonth;
+
+            try {
+                promoYearMonth = YearMonth.parse(promoComponentProject.getAmountString(), DateTimeFormatter.ofPattern("yyyyMM"));
+            } catch (DateTimeParseException e) {
+                try {
+                    int excelDate = Integer.parseInt(promoComponentProject.getAmountString());
+                    LocalDate promoDate = LocalDate.of(1900, 1, 1).plusDays(excelDate - 2);
+                    promoYearMonth = YearMonth.from(promoDate);
+                } catch (NumberFormatException ex) {
+                    log.error("Unable to parse promo date: " + promoComponentProject.getAmountString());
+                    return 0;
+                }
+            }
+
+            log.info("Promo month: {}, Current month: {}", promoYearMonth, currentYearMonth);
+            log.info("Promo value: {}", promoComponentProject.getAmount());
+
+            if (!promoComponentProject.getAmountString().isEmpty() &&
+                    (!promoYearMonth.isAfter(currentYearMonth) && promoYearMonth.getMonth() == currentYearMonth.getMonth())) {
+                double promoValue = promoComponentProject.getAmount().doubleValue() / 100;
+                log.info("Applying promo adjustment: {}", promoValue);
+                return promoValue;
+            }
+        }
+
+        log.debug("No promo adjustment applied");
+        return 0;
+    }
     public String findMostSimilarPosition(String targetPosition, Set<String> knownPositions) {
         LevenshteinDistance levenshtein = new LevenshteinDistance();
         String closestMatch = null;
@@ -499,7 +540,8 @@ public class PeruRefactor {
             double theoreticalSalary = theoreticalSalaryComponent.getAmount().doubleValue();
             double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue() / 100;
             double vacationPerDay = theoreticalSalary / 30;
-            double vacationPerMonth = (vacationPerDay * vacationDays * goceVacacionesBase) * vacationSeasonality;
+            double vacationSeasonalityPercentage = vacationSeasonality / 100;
+            double vacationPerMonth = (vacationPerDay * vacationDays * goceVacacionesBase) * vacationSeasonalityPercentage;
             vacationEnjoymentComponent.setAmount(BigDecimal.valueOf(vacationPerMonth * -1));
             vacationEnjoymentComponent.setProjections(Shared.generateMonthProjection(period, range, vacationEnjoymentComponent.getAmount()));
             List<MonthProjection> projections = new ArrayList<>();
@@ -519,7 +561,7 @@ public class PeruRefactor {
                 ParametersDTO vacationSeasonalityParameter = vacationSeasonalityMap.get(month);
                 double vacationSeasonalityValue;
                 if (vacationSeasonalityParameter != null) {
-                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue();
+                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue() / 100;
                     lastVacationSeasonality = vacationSeasonalityValue;
                 } else {
                     vacationSeasonalityValue = lastVacationSeasonality;
@@ -2045,7 +2087,7 @@ public class PeruRefactor {
 
     //Seguro Medico
     //=$BR5
-    public void medicalInsurance(List<PaymentComponentDTO> component, String period, Integer range) {
+   /* public void medicalInsurance(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
 
         PaymentComponentDTO medicalInsuranceBaseComponent = componentMap.get("seguro_medico");
@@ -2073,7 +2115,7 @@ public class PeruRefactor {
             medicalInsuranceComponentEmpty.setProjections(Shared.generateMonthProjection(period, range, medicalInsuranceComponentEmpty.getAmount()));
             component.add(medicalInsuranceComponentEmpty);
         }
-    }
+    }*/
 
     //Provisión de Vacaciones}
     //==CC35/30*$CC$6/12
@@ -4988,7 +5030,7 @@ public class PeruRefactor {
     //CB1001 = PLAN_PREV_DIR_APORT_VOL_EMP_BASE
     //CC35 = salaryCurrentMonth
     //CB35 = salaryPreviousMonth
-    public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range) {
+    public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
 
         PaymentComponentDTO planPrevDirAportVolEmpBase = componentMap.get("PLAN_PREV_DIR_APORT_VOL_EMP_BASE");
@@ -5023,5 +5065,77 @@ public class PeruRefactor {
         }
 
         components.add(planPrevDirAportVolEmp);
+    }
+    //[Auxiliar en excel para calcular edad ]
+    //=calculateSeniorityYears
+    public long calculateAge(LocalDate birthDate, String period) {
+        if (birthDate == null) {
+            return 0;
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+        YearMonth yearMonth = YearMonth.parse(period, formatter);
+
+        return ChronoUnit.YEARS.between(birthDate, yearMonth.atEndOfMonth());
+    }
+    //Seguro de Vida aux para cálculo del factor de seguro segun la tabla de factores por rango de edad
+    //=SI(CC98<=$G$3;$H$3;SI(CC98<=$G$4;$H$4;SI(CC98<=$G$5;$H$5;SI(CC98<=$G$6;$H$6;SI(CC98<=$G$7;$H$7;SI(CC98<=$G$8;$H$8;SI(CC98<=$G$9;$H$9;SI(CC98<=$G$10;$H$10;SI(CC98<=$G$11;$H$11)))))))))
+    public BigDecimal getAgeFactorValue(Integer age, Map<Tuple<Integer, Integer>, Double> ageSVMap) {
+        BigDecimal ageFactor = BigDecimal.ZERO;
+        for (Map.Entry<Tuple<Integer, Integer>, Double> entry : ageSVMap.entrySet()) {
+            Tuple<Integer, Integer> ageRange = entry.getKey();
+            if (age >= ageRange.getFirst() && age <= ageRange.getSecond()) {
+                ageFactor = BigDecimal.valueOf(entry.getValue());
+                break;
+            }
+        }
+        return ageFactor;
+    }
+    //Seguro de Vida
+    //=CC35*(CC105+CC$8)
+    //CC35 = salaryCurrentMonth
+    //CC105 = ageFactor
+    //CC$8 = groupSVList parameter
+    public void calculateLifeInsurance(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap, List<ParametersDTO> groupSVList, LocalDate birthDate) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
+        Map<String, ParametersDTO> groupSVMap = createCacheMap(groupSVList);
+
+        if (theoricSalaryComponent != null) {
+            long age = calculateAge(birthDate, period);
+            //log.info("age: " + age);
+            BigDecimal ageFactor = getAgeFactorValue((int) age, ageSVMap);
+            //log.info("ageFactor: " + ageFactor);
+            double salary = theoricSalaryComponent.getAmount().doubleValue();
+            double groupSV = getCachedValue(groupSVMap, period);
+            double lifeInsurance = salary * (ageFactor.doubleValue() + groupSV);
+
+            PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
+            lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
+            lifeInsuranceComponent.setAmount(BigDecimal.valueOf(lifeInsurance));
+            lifeInsuranceComponent.setProjections(Shared.generateMonthProjection(period, range, lifeInsuranceComponent.getAmount()));
+
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
+                String month = projection.getMonth();
+                long ageProjection = calculateAge(birthDate, month);
+                double groupSVP = getCachedValue(groupSVMap, month);
+                BigDecimal ageFactorProjection = getAgeFactorValue((int) ageProjection, ageSVMap);
+                double lifeInsuranceProjection = projection.getAmount().doubleValue() * (ageFactorProjection.doubleValue() + groupSVP);
+
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(lifeInsuranceProjection));
+                projections.add(monthProjection);
+
+            }
+            lifeInsuranceComponent.setProjections(projections);
+            components.add(lifeInsuranceComponent);
+        }else {
+            PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
+            lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
+            lifeInsuranceComponent.setAmount(BigDecimal.ZERO);
+            lifeInsuranceComponent.setProjections(Shared.generateMonthProjection(period, range, lifeInsuranceComponent.getAmount()));
+            components.add(lifeInsuranceComponent);
+        }
     }
 }

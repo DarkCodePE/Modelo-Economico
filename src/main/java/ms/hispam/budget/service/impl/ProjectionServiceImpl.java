@@ -128,6 +128,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private ConventArgRepository conventArgRepository;
     @Autowired
+    private EdadSVRepository edadSVRepository;
+    @Autowired
     private ConfigStrategyFactory configStrategyFactory;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
@@ -153,6 +155,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Map<String, Convenio> convenioCache;
     private Map<String, EmployeeClassification> classificationMap = new HashMap<>();
     private Map<Integer, BigDecimal> quinquenniumMap = new HashMap<>();
+    private Map<Tuple<Integer, Integer>, Double> ageSVMap = new HashMap<>();
     private Map<String, ConceptoPresupuestal> conceptoPresupuestalMap = new HashMap<>();
     //ConventArg
     private Map<String, ConventArg> conventArgMap = new HashMap<>();
@@ -192,8 +195,13 @@ public class ProjectionServiceImpl implements ProjectionService {
         for (ConventArg conventArg : conventArgs) {
             conventArgMap.put(conventArg.getConvenio(), conventArg);
         }
-
+        // Inicializar ageSVMap
+        List<EdadSV> edadSVList = edadSVRepository.findAll();
+        for (EdadSV edadSV : edadSVList) {
+            ageSVMap.put(new Tuple<>(edadSV.getEdadInicio(), edadSV.getEdadFin()), edadSV.getPorcentajeSvLey());
+        }
     }
+
     public BigDecimal getQuinquenniumValue(int seniority) {
         return quinquenniumMap.getOrDefault(seniority, BigDecimal.ZERO);
     }
@@ -868,7 +876,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.studiesBonus(component, projection.getPeriod(), projection.getRange(), preSchoolAllowanceSeasonalityList);
                         methodsPeru.foodBenefits(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), classificationMap);
                         methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), youngExecutiveSalaryList, internSalaryList, classificationMap);
-                        methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
+                        //methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
                         methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap, headcountData.getCategoryLocal());
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
@@ -1023,7 +1031,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         // public void TFSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.TFSPEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //  public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range)
-                        methodsPeru.calculatePlanPrevDirAportVolEmp(component, projection.getPeriod(), projection.getRange());
+                        //methodsPeru.calculatePlanPrevDirAportVolEmp(component, projection.getPeriod(), projection.getRange(), ageSVMap);
+                        // public void calculateLifeInsurance(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap, List<ParametersDTO> groupSVList, LocalDate birthDate)
+                        //methodsPeru.calculateLifeInsurance(component, projection.getPeriod(), projection.getRange(), ageSVMap, groupSVList, headcountData.getFNac());
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
@@ -2509,52 +2519,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     }
                                     //log.debug("nominaPaymentComponentLinksCache: {}", nominaPaymentComponentLinksCache);
                                     Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
-                                    // Convertir existingNominaCodes a un Set de Strings normalizados
-                                    Set<String> validNominaCodes = existingNominaCodes.stream()
-                                            .map(code -> code.trim().toUpperCase())
-                                            .collect(Collectors.toSet());
-
-// Filtrar nominal usando los códigos normalizados
-                                    List<NominaProjection> filteredNominal = nominal.stream()
-                                            .filter(proj -> {
-                                                String normalizedCode = proj.getCodeNomina().trim().toUpperCase();
-                                                boolean isValid = validNominaCodes.contains(normalizedCode);
-                                                String[] codes = {"1043", "1316", "1045"};
-                                                boolean isValidCode = Arrays.asList(codes).contains(normalizedCode);
-                                                if (!isValidCode) {
-                                                    log.info("Código no válido: '{}', Normalizado: '{}'", proj.getCodeNomina(), normalizedCode);
-                                                }
-                                                if (!isValid) {
-                                                    log.info("Código no válido: '{}', Normalizado: '{}'", proj.getCodeNomina(), normalizedCode);
-                                                }
-                                                return isValid;
-                                            })
+                                    List<NominaProjection> filteredNominal = nominal
+                                            .parallelStream()
+                                            //.filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
+                                            .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
-
-
-                                    Set<String> filteredOutCodes = nominal.stream()
-                                            .map(proj -> proj.getCodeNomina().trim().toUpperCase())
-                                            .filter(code -> !validNominaCodes.contains(code))
-                                            .collect(Collectors.toSet());
-
-                                    log.info("Tamaño de nominal original: {}", nominal.size());
-                                    log.info("Tamaño de validNominaCodes: {}", validNominaCodes.size());
-                                    log.info("Tamaño de filteredNominal: {}", filteredNominal.size());
-                                    log.info("Cantidad de códigos filtrados: {}", filteredOutCodes.size());
-                                    log.info("Ejemplos de códigos filtrados (hasta 10): {}",
-                                            filteredOutCodes.stream().limit(10).collect(Collectors.toList()));
-
-// Distribución de registros por código válido
-                                    Map<String, Long> validCodeDistribution = filteredNominal.stream()
-                                            .collect(Collectors.groupingBy(NominaProjection::getCodeNomina, Collectors.counting()));
-
-                                    log.info("Distribución de registros por código válido:");
-                                    validCodeDistribution.entrySet().stream()
-                                            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                                            .limit(10)
-                                            .forEach(entry -> log.info("Código: {}, Cantidad: {}", entry.getKey(), entry.getValue()));
-
-// Usar el filteredNominal resultante para el resto de la lógica
+                                    log.debug("filteredNominal: {}", filteredNominal);
                                     addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
@@ -2752,6 +2722,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     break;
                             }
                         }
+                    }else {
+                        projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
                     }
                 });
             } else {
