@@ -16,7 +16,7 @@ public class DefaultConfig extends Config {
     private List<ParameterProjection> parameters;
 
     @Builder
-    public DefaultConfig(List<ComponentProjection> components, List<OperationResponse> baseExtern, List<CodeNomina> nominas, List<ParameterDefault> vDefault, List<RangeBuDTO> vTemporal, List<Convenio> convenios, List<ConvenioBono> convenioBonos, List<NominaPaymentComponentLink> nominaPaymentComponentRelations, List<EmployeeClassification> employeeClassifications, List<SeniorityAndQuinquennium> seniorityAndQuinquenniums, List<ConceptoPresupuestal> conceptoPresupuestals, List<ValidationRule> validationRules, List<ParameterGroup> parameterGroups, String money, String icon, Boolean vViewPo, String current, List<ParameterProjection> parameters) {
+    public DefaultConfig(List<ComponentProjection> components, List<OperationResponse> baseExtern, List<CodeNomina> nominas, List<ParameterDefault> vDefault, List<RangeBuDTO> vTemporal, List<Convenio> convenios, List<ConvenioBono> convenioBonos, List<NominaPaymentComponentLink> nominaPaymentComponentRelations, List<EmployeeClassification> employeeClassifications, List<SeniorityAndQuinquennium> seniorityAndQuinquenniums, List<ConceptoPresupuestal> conceptoPresupuestals, List<ValidationRule> validationRules, List<ParameterGroup> parameterGroups, String money, String icon, Boolean vViewPo, String current, List<ParameterProjection> parameters, List<EdadSV> edadSV) {
         super();
         setComponents(components);
         setBaseExtern(baseExtern);
@@ -29,6 +29,7 @@ public class DefaultConfig extends Config {
         setEmployeeClassifications(employeeClassifications);
         setSeniorityAndQuinquenniums(seniorityAndQuinquenniums);
         setConceptoPresupuestals(conceptoPresupuestals);
+        setEdadSV(edadSV);
         setValidationRules(validationRules);
         setParameterGroups(parameterGroups);
         setMoney(money);

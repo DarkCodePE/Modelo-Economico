@@ -22,6 +22,7 @@ import ms.hispam.budget.service.MexicoService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.service.ReportGenerationService;
 import ms.hispam.budget.util.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -127,6 +128,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private ConventArgRepository conventArgRepository;
     @Autowired
+    private EdadSVRepository edadSVRepository;
+    @Autowired
     private ConfigStrategyFactory configStrategyFactory;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private final MexicoService mexicoService;
@@ -152,6 +155,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Map<String, Convenio> convenioCache;
     private Map<String, EmployeeClassification> classificationMap = new HashMap<>();
     private Map<Integer, BigDecimal> quinquenniumMap = new HashMap<>();
+    private Map<Tuple<Integer, Integer>, Double> ageSVMap = new HashMap<>();
     private Map<String, ConceptoPresupuestal> conceptoPresupuestalMap = new HashMap<>();
     //ConventArg
     private Map<String, ConventArg> conventArgMap = new HashMap<>();
@@ -191,8 +195,13 @@ public class ProjectionServiceImpl implements ProjectionService {
         for (ConventArg conventArg : conventArgs) {
             conventArgMap.put(conventArg.getConvenio(), conventArg);
         }
-
+        // Inicializar ageSVMap
+        List<EdadSV> edadSVList = edadSVRepository.findAll();
+        for (EdadSV edadSV : edadSVList) {
+            ageSVMap.put(new Tuple<>(edadSV.getEdadInicio(), edadSV.getEdadFin()), edadSV.getPorcentajeSvLey());
+        }
     }
+
     public BigDecimal getQuinquenniumValue(int seniority) {
         return quinquenniumMap.getOrDefault(seniority, BigDecimal.ZERO);
     }
@@ -324,6 +333,10 @@ public class ProjectionServiceImpl implements ProjectionService {
             //.debug("componentesMap {}", componentesMap);
             List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap);
             //filter by pos
+            // Obtener las cuentas SAP como una cadena separada por comas
+            String accountSap = components.stream()
+                    .map(AccountProjection::getAccount)
+                    .collect(Collectors.joining(","));
             /*List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap)
                     .stream()
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
@@ -360,8 +373,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
 
-            List<RealesProjection> getReales = repository.getReales("%" + projection.getBu()
-                    .replace("T. ", "") + "%", projection.getPeriod());
+            List<RealesProjection> getReales = repository.getReales(
+                    "%" + projection.getBu().replace("T. ", "") + "%",
+                    projection.getPeriod(),
+                    accountSap
+            );
 
             //agrupar getreales por cuenta y mes y monto
             List<ResumenComponentDTO> groupedRealesMonth = groupedReales(getReales).stream()
@@ -867,7 +883,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.studiesBonus(component, projection.getPeriod(), projection.getRange(), preSchoolAllowanceSeasonalityList);
                         methodsPeru.foodBenefits(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), classificationMap);
                         methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), youngExecutiveSalaryList, internSalaryList, classificationMap);
-                        methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
+                        //methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
                         methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap, headcountData.getCategoryLocal());
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
@@ -1003,6 +1019,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.housingAssignmentEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void judicialMandateConceptsEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.judicialMandateConceptsEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void complementaryBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.complementaryBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //  public void specialDaysBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.specialDaysBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void detachmentBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.detachmentBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void availabilityBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.availabilityBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //  public void nightWorkBonusEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.nightWorkBonusEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void COINVEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.COINVEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void PSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.PSPEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void RSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.RSPEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void TFSPEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.TFSPEssaludTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //  public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range)
+                        //methodsPeru.calculatePlanPrevDirAportVolEmp(component, projection.getPeriod(), projection.getRange(), ageSVMap);
+                        // public void calculateLifeInsurance(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap, List<ParametersDTO> groupSVList, LocalDate birthDate)
+                        //methodsPeru.calculateLifeInsurance(component, projection.getPeriod(), projection.getRange(), ageSVMap, groupSVList, headcountData.getFNac());
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
@@ -1977,6 +2015,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Override
     public void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {
         try {
+            Bu bu = buRepository.findById(idBu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
             Shared.replaceSLash(projection);
             Map<String, AccountProjection> componentesMap = new HashMap<>();
             List<AccountProjection> components = getAccountsByBu(idBu) ;
@@ -1986,7 +2025,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             //AÑADIR AL HEADCOUNT PO DE BASE EXTERN
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
             //log.info("headcount {}",headcount);
-            xlsReportService.generateAndCompleteReportAsyncPlanner(projection, headcount, sharedRepo.getAccount(idBu),job,userContact);
+            xlsReportService.generateAndCompleteReportAsyncPlanner(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -2269,6 +2308,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
         return componentDTO;
     }
+    private LocalDate parseDate(String dateString) {
+        try {
+            // Intenta parsear con el formato "yyyy/MM"
+            return LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy/MM"));
+        } catch (DateTimeParseException e) {
+            // Si falla, intenta con el formato "yyyyMM"
+            return LocalDate.parse(dateString + "01", DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+    }
+    private int convertDateToInt(LocalDate date) {
+        return Integer.parseInt(date.format(DateTimeFormatter.ofPattern("yyyyMM")));
+    }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         //TODO: ADD MONTH BASE
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
@@ -2305,7 +2356,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .build()).collect(Collectors.toList());
         //log.info("headcount {}",headcount);
         List<CodeNomina> codeNominals = codeNominaRepository.findByIdBu(projection.getIdBu());
-        List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
+        LocalDate projectionFrom = parseDate(projection.getNominaFrom());
+        LocalDate projectionTo = parseDate(projection.getNominaTo());
+        //log.debug("projectionFrom {}",projectionFrom);
+        //log.debug("projectionTo {}",projectionTo);
+        Map<NominaRangeType, Pair<LocalDate, LocalDate>> intersectedRanges = intersectRanges(projectionFrom, projectionTo, codeNominals);
+     /*   List<NominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,projection.getBu(),projection.getNominaFrom(),projection.getNominaTo(),
                         codeNominals.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")))
                 .parallelStream() // Use parallel stream here
                 .map(e->NominaProjection.builder()
@@ -2314,7 +2370,41 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         .importe(e.getImporte())
                         .qDiasHoras(e.getQ_Dias_Horas())
                         .build())
-                .collect(Collectors.toList());
+                .collect(Collectors.toList());*/
+        List<NominaProjection> nominal = new ArrayList<>();
+
+        for (Map.Entry<NominaRangeType, Pair<LocalDate, LocalDate>> entry : intersectedRanges.entrySet()) {
+            NominaRangeType rangeType = entry.getKey();
+            LocalDate from = entry.getValue().getLeft();
+            LocalDate to = entry.getValue().getRight();
+
+            List<String> relevantCodeNominas = codeNominals.stream()
+                    .filter(cn -> cn.getRangeType() == rangeType)
+                    .map(CodeNomina::getCodeNomina)
+                    .collect(Collectors.toList());
+            String initDate = from.format(DateTimeFormatter.ofPattern("yyyyMM"));
+            String endDate = to.format(DateTimeFormatter.ofPattern("yyyyMM"));
+
+            if (!relevantCodeNominas.isEmpty()) {
+                List<NominaProjection> rangeNominal = repository.getcomponentNomina(
+                                Constant.KEY_BD,
+                                projection.getBu(),
+                                initDate,
+                                endDate,
+                                String.join(",", relevantCodeNominas)
+                        )
+                        .parallelStream()
+                        .map(e -> NominaProjection.builder()
+                                .idssff(e.getID_SSFF())
+                                .codeNomina(e.getCodigoNomina())
+                                .importe(e.getImporte())
+                                .qDiasHoras(e.getQ_Dias_Horas())
+                                .build())
+                        .collect(Collectors.toList());
+
+                nominal.addAll(rangeNominal);
+            }
+        }
         //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
@@ -2425,7 +2515,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             ).collect(Collectors.toList());
                                     //log.debug("projectionsComponent {}",projectionsComponent);
                                     if (nominaPaymentComponentLinksCache == null) {
-                                        List<NominaPaymentComponentLink> allLinks = nominaPaymentComponentLinkRepository.findAll();
+                                        List<NominaPaymentComponentLink> allLinks = nominaPaymentComponentLinkRepository.findAll()
+                                                .stream()
+                                                .filter(n -> n.getPaymentComponent()
+                                                        .getBu()
+                                                        .equals(projection.getIdBu()))
+                                                .collect(Collectors.toList());
                                         nominaPaymentComponentLinksCache = allLinks.stream()
                                                 .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
                                     }
@@ -2436,9 +2531,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             //.filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .collect(Collectors.toList());
-                                    //log.debug("filteredNominal: {}", filteredNominal);
-                                    addNominal(projection,projectionsComponent,filteredNominal,codeNominals,list);
-                                    //log.info("projectionsComponent {}",projectionsComponent);
+                                    log.debug("filteredNominal: {}", filteredNominal);
+                                    addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
@@ -2460,6 +2554,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 ))
                 .values());
 
+    }
+    private Map<NominaRangeType, Pair<LocalDate, LocalDate>> intersectRanges(LocalDate projectionFrom, LocalDate projectionTo, List<CodeNomina> codeNominals) {
+        Map<NominaRangeType, Pair<LocalDate, LocalDate>> intersectedRanges = new EnumMap<>(NominaRangeType.class);
+
+        for (NominaRangeType rangeType : NominaRangeType.values()) {
+            if (codeNominals.stream().anyMatch(cn -> cn.getRangeType() == rangeType)) {
+                LocalDate adjustedFrom = adjustDateRange(projectionTo, rangeType);
+                LocalDate intersectedFrom = adjustedFrom.isAfter(projectionFrom) ? adjustedFrom : projectionFrom;
+                intersectedRanges.put(rangeType, Pair.of(intersectedFrom, projectionTo));
+            }
+        }
+
+        return intersectedRanges;
+    }
+
+    private LocalDate adjustDateRange(LocalDate nominaTo, NominaRangeType rangeType) {
+        return switch (rangeType) {
+            case ONE_MONTH -> nominaTo.minusMonths(1);
+            case SIX_MONTHS -> nominaTo.minusMonths(6);
+            case TWELVE_MONTHS -> nominaTo.minusMonths(12);
+            case ALL -> nominaTo.minusYears(100); // Un valor muy anterior para incluir todo
+        };
     }
     private String findMostSimilarPosition(String targetPosition, Set<String> knownPositions) {
         LevenshteinDistance levenshtein = new LevenshteinDistance();
@@ -2613,6 +2729,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     break;
                             }
                         }
+                    }else {
+                        projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
                     }
                 });
             } else {
