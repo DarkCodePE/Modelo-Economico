@@ -249,8 +249,8 @@ public class XlsReportService {
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
                         groupData.montoPorMes.put(projection.getMonth(), projection.getAmount().doubleValue());
-                        sum = groupData.sum + projection.getAmount().doubleValue();
-                        groupData.sum = sum;
+                        groupData.sum += projection.getAmount().doubleValue();
+                        sum += projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
                     }
                     component.setProjections(null); // Liberar memoria
