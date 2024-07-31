@@ -67,6 +67,9 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "200m"
     nginx.ingress.kubernetes.io/cors-allow-headers: "request-id, request-date, content-type,Authorization"
     nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     cert-manager.io/cluster-issuer: letsencrypt-dev
 spec:
   ingressClassName: nginx
