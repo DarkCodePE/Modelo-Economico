@@ -18,6 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,7 +27,8 @@ import java.util.stream.Collectors;
 @Slf4j(topic = "Peru")
 public class PeruRefactor {
     static final String TYPEMONTH = "yyyyMM";
-
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
+    private static final Map<String, YearMonth> PROMO_DATE_CACHE = new ConcurrentHashMap<>();
     // Método auxiliar para crear el caché de parámetros
     private void createCache(List<ParametersDTO> parameterList, Map<String, ParametersDTO> parameterMap, Map<String, Double> cache, BiConsumer<ParametersDTO, ParametersDTO> updateMaps) {
         List<ParametersDTO> sortedParameterList = new ArrayList<>(parameterList);
@@ -62,62 +64,150 @@ public class PeruRefactor {
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
     }
 
-    public void calculateTheoreticalSalary(List<PaymentComponentDTO> components, List<ParametersDTO> salaryIncreaseList, String localCategory, String period, Integer range, List<ParametersDTO> executiveSalaryIncreaseList, List<ParametersDTO> directorSalaryIncreaseList, Map<String, EmployeeClassification> classificationMap) {
-        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
-        // Si no hay coincidencia exacta, buscar la posición más similar
-        /*if (optionalEmployeeClassification.isEmpty()) {
-            String mostSimilarPosition = findMostSimilarPosition(localCategory, classificationMap.keySet());
-            optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-            //log.info("No se encontró una coincidencia exacta para '{}'. Usando '{}' en su lugar.", poName, mostSimilarPosition);
-        }*/
-
-        if (optionalEmployeeClassification.isPresent()) {
-            EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
-            String typeEmp = employeeClassification.getTypeEmp();
-
-            Map<String, ParametersDTO> salaryIncreaseyMap = createCacheMap(salaryIncreaseList);
-            Map<String, ParametersDTO> executiveSalaryIncreaseListMap = createCacheMap(executiveSalaryIncreaseList);
-            Map<String, ParametersDTO> directorSalaryIncreaseListMap = createCacheMap(directorSalaryIncreaseList);
-
-            Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-            PaymentComponentDTO componentPC960400 = componentMap.get("PC960400");
-            PaymentComponentDTO componentPC960401 = componentMap.get("PC960401");
-
-            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue(), componentPC960401.getAmount().doubleValue());
-
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-            YearMonth yearMonth = YearMonth.parse(period, formatter);
-            yearMonth = yearMonth.plusMonths(1);
-            String nextPeriod = yearMonth.format(formatter);
-
-            double salaryIncrease = getCachedValue(salaryIncreaseyMap, nextPeriod);
-            double executiveSalaryIncrease = getCachedValue(executiveSalaryIncreaseListMap, nextPeriod);
-            double directorSalaryIncrease = getCachedValue(directorSalaryIncreaseListMap, nextPeriod);
-
-            PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
-            salaryComponent.setPaymentComponent("THEORETICAL-SALARY");
-
-            double adjustmentBase = switch (typeEmp) {
-                case "EMP" -> salaryIncrease;
-                case "DIR", "DPZ" -> directorSalaryIncrease;
-                default -> executiveSalaryIncrease;
-            };
-
-            salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + (adjustmentBase / 100))));
-            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(salaryBase)));
-
-            List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseyMap, executiveSalaryIncreaseListMap, directorSalaryIncreaseListMap, typeEmp, componentMap);
-
-            salaryComponent.setProjections(projections);
-            components.add(salaryComponent);
-        } else {
-            PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
-            salaryComponent.setAmount(BigDecimal.valueOf(0));
-            salaryComponent.setProjections(Shared.generateMonthProjection(period, range, salaryComponent.getAmount()));
-            components.add(salaryComponent);
-        }
+    public List<MonthProjection> calculateProjections(PaymentComponentDTO salaryComponent,
+                                                      Map<String, ParametersDTO> salaryIncreaseMap,
+                                                      Map<String, ParametersDTO> executiveSalaryIncreaseMap,
+                                                      Map<String, ParametersDTO> directorSalaryIncreaseMap,
+                                                      String typeEmp,
+                                                      Map<String, PaymentComponentDTO> componentMap) {
+        return salaryComponent.getProjections().parallelStream()
+                .map(projection -> calculateMonthProjection(projection, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap, typeEmp, componentMap))
+                .collect(Collectors.toList());
     }
 
+    private MonthProjection calculateMonthProjection(MonthProjection projection,
+                                                     Map<String, ParametersDTO> salaryIncreaseMap,
+                                                     Map<String, ParametersDTO> executiveSalaryIncreaseMap,
+                                                     Map<String, ParametersDTO> directorSalaryIncreaseMap,
+                                                     String typeEmp,
+                                                     Map<String, PaymentComponentDTO> componentMap) {
+        String month = projection.getMonth();
+        double adjustment = getAdjustment(typeEmp, month, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
+
+        double salary = projection.getAmount().doubleValue() * (1 + (adjustment / 100));
+        BigDecimal promo = calculatePromoAdjustment(salary, month, componentMap);
+        double totalSalary = salary * (1 + promo.doubleValue());
+
+        return new MonthProjection(month, BigDecimal.valueOf(totalSalary));
+    }
+
+    private double getAdjustment(String typeEmp, String month,
+                                 Map<String, ParametersDTO> salaryIncreaseMap,
+                                 Map<String, ParametersDTO> executiveSalaryIncreaseMap,
+                                 Map<String, ParametersDTO> directorSalaryIncreaseMap) {
+        return switch (typeEmp) {
+            case "EMP" -> getCachedValue(salaryIncreaseMap, month);
+            case "DIR", "DPZ" -> getCachedValue(directorSalaryIncreaseMap, month);
+            default -> getCachedValue(executiveSalaryIncreaseMap, month);
+        };
+    }
+
+    private double getCachedValue(Map<String, ParametersDTO> map, String key) {
+        return Optional.ofNullable(map.get(key))
+                .map(ParametersDTO::getValue)
+                .orElse(0.0);
+    }
+
+    public void calculateTheoreticalSalary(List<PaymentComponentDTO> components,
+                                           List<ParametersDTO> salaryIncreaseList,
+                                           String localCategory,
+                                           String period,
+                                           Integer range,
+                                           List<ParametersDTO> executiveSalaryIncreaseList,
+                                           List<ParametersDTO> directorSalaryIncreaseList,
+                                           Map<String, EmployeeClassification> classificationMap) {
+        EmployeeClassification employeeClassification = classificationMap.get(localCategory.toUpperCase());
+        if (employeeClassification == null) {
+            addDefaultSalaryComponent(components, period, range);
+            return;
+        }
+
+        Map<String, ParametersDTO> salaryIncreaseMap = createCacheMap(salaryIncreaseList);
+        Map<String, ParametersDTO> executiveSalaryIncreaseMap = createCacheMap(executiveSalaryIncreaseList);
+        Map<String, ParametersDTO> directorSalaryIncreaseMap = createCacheMap(directorSalaryIncreaseList);
+        Map<String, PaymentComponentDTO> componentMap = components.stream()
+                .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, c -> c));
+
+        double salaryBase = calculateSalaryBase(componentMap);
+        String nextPeriod = getNextPeriod(period);
+        double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), nextPeriod,
+                salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
+
+        PaymentComponentDTO salaryComponent = createSalaryComponent(salaryBase, adjustmentBase, period, range);
+        List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseMap,
+                executiveSalaryIncreaseMap, directorSalaryIncreaseMap, employeeClassification.getTypeEmp(), componentMap);
+
+        salaryComponent.setProjections(projections);
+        components.add(salaryComponent);
+    }
+
+    private double calculateSalaryBase(Map<String, PaymentComponentDTO> componentMap) {
+        return Math.max(
+                Optional.ofNullable(componentMap.get("PC960400")).map(c -> c.getAmount().doubleValue()).orElse(0.0),
+                Optional.ofNullable(componentMap.get("PC960401")).map(c -> c.getAmount().doubleValue()).orElse(0.0)
+        );
+    }
+
+    private String getNextPeriod(String period) {
+        return YearMonth.parse(period, MONTH_FORMATTER).plusMonths(1).format(MONTH_FORMATTER);
+    }
+
+    private double getAdjustmentBase(String typeEmp, String nextPeriod,
+                                     Map<String, ParametersDTO> salaryIncreaseMap,
+                                     Map<String, ParametersDTO> executiveSalaryIncreaseMap,
+                                     Map<String, ParametersDTO> directorSalaryIncreaseMap) {
+        return switch (typeEmp) {
+            case "EMP" -> getCachedValue(salaryIncreaseMap, nextPeriod);
+            case "DIR", "DPZ" -> getCachedValue(directorSalaryIncreaseMap, nextPeriod);
+            default -> getCachedValue(executiveSalaryIncreaseMap, nextPeriod);
+        };
+    }
+
+    private PaymentComponentDTO createSalaryComponent(double salaryBase, double adjustmentBase, String period, Integer range) {
+        PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+        salaryComponent.setPaymentComponent("THEORETICAL-SALARY");
+        salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + (adjustmentBase / 100))));
+        salaryComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(salaryBase)));
+        return salaryComponent;
+    }
+
+    private void addDefaultSalaryComponent(List<PaymentComponentDTO> components, String period, Integer range) {
+        PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
+        salaryComponent.setAmount(BigDecimal.ZERO);
+        salaryComponent.setProjections(Shared.generateMonthProjection(period, range, BigDecimal.ZERO));
+        components.add(salaryComponent);
+    }
+
+    private BigDecimal calculatePromoAdjustment(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
+        PaymentComponentDTO promoMonthComponent = componentMap.get("mes_promo");
+        PaymentComponentDTO promoComponent = componentMap.get("promo");
+        if (promoMonthComponent == null || promoComponent == null || promoMonthComponent.getAmountString() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        YearMonth currentYearMonth = YearMonth.parse(month, MONTH_FORMATTER);
+        YearMonth promoYearMonth = parsePromoDate(promoMonthComponent.getAmountString());
+
+        return (promoYearMonth != null && !promoYearMonth.isAfter(currentYearMonth))
+                ? promoComponent.getAmount()
+                : BigDecimal.ZERO;
+    }
+
+    private YearMonth parsePromoDate(String dateString) {
+        return PROMO_DATE_CACHE.computeIfAbsent(dateString, key -> {
+            try {
+                return YearMonth.parse(key, MONTH_FORMATTER);
+            } catch (DateTimeParseException e) {
+                try {
+                    int excelDate = Integer.parseInt(key);
+                    LocalDate promoDate = LocalDate.of(1900, 1, 1).plusDays(excelDate - 2);
+                    return YearMonth.from(promoDate);
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            }
+        });
+    }
     private Map<String, ParametersDTO> createCacheMap(List<ParametersDTO> parameterList) {
         Map<String, ParametersDTO> parameterMap = new HashMap<>();
         Map<String, Double> cache = new HashMap<>();
@@ -126,12 +216,12 @@ public class PeruRefactor {
         return parameterMap;
     }
 
-    private double getCachedValue(Map<String, ParametersDTO> cacheMap, String period) {
+    /*private double getCachedValue(Map<String, ParametersDTO> cacheMap, String period) {
         ParametersDTO parameter = cacheMap.get(period);
         return parameter != null ? parameter.getValue() : 0;
     }
-
-    private List<MonthProjection> calculateProjections(PaymentComponentDTO salaryComponent, Map<String, ParametersDTO> salaryIncreaseyMap, Map<String, ParametersDTO> executiveSalaryIncreaseListMap, Map<String, ParametersDTO> directorSalaryIncreaseListMap, String typeEmp, Map<String, PaymentComponentDTO> componentMap) {
+*/
+    /*private List<MonthProjection> calculateProjections(PaymentComponentDTO salaryComponent, Map<String, ParametersDTO> salaryIncreaseyMap, Map<String, ParametersDTO> executiveSalaryIncreaseListMap, Map<String, ParametersDTO> directorSalaryIncreaseListMap, String typeEmp, Map<String, PaymentComponentDTO> componentMap) {
         List<MonthProjection> projections = new ArrayList<>();
         double ultimaIncremento = 0;
         double ultimaExecutivoIncremento = 0;
@@ -161,7 +251,7 @@ public class PeruRefactor {
 
         return projections;
     }
-
+*/
     private double getCachedOrPreviousValue(Map<String, ParametersDTO> cacheMap, String period, double previousValue) {
         ParametersDTO parameter = cacheMap.get(period);
         if (parameter != null) {
@@ -171,36 +261,36 @@ public class PeruRefactor {
         }
     }
 
-    private BigDecimal calculatePromoAdjustment(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
+    /*private BigDecimal calculatePromoAdjustment(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
         PaymentComponentDTO promoMonthComponent = componentMap.get("mes_promo");
         PaymentComponentDTO promoComponent = componentMap.get("promo");
-        if (promoMonthComponent != null && promoComponent != null && promoMonthComponent.getAmountString() != null) {
-            PaymentComponentDTO promoComponentProject = new PaymentComponentDTO();
-            promoComponentProject.setPaymentComponent("promotion");
-            promoComponentProject.setAmount(promoComponent.getAmount());
-            promoComponentProject.setAmountString(promoMonthComponent.getAmountString());
-            DateTimeFormatter dateFormat = new DateTimeFormatterBuilder()
-                    .appendPattern(TYPEMONTH)
-                    .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-                    .toFormatter();
-            LocalDate promoDate;
-            try {
-                promoDate = LocalDate.parse(promoComponentProject.getAmountString(), dateFormat);
-            } catch (DateTimeParseException e) {
-                int excelDate = Integer.parseInt(promoComponentProject.getAmountString());
-                promoDate = LocalDate.of(1900, 1, 1).plusDays(excelDate - 2);
-            }
-            promoDate = promoDate.withDayOfMonth(1);
-            LocalDate date = LocalDate.parse(month, dateFormat);
-            //log.info("Promo month: {}, Current month: {}", promoDate, date);
-            if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) || promoDate.getMonthValue() == date.getMonthValue()) {
-               //log.info("Applying promo adjustment: {}", promoComponentProject);
-                //log.info("Applying promo adjustment: {}", promoComponentProject.getAmount());
-                return promoComponentProject.getAmount();
-            }
+        if (promoMonthComponent == null || promoComponent == null || promoMonthComponent.getAmountString() == null) {
+            return BigDecimal.ZERO;
         }
+
+        YearMonth currentYearMonth = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyyMM"));
+        YearMonth promoYearMonth = parsePromoDate(promoMonthComponent.getAmountString());
+
+        if (promoYearMonth != null && !promoYearMonth.isAfter(currentYearMonth)) {
+            return promoComponent.getAmount();
+        }
+
         return BigDecimal.ZERO;
     }
+
+    private YearMonth parsePromoDate(String dateString) {
+        try {
+            return YearMonth.parse(dateString, DateTimeFormatter.ofPattern("yyyyMM"));
+        } catch (DateTimeParseException e) {
+            try {
+                int excelDate = Integer.parseInt(dateString);
+                LocalDate promoDate = LocalDate.of(1900, 1, 1).plusDays(excelDate - 2);
+                return YearMonth.from(promoDate);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+    }*/
 
     private double calculatePromoAdjustment2(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
         PaymentComponentDTO promoMonthComponent = componentMap.get("mes_promo");

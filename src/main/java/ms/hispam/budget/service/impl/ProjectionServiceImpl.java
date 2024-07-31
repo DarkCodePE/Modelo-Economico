@@ -37,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -46,6 +47,7 @@ import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 
@@ -144,7 +146,9 @@ public class ProjectionServiceImpl implements ProjectionService {
     private static final String[] headers = {"po","idssff"};
     private static final String HEADERPO="po";
     private static final String[]  HEADERNAME={"po","typeEmployee","name"};
-
+    private static final String[] EXCLUDED_HEADERS = {"po", "AF", "idssff"}; // Add other excluded headers
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
+    private static final Map<String, List<MonthProjection>> PROJECTION_CACHE = new ConcurrentHashMap<>();
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
 
     @Cacheable("daysVacationCache")
@@ -830,7 +834,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     try {
                         //log.info("getPoName {}",headcountData.getPo());
                         if (projection.getBaseExtern() != null && !projection.getBaseExtern().getData().isEmpty()) {
-                            addBaseExtern(headcountData, projection.getBaseExtern(),
+                            addBaseExternRefactor(headcountData, projection.getBaseExtern(),
                                     projection.getPeriod(), projection.getRange());
                         }
                         //log.info("headcountData.getPoName() {}", headcountData);
@@ -1547,6 +1551,69 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("headcount {}", headcount.stream().filter(h -> h.getPo().equals("BC123")).findFirst().orElse(null).getComponents());
     }
 
+    public List<ProjectionDTO> addBaseExternRefactor(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
+        Set<String> excludedHeadersSet = new HashSet<>(Arrays.asList(headers));
+        List<String> relevantHeaders = baseExtern.getHeaders().stream()
+                .filter(header -> !excludedHeadersSet.contains(header))
+                .collect(Collectors.toList());
+
+        Map<String, ProjectionDTO> positionsMap = baseExtern.getData().parallelStream()
+                .collect(Collectors.toConcurrentMap(
+                        po -> (String) po.get("po"),
+                        po -> createOrUpdateProjection(po, relevantHeaders, period, range),
+                        (existing, replacement) -> {
+                            existing.getComponents().addAll(replacement.getComponents());
+                            return existing;
+                        }
+                ));
+
+        positionsMap.putIfAbsent(originalHeadcount.getPo(), originalHeadcount);
+
+        return new ArrayList<>(positionsMap.values());
+    }
+    private ProjectionDTO createOrUpdateProjection(Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
+        String currentPo = (String) po.get("po");
+        ProjectionDTO projection = ProjectionDTO.builder()
+                .po(currentPo)
+                .components(new ArrayList<>())
+                .areaFuncional((String) po.get("AF"))
+                .idssff((String) po.get("idssff"))
+                .build();
+
+        List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
+                .map(header -> createPaymentComponent(header, po.get(header), period, range))
+                .collect(Collectors.toList());
+
+        projection.getComponents().addAll(newComponents);
+        return projection;
+    }
+    private PaymentComponentDTO createPaymentComponent(String header, Object value, String period, Integer range) {
+        if ("mes_promo".equalsIgnoreCase(header)) {
+            return PaymentComponentDTO.builder()
+                    .paymentComponent(header)
+                    .amountString(value != null ? value.toString() : null)
+                    .build();
+        } else {
+            BigDecimal amount = value != null ? new BigDecimal(value.toString()) : BigDecimal.ZERO;
+            return PaymentComponentDTO.builder()
+                    .paymentComponent(header)
+                    .amount(amount)
+                    .projections(generateMonthProjection(period, range, amount))
+                    .build();
+        }
+    }
+    public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
+        String cacheKey = monthBase + "_" + range + "_" + amount;
+        return PROJECTION_CACHE.computeIfAbsent(cacheKey, k -> {
+            YearMonth startDate = YearMonth.parse(monthBase, MONTH_FORMATTER).plusMonths(1);
+            return IntStream.range(0, range)
+                    .mapToObj(i -> MonthProjection.builder()
+                            .month(startDate.plusMonths(i).format(MONTH_FORMATTER))
+                            .amount(amount)
+                            .build())
+                    .collect(Collectors.toList());
+        });
+    }
     private List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
         //log.info("BaseExternResponse {}", baseExtern);
 
@@ -1605,7 +1672,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         projection.setIdssff((String) po.get("idssff"));
         // Añade aquí más campos según sea necesario
 
-        log.debug("Updated projection for PO {}: {}", projection.getPo(), projection);
+        //log.debug("Updated projection for PO {}: {}", projection.getPo(), projection);
     }
     private void  addBaseExtern2(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
         //log.info("BaseExternResponse {}",baseExtern);
