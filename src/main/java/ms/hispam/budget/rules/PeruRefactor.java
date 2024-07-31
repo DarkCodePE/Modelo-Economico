@@ -83,7 +83,7 @@ public class PeruRefactor {
             PaymentComponentDTO componentPC960400 = componentMap.get("PC960400");
             PaymentComponentDTO componentPC960401 = componentMap.get("PC960401");
 
-            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue(), componentPC960401.getAmount().doubleValue() / 14);
+            double salaryBase = Math.max(componentPC960400.getAmount().doubleValue(), componentPC960401.getAmount().doubleValue());
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
             YearMonth yearMonth = YearMonth.parse(period, formatter);
@@ -151,9 +151,8 @@ public class PeruRefactor {
 
             double salaryProjection = projection.getAmount().doubleValue();
             double salary = salaryProjection * (1 + (adjustment / 100));
-            double promo = calculatePromoAdjustment(salary, month, componentMap);
-
-            double totalSalary = salary * (1 + promo);
+            BigDecimal promo = calculatePromoAdjustment(salary, month, componentMap);
+            double totalSalary = salary * (1 + promo.doubleValue());
             MonthProjection monthProjection = new MonthProjection();
             monthProjection.setMonth(month);
             monthProjection.setAmount(BigDecimal.valueOf(totalSalary));
@@ -172,7 +171,7 @@ public class PeruRefactor {
         }
     }
 
-    private double calculatePromoAdjustment(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
+    private BigDecimal calculatePromoAdjustment(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
         PaymentComponentDTO promoMonthComponent = componentMap.get("mes_promo");
         PaymentComponentDTO promoComponent = componentMap.get("promo");
         if (promoMonthComponent != null && promoComponent != null && promoMonthComponent.getAmountString() != null) {
@@ -195,11 +194,12 @@ public class PeruRefactor {
             LocalDate date = LocalDate.parse(month, dateFormat);
             //log.info("Promo month: {}, Current month: {}", promoDate, date);
             if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) || promoDate.getMonthValue() == date.getMonthValue()) {
-                //log.info("Applying promo adjustment: {}", promoComponentProject.getAmount());
-                return salary * promoComponentProject.getAmount().doubleValue();
+                log.info("Applying promo adjustment: {}", promoComponentProject);
+                log.info("Applying promo adjustment: {}", promoComponentProject.getAmount());
+                return promoComponentProject.getAmount();
             }
         }
-        return 0;
+        return BigDecimal.ZERO;
     }
 
     private double calculatePromoAdjustment2(double salary, String month, Map<String, PaymentComponentDTO> componentMap) {
@@ -539,7 +539,7 @@ public class PeruRefactor {
 
         if (theoreticalSalaryComponent != null && goceVacacionesComponent != null) {
             double theoreticalSalary = theoreticalSalaryComponent.getAmount().doubleValue();
-            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue() / 100;
+            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue();
             double vacationPerDay = theoreticalSalary / 30;
             double vacationSeasonalityPercentage = vacationSeasonality / 100;
             double vacationPerMonth = (vacationPerDay * vacationDays * goceVacacionesBase) * vacationSeasonalityPercentage;
