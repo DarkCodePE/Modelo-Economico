@@ -194,8 +194,8 @@ public class PeruRefactor {
             LocalDate date = LocalDate.parse(month, dateFormat);
             //log.info("Promo month: {}, Current month: {}", promoDate, date);
             if (!promoComponentProject.getAmountString().isEmpty() && !promoDate.isAfter(date) || promoDate.getMonthValue() == date.getMonthValue()) {
-                log.info("Applying promo adjustment: {}", promoComponentProject);
-                log.info("Applying promo adjustment: {}", promoComponentProject.getAmount());
+               //log.info("Applying promo adjustment: {}", promoComponentProject);
+                //log.info("Applying promo adjustment: {}", promoComponentProject.getAmount());
                 return promoComponentProject.getAmount();
             }
         }
