@@ -333,6 +333,10 @@ public class ProjectionServiceImpl implements ProjectionService {
             //.debug("componentesMap {}", componentesMap);
             List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap);
             //filter by pos
+            // Obtener las cuentas SAP como una cadena separada por comas
+            String accountSap = components.stream()
+                    .map(AccountProjection::getAccount)
+                    .collect(Collectors.joining(","));
             /*List<ProjectionDTO>  headcount=  getHeadcount(projection, componentesMap)
                     .stream()
                     .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
@@ -369,8 +373,11 @@ public class ProjectionServiceImpl implements ProjectionService {
                     .sorted(Comparator.comparing(ResumenComponentDTO::getAccount))
                     .collect(Collectors.toList());
 
-            List<RealesProjection> getReales = repository.getReales("%" + projection.getBu()
-                    .replace("T. ", "") + "%", projection.getPeriod());
+            List<RealesProjection> getReales = repository.getReales(
+                    "%" + projection.getBu().replace("T. ", "") + "%",
+                    projection.getPeriod(),
+                    accountSap
+            );
 
             //agrupar getreales por cuenta y mes y monto
             List<ResumenComponentDTO> groupedRealesMonth = groupedReales(getReales).stream()
