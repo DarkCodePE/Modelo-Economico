@@ -21,7 +21,7 @@ El proyecto "Modelo Económico Perú" es una herramienta diseñada para la previ
 - **Reporte**:
   - Reporte de Proyección.
   - Reporte del Planner.
-  - Reporte CD6.
+  - Reporte CDG.
 
 ### Funcionalidades por Modelo
 Cada país tiene su propio conjunto de modelos:
@@ -75,9 +75,9 @@ Cada país tiene configuraciones específicas:
 
 El proyecto sigue una arquitectura modular, donde las funcionalidades compartidas y específicas por país están claramente separadas, facilitando la integración y el mantenimiento del sistema.
 
-## Contribuciones
+## Nuevas funcionalidades
 
-Las contribuciones son bienvenidas. Por favor, sigue las siguientes pautas para contribuir:
+Para agregar nuevos features. Por favor, sigue las siguientes pautas para contribuir:
 
 1. Forkea el repositorio.
 2. Crea una rama nueva (`git checkout -b feature/nueva-funcionalidad`).
@@ -85,9 +85,26 @@ Las contribuciones son bienvenidas. Por favor, sigue las siguientes pautas para 
 4. Sube tu rama (`git push origin feature/nueva-funcionalidad`).
 5. Crea un nuevo Pull Request.
 
+### Flujo de Generación de Reportes
+
+#### Proceso de Generación
+
+1. **Recopilación de Datos**
+    - Se recopilan datos de diversas fuentes, incluyendo bases externas y casos de negocio.
+    - Los datos se procesan y se estructuran en un formato adecuado para el análisis.
+
+2. **Generación de Reportes**
+    - Utilizando los datos recopilados, se generan los reportes en formato Excel.
+    - Cada tipo de reporte se genera según las especificaciones y requerimientos del usuario.
+    - Se utilizan técnicas de procesamiento paralelo y asincrónico para mejorar la eficiencia y reducir el tiempo de generación.
+
+3. **Almacenamiento y Notificación**
+    - Los reportes generados se almacenan en Azure para su acceso y descarga.
+    - Se notifica al usuario una vez que los reportes están listos para su d
+
 ## Licencia
 
-Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
+Este proyecto está licenciado bajo la Licencia Telefónica Hispam.
 
 ---
 
