@@ -485,13 +485,14 @@ public class ProjectionServiceImpl implements ProjectionService {
                 .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10038188"))
                 .collect(Collectors.toList());*/
         //filter projection by pos
-        List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
+        //List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         //log.info("headcount {}",headcount);
-       /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+        //PO10000756
+        List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                 .stream()
-                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO99027314"))
+                .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10000756"))
                 .collect(Collectors.toList());
-        log.debug("headcount {}",headcount);*/
+        //log.debug("headcount {}",headcount);
         /*List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection)
                 .stream()
                 .filter(projectionDTO ->  projectionDTO.getIdssff().equals("26"))
@@ -834,7 +835,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     try {
                         //log.info("getPoName {}",headcountData.getPo());
                         if (projection.getBaseExtern() != null && !projection.getBaseExtern().getData().isEmpty()) {
-                            addBaseExternRefactor(headcountData, projection.getBaseExtern(),
+                            addBaseExtern(headcountData, projection.getBaseExtern(),
                                     projection.getPeriod(), projection.getRange());
                         }
                         //log.info("headcountData.getPoName() {}", headcountData);
@@ -1623,29 +1624,37 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .collect(Collectors.toList());
 
         // Crear un mapa para almacenar todas las posiciones, incluyendo las nuevas
-        Map<String, ProjectionDTO> positionsMap = new HashMap<>();
+        Map<String, ProjectionDTO> positionsMap = new ConcurrentHashMap<>();
         positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
 
         // Procesar todas las entradas en baseExtern.getData()
-        for (Map<String, Object> po : baseExtern.getData()) {
+        baseExtern.getData().parallelStream().forEach(po -> {
             String currentPo = (String) po.get("po");
-            //log.info("currentPo {}", currentPo);
             ProjectionDTO currentProjection = positionsMap.getOrDefault(currentPo,
                     ProjectionDTO.builder()
                             .po(currentPo)
                             .components(new ArrayList<>())
                             .build());
 
-            updateProjection(currentProjection, po, relevantHeaders, period, range);
+            updateProjection2(currentProjection, po, relevantHeaders, period, range);
             positionsMap.put(currentPo, currentProjection);
-        }
+        });
 
         // Devolver una lista con todas las posiciones
         return new ArrayList<>(positionsMap.values());
     }
+    private void updateProjection2(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
+        List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
+                .map(header -> createPaymentComponent(header, po.get(header), period, range))
+                .collect(Collectors.toList());
 
+        projection.getComponents().addAll(newComponents);
+        projection.setAreaFuncional(po.get("AF") != null ? po.get("AF").toString() : null);
+        projection.setIdssff((String) po.get("idssff"));
+    }
     private void updateProjection(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
         List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
+
                 .map(header -> {
                     Object value = po.get(header);
                     if ("mes_promo".equalsIgnoreCase(header)) {

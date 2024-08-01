@@ -19,6 +19,7 @@ import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -70,7 +71,8 @@ public class PeruRefactor {
                                                       Map<String, ParametersDTO> directorSalaryIncreaseMap,
                                                       String typeEmp,
                                                       Map<String, PaymentComponentDTO> componentMap) {
-        return salaryComponent.getProjections().parallelStream()
+        return salaryComponent.getProjections()
+                .stream()
                 .map(projection -> calculateMonthProjection(projection, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap, typeEmp, componentMap))
                 .collect(Collectors.toList());
     }
@@ -83,23 +85,32 @@ public class PeruRefactor {
                                                      Map<String, PaymentComponentDTO> componentMap) {
         String month = projection.getMonth();
         double adjustment = getAdjustment(typeEmp, month, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
-
-        double salary = projection.getAmount().doubleValue() * (1 + (adjustment / 100));
+        //log.info("Adjustment: {}", adjustment);
+        //log.info("maxAdjustments: {}", maxAdjustments);
+        double adjustmentPercentage = adjustment / 100;
+        //log.info("Adjustment percentage: {}", adjustmentPercentage);
+        double salary = projection.getAmount().doubleValue() * (1 + adjustmentPercentage);
+        //log.info("Salary: {}", salary);
         BigDecimal promo = calculatePromoAdjustment(salary, month, componentMap);
+        //log.info("Promo: {}", promo);
         double totalSalary = salary * (1 + promo.doubleValue());
-
+        //log.info("Total salary: {}", totalSalary);
         return new MonthProjection(month, BigDecimal.valueOf(totalSalary));
     }
+    private Map<String, AtomicReference<Double>> maxAdjustments = new HashMap<>();
 
     private double getAdjustment(String typeEmp, String month,
                                  Map<String, ParametersDTO> salaryIncreaseMap,
                                  Map<String, ParametersDTO> executiveSalaryIncreaseMap,
                                  Map<String, ParametersDTO> directorSalaryIncreaseMap) {
-        return switch (typeEmp) {
-            case "EMP" -> getCachedValue(salaryIncreaseMap, month);
+        double currentAdjustment = switch (typeEmp) {
             case "DIR", "DPZ" -> getCachedValue(directorSalaryIncreaseMap, month);
-            default -> getCachedValue(executiveSalaryIncreaseMap, month);
+            case "EJC", "GER" -> getCachedValue(executiveSalaryIncreaseMap, month);
+            default -> getCachedValue(salaryIncreaseMap, month);
         };
+
+        return maxAdjustments.computeIfAbsent(typeEmp, k -> new AtomicReference<>(0.0))
+                .updateAndGet(maxAdjustment -> Math.max(maxAdjustment, currentAdjustment));
     }
 
     private double getCachedValue(Map<String, ParametersDTO> map, String key) {
@@ -129,6 +140,7 @@ public class PeruRefactor {
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, c -> c));
 
         double salaryBase = calculateSalaryBase(componentMap);
+        log.info("Salary base: {}", salaryBase);
         String nextPeriod = getNextPeriod(period);
         double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), nextPeriod,
                 salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
@@ -136,15 +148,16 @@ public class PeruRefactor {
         PaymentComponentDTO salaryComponent = createSalaryComponent(salaryBase, adjustmentBase, period, range);
         List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseMap,
                 executiveSalaryIncreaseMap, directorSalaryIncreaseMap, employeeClassification.getTypeEmp(), componentMap);
-
         salaryComponent.setProjections(projections);
         components.add(salaryComponent);
+        // Reiniciar los ajustes máximos antes de cada cálculo
+        maxAdjustments.clear();
     }
 
     private double calculateSalaryBase(Map<String, PaymentComponentDTO> componentMap) {
         return Math.max(
                 Optional.ofNullable(componentMap.get("PC960400")).map(c -> c.getAmount().doubleValue()).orElse(0.0),
-                Optional.ofNullable(componentMap.get("PC960401")).map(c -> c.getAmount().doubleValue()).orElse(0.0)
+                Optional.ofNullable(componentMap.get("PC960401")).map(c -> c.getAmount().doubleValue() / 14).orElse(0.0)
         );
     }
 
@@ -2366,11 +2379,10 @@ public class PeruRefactor {
     //CL35 = TheoricSalary
     //$AB5 = componentBonoBase PC960451
     //$AC5 = componentBonoBase PC960452
-    public double calculateBonus(double theoricSalary, double bonusBase1, double bonusBase2, String period) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-        YearMonth yearMonth = YearMonth.parse(period, formatter);
-        if (yearMonth.getMonthValue() == 10) {
-            return theoricSalary * 14 * Math.max(bonusBase1, bonusBase2) / 12;
+    public double calculateBonus(double theoricSalary, double maxBonusBase, String month) {
+        YearMonth monthYearMonth = YearMonth.parse(month, MONTH_FORMATTER);
+        if (monthYearMonth.getMonthValue() == 10) {
+            return theoricSalary * 14 * maxBonusBase / 12;
         }
         return 0;
     }
@@ -2384,26 +2396,67 @@ public class PeruRefactor {
     public void srdBonus(List<PaymentComponentDTO> components, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
-        PaymentComponentDTO PC960451Component = componentMap.get("PC960451");
-        PaymentComponentDTO PC960452Component = componentMap.get("PC960452");
-        double bonusBase1 = PC960451Component != null ? PC960451Component.getAmount().doubleValue() / 100 : 0;
-        double bonusBase2 = PC960452Component != null ? PC960452Component.getAmount().doubleValue() / 100 : 0;
-        double theoricSalary = theoricSalaryComponent != null ? theoricSalaryComponent.getAmount().doubleValue() : 0;
+        double maxBonusBase = getMaxBonusBase(componentMap);
+
         PaymentComponentDTO srdBonusComponent = new PaymentComponentDTO();
         srdBonusComponent.setPaymentComponent("SRD_BONUS");
-        double srdBonus = calculateBonus(theoricSalary, bonusBase1, bonusBase2, period);
-        srdBonusComponent.setAmount(BigDecimal.valueOf(srdBonus));
-        srdBonusComponent.setProjections(Shared.generateMonthProjection(period, range, srdBonusComponent.getAmount()));
-        List<MonthProjection> projections = new ArrayList<>();
-        for (MonthProjection projection : srdBonusComponent.getProjections()) {
-            String month = projection.getMonth();
-            double srdBonusProjection = calculateBonus(theoricSalary, bonusBase1, bonusBase2, month);
-            MonthProjection monthProjection = new MonthProjection();
-            monthProjection.setMonth(month);
-            monthProjection.setAmount(BigDecimal.valueOf(srdBonusProjection));
-            projections.add(monthProjection);
-        }
+
+        YearMonth startMonth = YearMonth.parse(period, MONTH_FORMATTER);
+        Map<Integer, Double> yearlyBonuses = calculateYearlyBonuses(theoricSalaryComponent, maxBonusBase, startMonth, range);
+
+        List<MonthProjection> projections = generateProjections(startMonth, range, yearlyBonuses);
+
+        srdBonusComponent.setProjections(projections);
+        srdBonusComponent.setAmount(projections.get(0).getAmount());
+
         components.add(srdBonusComponent);
+    }
+
+    private double getMaxBonusBase(Map<String, PaymentComponentDTO> componentMap) {
+        double bonusBase1 = getComponentValue(componentMap.get("PC960451"));
+        double bonusBase2 = getComponentValue(componentMap.get("PC960452"));
+        return Math.max(bonusBase1, bonusBase2);
+    }
+
+    private double getComponentValue(PaymentComponentDTO component) {
+        return component != null ? component.getAmount().doubleValue() / 100 : 0;
+    }
+
+    private Map<Integer, Double> calculateYearlyBonuses(PaymentComponentDTO theoricSalaryComponent,
+                                                        double maxBonusBase,
+                                                        YearMonth startMonth,
+                                                        int range) {
+        Map<Integer, Double> yearlyBonuses = new HashMap<>();
+        YearMonth endMonth = startMonth.plusMonths(range - 1);
+
+        for (int year = startMonth.getYear(); year <= endMonth.getYear(); year++) {
+            YearMonth octoberOfYear = YearMonth.of(year, 10);
+            if (octoberOfYear.compareTo(startMonth) >= 0 && octoberOfYear.compareTo(endMonth) <= 0) {
+                double octoberSalary = theoricSalaryComponent.getProjections().stream()
+                        .filter(p -> YearMonth.parse(p.getMonth(), MONTH_FORMATTER).equals(octoberOfYear))
+                        .findFirst()
+                        .map(p -> p.getAmount().doubleValue())
+                        .orElse(0.0);
+                log.info("octoberSalary: {}", octoberSalary);
+                log.info("maxBonusBase: {}", maxBonusBase);
+                double bonusBasePerMonth = (1 + maxBonusBase) / 12;
+                log.info("bonusBasePerMonth: {}", bonusBasePerMonth);
+                double yearlyBonus = octoberSalary * 14 * bonusBasePerMonth;
+                yearlyBonuses.put(year, yearlyBonus);
+            }
+        }
+
+        return yearlyBonuses;
+    }
+
+    private List<MonthProjection> generateProjections(YearMonth startMonth, int range, Map<Integer, Double> yearlyBonuses) {
+        List<MonthProjection> projections = new ArrayList<>();
+        for (int i = 0; i < range; i++) {
+            YearMonth currentMonth = startMonth.plusMonths(i);
+            double bonusAmount = yearlyBonuses.getOrDefault(currentMonth.getYear(), 0.0);
+            projections.add(new MonthProjection(currentMonth.format(MONTH_FORMATTER), BigDecimal.valueOf(bonusAmount)));
+        }
+        return projections;
     }
 
     //Bono Top Performer
