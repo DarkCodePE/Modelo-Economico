@@ -140,7 +140,7 @@ public class PeruRefactor {
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, c -> c));
 
         double salaryBase = calculateSalaryBase(componentMap);
-        log.info("Salary base: {}", salaryBase);
+        //log.info("Salary base: {}", salaryBase);
         String nextPeriod = getNextPeriod(period);
         double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), nextPeriod,
                 salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
