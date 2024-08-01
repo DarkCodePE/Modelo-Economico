@@ -2437,10 +2437,11 @@ public class PeruRefactor {
                         .findFirst()
                         .map(p -> p.getAmount().doubleValue())
                         .orElse(0.0);
-                log.info("octoberSalary: {}", octoberSalary);
-                log.info("maxBonusBase: {}", maxBonusBase);
-                double bonusBasePerMonth = (1 + maxBonusBase) / 12;
-                log.info("bonusBasePerMonth: {}", bonusBasePerMonth);
+                //log.info("octoberSalary: {}", octoberSalary);
+                //log.info("maxBonusBase: {}", maxBonusBase);
+                //double bonusBasePerMonth = (1 + maxBonusBase) / 12;
+                double bonusBasePerMonth = maxBonusBase / 12;
+                //log.info("bonusBasePerMonth: {}", bonusBasePerMonth);
                 double yearlyBonus = octoberSalary * 14 * bonusBasePerMonth;
                 yearlyBonuses.put(year, yearlyBonus);
             }
