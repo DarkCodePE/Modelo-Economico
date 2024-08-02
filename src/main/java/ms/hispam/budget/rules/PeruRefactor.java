@@ -126,7 +126,9 @@ public class PeruRefactor {
                                            Integer range,
                                            List<ParametersDTO> executiveSalaryIncreaseList,
                                            List<ParametersDTO> directorSalaryIncreaseList,
-                                           Map<String, EmployeeClassification> classificationMap) {
+                                           Map<String, EmployeeClassification> classificationMap,
+                                           Set<String> annualizedPositions,
+                                           String poName) {
         EmployeeClassification employeeClassification = classificationMap.get(localCategory.toUpperCase());
         if (employeeClassification == null) {
             addDefaultSalaryComponent(components, period, range);
@@ -139,7 +141,7 @@ public class PeruRefactor {
         Map<String, PaymentComponentDTO> componentMap = components.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, c -> c));
 
-        double salaryBase = calculateSalaryBase(componentMap);
+        double salaryBase = calculateSalaryBase(componentMap, annualizedPositions, poName);
         //log.info("Salary base: {}", salaryBase);
         String nextPeriod = getNextPeriod(period);
         double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), nextPeriod,
@@ -159,6 +161,25 @@ public class PeruRefactor {
                 Optional.ofNullable(componentMap.get("PC960400")).map(c -> c.getAmount().doubleValue()).orElse(0.0),
                 Optional.ofNullable(componentMap.get("PC960401")).map(c -> c.getAmount().doubleValue() / 14).orElse(0.0)
         );
+    }
+
+    private double calculateSalaryBase(Map<String, PaymentComponentDTO> componentMap, Set<String> annualizedPositions, String poName) {
+        //log.info("annualizedPositions: {}", annualizedPositions);
+        //log.info("poName: {}", poName);
+        double pc960400Salary = Optional.ofNullable(componentMap.get("PC960400"))
+                .map(c -> c.getAmount().doubleValue())
+                .orElse(0.0);
+
+        double pc960401Salary = Optional.ofNullable(componentMap.get("PC960401"))
+                .map(c -> c.getAmount().doubleValue())
+                .orElse(0.0);
+
+        if (annualizedPositions.contains(poName) && componentMap.containsKey("PC960400")) {
+            //log.info("Annualized position: {}", poName);
+            pc960400Salary /= 14;
+        }
+
+        return Math.max(pc960400Salary, pc960401Salary / 14);
     }
 
     private String getNextPeriod(String period) {
