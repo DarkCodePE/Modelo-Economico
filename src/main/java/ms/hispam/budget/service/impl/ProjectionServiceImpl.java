@@ -488,7 +488,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         List<ProjectionDTO>  headcount =  getHeadcountByAccount(projection);
         //log.info("headcount {}",headcount);
         //PO10000756
-        /*List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
+       /* List<ProjectionDTO>  headcount=  getHeadcountByAccount(projection)
                 .stream()
                 .filter(projectionDTO ->  projectionDTO.getPo().equals("PO10000756"))
                 .collect(Collectors.toList());*/
@@ -796,10 +796,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         long countEMP = headcount.parallelStream()
                 .filter(h -> {
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
-                    /*if (optionalEmployeeClassification.isEmpty()) {
-                        String mostSimilarPosition = findMostSimilarPosition(h.getPoName(), classificationMap.keySet());
-                        optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-                    }*/
                     return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
@@ -807,10 +803,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         long countEJC = headcount.parallelStream()
                 .filter(h -> {
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
-                  /*  if (optionalEmployeeClassification.isEmpty()) {
-                        String mostSimilarPosition = findMostSimilarPosition(h.getPoName(), classificationMap.keySet());
-                        optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-                    }*/
                     return optionalEmployeeClassification.map(empClass -> "EJC".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
@@ -818,10 +810,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         long countGER = headcount.parallelStream()
                 .filter(h -> {
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
-                   /* if (optionalEmployeeClassification.isEmpty()) {
-                        String mostSimilarPosition = findMostSimilarPosition(h.getPoName(), classificationMap.keySet());
-                        optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-                    }*/
                     return optionalEmployeeClassification.map(empClass -> "GER".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
