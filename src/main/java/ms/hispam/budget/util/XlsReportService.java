@@ -241,7 +241,7 @@ public class XlsReportService {
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
                                 data.getAreaFuncional(),
                                 data.getCCostos(),
-                                component.getName(),
+                                component.getPaymentComponent(),
                                 projection.getMonth(),
                                 data.getPo(),  // Añadir la posición aquí
                                 data.getIdssff()  // Añadir ID_SSFF aquí

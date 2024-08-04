@@ -163,6 +163,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Map<String, ConceptoPresupuestal> conceptoPresupuestalMap = new HashMap<>();
     //ConventArg
     private Map<String, ConventArg> conventArgMap = new HashMap<>();
+
+    private Set<String> annualizedPositions;
     @PostConstruct
     public void init() {
         operations = new ArrayList<>();
@@ -204,6 +206,19 @@ public class ProjectionServiceImpl implements ProjectionService {
         for (EdadSV edadSV : edadSVList) {
             ageSVMap.put(new Tuple<>(edadSV.getEdadInicio(), edadSV.getEdadFin()), edadSV.getPorcentajeSvLey());
         }
+        this.annualizedPositions = new HashSet<>(Arrays.asList(
+                "PO99010522", "PO99017955", "PO99010442", "PO99010163", "PO99013467",
+                "PO99010467", "PO99009804", "PO90001143", "PO99010354", "PO99010099",
+                "PO99010334", "PO99009886", "PO99010825", "PO99010209", "PO99010480",
+                "PO99010421", "PO99010185", "PO99010714", "PO99012353", "PO99010755",
+                "PO10002749", "PO99010740", "PO99010524", "PO99012348", "PO10035702",
+                "PO99010444", "PO99012808", "PO99010176", "PO99010634", "PO99010299",
+                "PO10002367", "PO99011575", "PO99010199", "PO99009912", "PO99009836",
+                "PO99011485", "PO99009841", "PO10001847", "PO99010747", "PO99009811",
+                "PO99010071", "PO99017938", "PO10036786", "PO99010671", "PO99010124",
+                "PO99010668", "PO99015506", "PO10040433", "PO99009829", "PO99010295",
+                "PO10011800", "PO10003371", "PO99010265", "PO10018533"
+        ));
     }
 
     public BigDecimal getQuinquenniumValue(int seniority) {
@@ -832,7 +847,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         double totalComisiones = totalComisionesPorBU == 0 ? 1 : totalComisionesPorBU;
                         double totalIncentivos = totalIncentivosPorBU == 0 ? 1 : totalIncentivosPorBU;
                         List<PaymentComponentDTO> component = headcountData.getComponents();
-                        methodsPeru.calculateTheoreticalSalary(component, salaryIncreaseList, headcountData.getCategoryLocal(), projection.getPeriod(), projection.getRange(), executiveSalaryIncreaseList, directorSalaryIncreaseList, classificationMap);
+                        methodsPeru.calculateTheoreticalSalary(component, salaryIncreaseList, headcountData.getCategoryLocal(), projection.getPeriod(), projection.getRange(), executiveSalaryIncreaseList, directorSalaryIncreaseList, classificationMap, annualizedPositions, headcountData.getPo());
                         methodsPeru.relocation(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.housing(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.increaseSNP(component, projection.getPeriod(), projection.getRange());
