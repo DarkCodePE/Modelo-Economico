@@ -1827,24 +1827,19 @@ public class PeruRefactor {
         if (epsContributionBaseComponent != null) {
             PaymentComponentDTO epsContributionComponent = new PaymentComponentDTO();
             epsContributionComponent.setPaymentComponent("EPS_CONTRIBUTION");
-            if (epsContributionBaseComponent != null) {
-                double epsContributionBase = epsContributionBaseComponent.getAmount().doubleValue();
-                epsContributionComponent.setAmount(BigDecimal.valueOf(epsContributionBase));
-                epsContributionComponent.setProjections(generateMonthProjection(period, range, epsContributionComponent.getAmount()));
-                List<MonthProjection> projections = new ArrayList<>();
-                for (MonthProjection projection : epsContributionBaseComponent.getProjections()) {
-                    String month = projection.getMonth();
-                    double epsContributionBaseProjection = projection.getAmount().doubleValue();
-                    MonthProjection monthProjection = new MonthProjection();
-                    monthProjection.setMonth(month);
-                    monthProjection.setAmount(BigDecimal.valueOf(epsContributionBaseProjection));
-                    projections.add(monthProjection);
-                }
-                epsContributionComponent.setProjections(projections);
-            } else {
-                epsContributionComponent.setAmount(BigDecimal.valueOf(0));
-                epsContributionComponent.setProjections(generateMonthProjection(period, range, epsContributionComponent.getAmount()));
+            double epsContributionBase = epsContributionBaseComponent.getAmount().doubleValue();
+            epsContributionComponent.setAmount(BigDecimal.valueOf(epsContributionBase));
+            epsContributionComponent.setProjections(generateMonthProjection(period, range, epsContributionComponent.getAmount()));
+            List<MonthProjection> projections = new ArrayList<>();
+            for (MonthProjection projection : epsContributionBaseComponent.getProjections()) {
+                String month = projection.getMonth();
+                double epsContributionBaseProjection = projection.getAmount().doubleValue();
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(epsContributionBaseProjection));
+                projections.add(monthProjection);
             }
+            epsContributionComponent.setProjections(projections);
             component.add(epsContributionComponent);
         } else {
             PaymentComponentDTO epsContributionComponentEmpty = new PaymentComponentDTO();
@@ -2599,7 +2594,7 @@ public class PeruRefactor {
     //CC897 = componentCreditEPS
     public void epsCredit(List<PaymentComponentDTO> components, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO creditEPSComponent = componentMap.get("CREDIT_EPS");
+        PaymentComponentDTO creditEPSComponent = componentMap.get("EPS_CONTRIBUTION");
         double creditEPS = creditEPSComponent != null ? -1 * creditEPSComponent.getAmount().doubleValue() : 0;
         PaymentComponentDTO epsCreditComponent = new PaymentComponentDTO();
         epsCreditComponent.setPaymentComponent("EPS_CREDIT");
@@ -5137,20 +5132,15 @@ public class PeruRefactor {
     //CB1001 = PLAN_PREV_DIR_APORT_VOL_EMP_BASE
     //CC35 = salaryCurrentMonth
     //CB35 = salaryPreviousMonth
-    public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap) {
+    public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
 
         PaymentComponentDTO planPrevDirAportVolEmpBase = componentMap.get("PLAN_PREV_DIR_APORT_VOL_EMP_BASE");
-        //log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase);
-        /*if (planPrevDirAportVolEmpBase.getAmount().doubleValue() > 0){
-            log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase.getAmount().doubleValue());
-        }*/
         PaymentComponentDTO salaryComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO planPrevDirAportVolEmp = new PaymentComponentDTO();
         planPrevDirAportVolEmp.setPaymentComponent("PLAN_PREV_DIR_APORT_VOL_EMP");
 
         if (planPrevDirAportVolEmpBase != null && salaryComponent != null) {
-            //planPrevDirAportVolEmp.setAmount(planPrevDirAportVolEmpBase.getAmount());
             List<MonthProjection> baseProjections = planPrevDirAportVolEmpBase.getProjections();
             List<MonthProjection> salaryProjections = salaryComponent.getProjections();
             List<MonthProjection> resultProjections = new ArrayList<>();
@@ -5159,10 +5149,9 @@ public class PeruRefactor {
                 double baseAmount = baseProjections.get(i).getAmount().doubleValue();
                 double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
                 double previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
-               /* log.info("baseAmount: " + baseAmount);
-                log.info("currentSalary: " + currentSalary);
-                log.info("previousSalary: " + previousSalary);*/
-                double result = (baseAmount != 0) ? baseAmount * (1 + ( previousSalary - currentSalary )) : 0;
+
+                // Corregido: Usamos la fórmula correcta
+                double result = baseAmount != 0 ? baseAmount * (1 + (previousSalary - currentSalary) / currentSalary) : 0;
 
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
