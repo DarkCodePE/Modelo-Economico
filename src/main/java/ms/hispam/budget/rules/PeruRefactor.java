@@ -10,6 +10,7 @@ import ms.hispam.budget.util.Tuple;
 import org.springframework.stereotype.Component;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -340,7 +341,7 @@ public class PeruRefactor {
             if (housingBaseComponent.getProjections() != null) {
                 for (MonthProjection projection : housingBaseComponent.getProjections()) {
                     String month = projection.getMonth();
-                    double housingPerMonth = housingBaseComponent.getAmount().doubleValue();
+                    double housingPerMonth = housingBaseComponent.getAmount().doubleValue() / 12;
                     MonthProjection monthProjection = new MonthProjection();
                     monthProjection.setMonth(month);
                     monthProjection.setAmount(BigDecimal.valueOf(housingPerMonth));
@@ -853,42 +854,47 @@ public class PeruRefactor {
     //CC$28 = PARAMETRO Valor Bono Cierre Pliego Sindical
     public void unionClosingBonus(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> unionClosingBonusValueList, long countEMP, Map<String, EmployeeClassification> classificationMap) {
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
+        //log.info("countEMP: {}", countEMP);
         // Si no hay coincidencia exacta, buscar la posición más similar
-        /*if (optionalEmployeeClassification.isEmpty()) {
-            String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
-            optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-        }*/
-
-        if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("EMP")) {
+        if (optionalEmployeeClassification.isPresent()) {
+            EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             Map<String, ParametersDTO> unionClosingBonusValueMap = createCacheMap(unionClosingBonusValueList);
+            if("EMP".equals(employeeClassification.getTypeEmp())){
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
+                YearMonth yearMonth = YearMonth.parse(period, formatter);
+                yearMonth = yearMonth.plusMonths(1);
+                String nextPeriod = yearMonth.format(formatter);
 
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMM");
-            YearMonth yearMonth = YearMonth.parse(period, formatter);
-            yearMonth = yearMonth.plusMonths(1);
-            String nextPeriod = yearMonth.format(formatter);
-
-            PaymentComponentDTO unionClosingBonusComponent = new PaymentComponentDTO();
-            unionClosingBonusComponent.setPaymentComponent("UNION_CLOSING_BONUS");
-            double unionClosingBonusValue = getCachedValue(unionClosingBonusValueMap, nextPeriod);
-            double unionClosingBonusPerEMP = countEMP > 0 ? unionClosingBonusValue / countEMP : 0;
-            if (unionClosingBonusValue > 0) {
-                unionClosingBonusComponent.setAmount(BigDecimal.valueOf(unionClosingBonusPerEMP));
-                unionClosingBonusComponent.setProjections(generateMonthProjection(period, range, unionClosingBonusComponent.getAmount()));
-                List<MonthProjection> projections = new ArrayList<>();
-                for (MonthProjection projection : unionClosingBonusComponent.getProjections()) {
-                    String month = projection.getMonth();
-                    double unionClosingBonusPerMonth = countEMP > 0 ? unionClosingBonusValue / countEMP : 0;
-                    MonthProjection monthProjection = new MonthProjection();
-                    monthProjection.setMonth(month);
-                    monthProjection.setAmount(BigDecimal.valueOf(unionClosingBonusPerMonth));
-                    projections.add(monthProjection);
+                PaymentComponentDTO unionClosingBonusComponent = new PaymentComponentDTO();
+                unionClosingBonusComponent.setPaymentComponent("UNION_CLOSING_BONUS");
+                double unionClosingBonusValue = getCachedValue(unionClosingBonusValueMap, nextPeriod);
+                //log.info("unionClosingBonusValue: {}", unionClosingBonusValue);
+                double unionClosingBonusPerEMP = countEMP > 0 ? unionClosingBonusValue / countEMP : 0;
+                if (unionClosingBonusValue > 0) {
+                    unionClosingBonusComponent.setAmount(BigDecimal.valueOf(unionClosingBonusPerEMP));
+                    unionClosingBonusComponent.setProjections(generateMonthProjection(period, range, unionClosingBonusComponent.getAmount()));
+                    List<MonthProjection> projections = new ArrayList<>();
+                    for (MonthProjection projection : unionClosingBonusComponent.getProjections()) {
+                        String month = projection.getMonth();
+                        double unionClosingBonusPerMonth = countEMP > 0 ? unionClosingBonusValue / countEMP : 0;
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(month);
+                        monthProjection.setAmount(BigDecimal.valueOf(unionClosingBonusPerMonth));
+                        projections.add(monthProjection);
+                    }
+                    unionClosingBonusComponent.setProjections(projections);
+                } else {
+                    unionClosingBonusComponent.setAmount(BigDecimal.valueOf(0));
+                    unionClosingBonusComponent.setProjections(generateMonthProjection(period, range, unionClosingBonusComponent.getAmount()));
                 }
-                unionClosingBonusComponent.setProjections(projections);
+                component.add(unionClosingBonusComponent);
             } else {
+                PaymentComponentDTO unionClosingBonusComponent = new PaymentComponentDTO();
+                unionClosingBonusComponent.setPaymentComponent("UNION_CLOSING_BONUS");
                 unionClosingBonusComponent.setAmount(BigDecimal.valueOf(0));
                 unionClosingBonusComponent.setProjections(generateMonthProjection(period, range, unionClosingBonusComponent.getAmount()));
+                component.add(unionClosingBonusComponent);
             }
-            component.add(unionClosingBonusComponent);
         } else {
             PaymentComponentDTO unionClosingBonusComponent = new PaymentComponentDTO();
             unionClosingBonusComponent.setPaymentComponent("UNION_CLOSING_BONUS");
@@ -1120,51 +1126,15 @@ public class PeruRefactor {
 
     //PSP(Base Externa)
     //$BW5 = BaseExternaPSP
-    public void psp(List<PaymentComponentDTO> component, String period, Integer range) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO pspComponent = componentMap.get("PSP");
-        if (pspComponent != null) {
-            component.add(pspComponent);
-        } else {
-            PaymentComponentDTO pspComponentEmpty = new PaymentComponentDTO();
-            pspComponentEmpty.setPaymentComponent("PSP");
-            pspComponentEmpty.setAmount(BigDecimal.valueOf(0));
-            pspComponentEmpty.setProjections(generateMonthProjection(period, range, pspComponentEmpty.getAmount()));
-            component.add(pspComponentEmpty);
-        }
-    }
+
 
     //RSP(Base Externa)
     //$BX5
-    public void rsp(List<PaymentComponentDTO> component, String period, Integer range) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO rspComponent = componentMap.get("RSP");
-        if (rspComponent != null) {
-            component.add(rspComponent);
-        } else {
-            PaymentComponentDTO rspComponentEmpty = new PaymentComponentDTO();
-            rspComponentEmpty.setPaymentComponent("RSP");
-            rspComponentEmpty.setAmount(BigDecimal.valueOf(0));
-            rspComponentEmpty.setProjections(generateMonthProjection(period, range, rspComponentEmpty.getAmount()));
-            component.add(rspComponentEmpty);
-        }
-    }
+
 
     //TFSP(Base Externa)
     //=$BV5
-    public void tfsp(List<PaymentComponentDTO> component, String period, Integer range) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO tfsComponent = componentMap.get("TFSP");
-        if (tfsComponent != null) {
-            component.add(tfsComponent);
-        } else {
-            PaymentComponentDTO tfsComponentEmpty = new PaymentComponentDTO();
-            tfsComponentEmpty.setPaymentComponent("TFSP");
-            tfsComponentEmpty.setAmount(BigDecimal.valueOf(0));
-            tfsComponentEmpty.setProjections(generateMonthProjection(period, range, tfsComponentEmpty.getAmount()));
-            component.add(tfsComponentEmpty);
-        }
-    }
+
 
     //Bonificación Días Especiales
     //=$BH5= componentBonificacionDiasEspecialesBase
@@ -1565,7 +1535,7 @@ public class PeruRefactor {
                     mobilityAndRefreshmentAmountValue = lastMobilityAndRefreshmentAmount;
                 }
                 double mobilityAndRefreshmentBaseProjection = projection.getAmount().doubleValue();
-                double mobilityAndRefreshmentProjection = Math.min(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
+                double mobilityAndRefreshmentProjection = Math.max(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(mobilityAndRefreshmentProjection));
@@ -1599,16 +1569,16 @@ public class PeruRefactor {
         PaymentComponentDTO familyAssignmentComponent = new PaymentComponentDTO();
         familyAssignmentComponent.setPaymentComponent("FAMILY_ASSIGNMENT");
         if (familyAssignmentBaseComponent != null) {
-            double familyAssignmentBase = familyAssignmentBaseComponent.getAmount().doubleValue();
             double familyAssignmentPercentage = getCachedValue(familyAssignmentPercentageMap, nextPeriod) / 100;
-            double minimumSalary = getCachedValue(minimumSalaryMap, period);
-            double familyAssignment = familyAssignmentBase > 0 ? familyAssignmentPercentage * minimumSalary : 0;
+            double minimumSalary = getCachedValue(minimumSalaryMap, nextPeriod);
+            double familyAssignment = familyAssignmentBaseComponent.getAmount().doubleValue() > 0 ?  familyAssignmentPercentage * minimumSalary : 0;
             familyAssignmentComponent.setAmount(BigDecimal.valueOf(familyAssignment));
             familyAssignmentComponent.setProjections(generateMonthProjection(period, range, familyAssignmentComponent.getAmount()));
             List<MonthProjection> projections = new ArrayList<>();
             double lastFamilyAssignmentPercentage = 0;
             for (MonthProjection projection : familyAssignmentBaseComponent.getProjections()) {
                 ParametersDTO familyAssignmentPercentageParameter = familyAssignmentPercentageMap.get(projection.getMonth());
+                ParametersDTO minimumSalaryParameter = minimumSalaryMap.get(projection.getMonth());
                 double familyAssignmentPercentageValue;
                 if (familyAssignmentPercentageParameter != null) {
                     familyAssignmentPercentageValue = familyAssignmentPercentageParameter.getValue() / 100;
@@ -1616,9 +1586,14 @@ public class PeruRefactor {
                 } else {
                     familyAssignmentPercentageValue = lastFamilyAssignmentPercentage;
                 }
+                double minimumSalaryProjection;
+                if (minimumSalaryParameter != null) {
+                    minimumSalaryProjection = getCachedValue(minimumSalaryMap, period);
+                } else {
+                    minimumSalaryProjection = minimumSalary;
+                }
                 String month = projection.getMonth();
-                double familyAssignmentBaseProjection = projection.getAmount().doubleValue();
-                double familyAssignmentProjection = familyAssignmentBaseProjection > 0 ? familyAssignmentPercentageValue * minimumSalary : 0;
+                double familyAssignmentProjection = projection.getAmount().doubleValue() > 0 ? familyAssignmentPercentageValue * minimumSalaryProjection : 0;
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(familyAssignmentProjection));
@@ -2130,7 +2105,7 @@ public class PeruRefactor {
         }
     }*/
 
-    //Provisión de Vacaciones}
+    //Provisión de Vacaciones
     //==CC35/30*$CC$6/12
     //CC35 = theoricSalary
     //CC$6 = Dias de vacaciones disp anual
@@ -2227,59 +2202,119 @@ public class PeruRefactor {
     public void seniority(List<PaymentComponentDTO> components, String period, Integer range, LocalDate hiringDate, Map<Integer, BigDecimal> quinquenniumMap, Map<String, EmployeeClassification> classificationMap, String poName) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
+        if (optionalEmployeeClassification.isPresent()) {
+            EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
+            if (theoricSalaryComponent != null && "EMP".equals(employeeClassification.getTypeEmp())) {
+                PaymentComponentDTO seniorityComponent = new PaymentComponentDTO();
+                seniorityComponent.setPaymentComponent("SENIORITY");
+                seniorityComponent.setAmount(BigDecimal.ZERO);
 
-        if (theoricSalaryComponent != null) {
-            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
-            /*if (optionalEmployeeClassification.isEmpty()) {
-                String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
-                optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-            }*/
+                List<MonthProjection> projections = new ArrayList<>();
+                for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
+                    String month = projection.getMonth();
+                    long seniorityYears = calculateSeniorityYears(hiringDate, month);
 
-            if (optionalEmployeeClassification.isPresent()) {
-                EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
-                if ("EMP".equals(employeeClassification.getTypeEmp())) {
-                    long seniorityYears = calculateSeniorityYears(hiringDate, period);
-                    BigDecimal quinquenniumValue = getQuinquenniumValue(seniorityYears, quinquenniumMap);
-
-                    double theoricSalary = theoricSalaryComponent.getAmount().doubleValue();
-                    double seniority = quinquenniumValue.doubleValue() * theoricSalary;
-
-                    PaymentComponentDTO seniorityComponent = new PaymentComponentDTO();
-                    seniorityComponent.setPaymentComponent("SENIORITY");
-                    seniorityComponent.setAmount(BigDecimal.valueOf(seniority));
-                    seniorityComponent.setProjections(generateMonthProjection(period, range, seniorityComponent.getAmount()));
-
-                    List<MonthProjection> projections = new ArrayList<>();
-                    for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
-                        String month = projection.getMonth();
-                        long projectionSeniorityYears = calculateSeniorityYears(hiringDate, month);
-                        BigDecimal quinquenniumProjectionValue = getQuinquenniumValue(projectionSeniorityYears, quinquenniumMap);
+                    if (seniorityYears > 0) {
+                        BigDecimal quinquenniumValue = getQuinquenniumValue(seniorityYears, quinquenniumMap);
                         double theoricSalaryProjection = projection.getAmount().doubleValue();
-                        double seniorityProjection = quinquenniumProjectionValue.doubleValue() * theoricSalaryProjection;
+                        double seniorityProjection = quinquenniumValue.doubleValue() * theoricSalaryProjection;
 
                         MonthProjection monthProjection = new MonthProjection();
                         monthProjection.setMonth(month);
                         monthProjection.setAmount(BigDecimal.valueOf(seniorityProjection));
                         projections.add(monthProjection);
-                    }
 
-                    seniorityComponent.setProjections(projections);
-                    components.add(seniorityComponent);
+                        // Si este es el mes actual, actualizamos el monto principal
+                        /*if (month.equals(period)) {
+                            seniorityComponent.setAmount(BigDecimal.valueOf(seniorityProjection));
+                        }*/
+
+                   /*     log.info("Mes de coincidencia: {}, Fecha de contratacion {}, Años de antigüedad: {}, Valor quinquenio: {}, Salario teórico: {}, Antigüedad calculada: {}",
+                                month, hiringDate, seniorityYears, quinquenniumValue, theoricSalaryProjection, seniorityProjection);*/
+                    } else {
+                        // Para los meses que no coinciden, establecemos el valor en cero
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(month);
+                        monthProjection.setAmount(BigDecimal.ZERO);
+                        projections.add(monthProjection);
+                    }
                 }
+
+                seniorityComponent.setProjections(projections);
+                components.add(seniorityComponent);
             } else {
+                // Si no es un empleado o no hay componente de salario teórico, añadimos un componente de antigüedad vacío
                 PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
                 seniorityComponentEmpty.setPaymentComponent("SENIORITY");
-                seniorityComponentEmpty.setAmount(BigDecimal.valueOf(0));
-                seniorityComponentEmpty.setProjections(generateMonthProjection(period, range, seniorityComponentEmpty.getAmount()));
+                seniorityComponentEmpty.setAmount(BigDecimal.ZERO);
+                seniorityComponentEmpty.setProjections(generateMonthProjection(period, range, BigDecimal.ZERO));
                 components.add(seniorityComponentEmpty);
             }
-        } else {
-            PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
-            seniorityComponentEmpty.setPaymentComponent("SENIORITY");
-            seniorityComponentEmpty.setAmount(BigDecimal.valueOf(0));
-            seniorityComponentEmpty.setProjections(generateMonthProjection(period, range, seniorityComponentEmpty.getAmount()));
-            components.add(seniorityComponentEmpty);
+        }else {
+            // Manejar el caso cuando no se encuentra la clasificación del empleado
+            addEmptySeniorityComponent(components, period, range);
         }
+    }
+
+    public void seniority2(List<PaymentComponentDTO> components, String period, Integer range, LocalDate hiringDate, Map<Integer, BigDecimal> quinquenniumMap, Map<String, EmployeeClassification> classificationMap, String poName) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
+        log.info("classificationMap: {}", classificationMap);
+        log.info("employeeClassification: {}", classificationMap.get(poName.toUpperCase()));
+        if (theoricSalaryComponent != null) {
+            if ("EMP".equals(poName)) {
+                PaymentComponentDTO seniorityComponent = new PaymentComponentDTO();
+                seniorityComponent.setPaymentComponent("SENIORITY");
+                seniorityComponent.setAmount(BigDecimal.ZERO);
+                List<MonthProjection> projections = new ArrayList<>();
+
+                for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
+                    String month = projection.getMonth();
+                    LocalDate currentDate = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyyMM")).atEndOfMonth();
+                    log.info("currentDate: {}", currentDate);
+                    log.info("hiringDate: {}", hiringDate);
+                    // Verificar si es el mes de aniversario
+                    boolean isAnniversaryMonth = currentDate.getMonth() == hiringDate.getMonth() && currentDate.getDayOfMonth() >= hiringDate.getDayOfMonth();
+
+                    if (isAnniversaryMonth) {
+                        long seniorityYears = ChronoUnit.YEARS.between(hiringDate, currentDate);
+                        BigDecimal quinquenniumValue = getQuinquenniumValue(seniorityYears, quinquenniumMap);
+                        double theoricSalary = projection.getAmount().doubleValue();
+                        double seniority = quinquenniumValue.doubleValue() * theoricSalary;
+
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(month);
+                        monthProjection.setAmount(BigDecimal.valueOf(seniority));
+                        projections.add(monthProjection);
+
+                        // Actualizar el monto total si es el mes actual
+                        if (month.equals(period)) {
+                            seniorityComponent.setAmount(BigDecimal.valueOf(seniority));
+                        }
+                    } else {
+                        MonthProjection monthProjection = new MonthProjection();
+                        monthProjection.setMonth(month);
+                        monthProjection.setAmount(BigDecimal.ZERO);
+                        projections.add(monthProjection);
+                    }
+                }
+
+                seniorityComponent.setProjections(projections);
+                components.add(seniorityComponent);
+            }
+        } else {
+            // Manejar el caso cuando no se encuentra la clasificación del empleado
+            addEmptySeniorityComponent(components, period, range);
+        }
+    }
+
+    private void addEmptySeniorityComponent(List<PaymentComponentDTO> components, String period, Integer range) {
+        PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
+        seniorityComponentEmpty.setPaymentComponent("SENIORITY");
+        seniorityComponentEmpty.setAmount(BigDecimal.ZERO);
+        seniorityComponentEmpty.setProjections(generateMonthProjection(period, range, BigDecimal.ZERO));
+        components.add(seniorityComponentEmpty);
     }
 
     //[Auxiliar en excel para calcular bono]
@@ -5099,12 +5134,16 @@ public class PeruRefactor {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
 
         PaymentComponentDTO planPrevDirAportVolEmpBase = componentMap.get("PLAN_PREV_DIR_APORT_VOL_EMP_BASE");
-        log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase);
+        //log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase);
+        if (planPrevDirAportVolEmpBase.getAmount().doubleValue() > 0){
+            log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase.getAmount().doubleValue());
+        }
         PaymentComponentDTO salaryComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO planPrevDirAportVolEmp = new PaymentComponentDTO();
         planPrevDirAportVolEmp.setPaymentComponent("PLAN_PREV_DIR_APORT_VOL_EMP");
 
         if (planPrevDirAportVolEmpBase != null && salaryComponent != null) {
+            //planPrevDirAportVolEmp.setAmount(planPrevDirAportVolEmpBase.getAmount());
             List<MonthProjection> baseProjections = planPrevDirAportVolEmpBase.getProjections();
             List<MonthProjection> salaryProjections = salaryComponent.getProjections();
             List<MonthProjection> resultProjections = new ArrayList<>();
@@ -5113,8 +5152,10 @@ public class PeruRefactor {
                 double baseAmount = baseProjections.get(i).getAmount().doubleValue();
                 double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
                 double previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
-
-                double result = (currentSalary != 0) ? baseAmount * (currentSalary / previousSalary) : 0;
+               /* log.info("baseAmount: " + baseAmount);
+                log.info("currentSalary: " + currentSalary);
+                log.info("previousSalary: " + previousSalary);*/
+                double result = (baseAmount != 0) ? baseAmount * (currentSalary / previousSalary) : 0;
 
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());

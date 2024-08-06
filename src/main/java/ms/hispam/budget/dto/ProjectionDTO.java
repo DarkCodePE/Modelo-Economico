@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-    public class ProjectionDTO {
+public class ProjectionDTO {
 
     private String idssff;
     private String po;

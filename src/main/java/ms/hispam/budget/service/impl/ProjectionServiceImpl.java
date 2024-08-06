@@ -810,27 +810,31 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //calcular cantidad de EMP
         long countEMP = headcount.parallelStream()
                 .filter(h -> {
-                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
+                    log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
+        log.info("countEMP {}", countEMP);
         //calcular cantidad de EJC
         long countEJC = headcount.parallelStream()
                 .filter(h -> {
-                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
+                    log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "EJC".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
+        log.info("countEJC {}", countEJC);
         //calcular cantidad de GER
         long countGER = headcount.parallelStream()
                 .filter(h -> {
-                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal()));
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "GER".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
         // Calcular el total de posiciones
         long totalPositions = headcount.parallelStream().filter(h -> h.getPoName() != null).count();
-
+        log.info("totalPositions {}", countGER);
         headcount
                 .stream()
                 .parallel()
@@ -867,9 +871,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.vacationBonus(component, projection.getPeriod(), projection.getRange(), vacationSeasonalityList);
                         methodsPeru.travelExpenses(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.coinv(component, projection.getPeriod(), projection.getRange());
-                        methodsPeru.psp(component, projection.getPeriod(), projection.getRange());
+                        /*methodsPeru.psp(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.rsp(component, projection.getPeriod(), projection.getRange());
-                        methodsPeru.tfsp(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.tfsp(component, projection.getPeriod(), projection.getRange());*/
                         methodsPeru.specialDaysBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.housingAssignment(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.complementaryBonus(component, projection.getPeriod(), projection.getRange());
@@ -893,7 +897,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), youngExecutiveSalaryList, internSalaryList, classificationMap);
                         //methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
-                        methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap, headcountData.getCategoryLocal());
+                        methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap,  headcountData.getCategoryLocal());
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.topPerformerBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), ejcPeopleBTPList, ejcBonusBTPList, dirPeopleBTPList, dirBonusBTPList, classificationMap);
                         methodsPeru.epsCredit(component, projection.getPeriod(), projection.getRange());
@@ -2400,6 +2404,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         return Integer.parseInt(date.format(DateTimeFormatter.ofPattern("yyyyMM")));
     }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
+        List<String> filterPositions = Arrays.asList(
+                "PO10001848", "PO10001623", "PO99011801", "PO99012453",
+                "PO99010827", "PO99010253", "PO99016659", "PO99011446"
+        );
         //TODO: ADD MONTH BASE
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
@@ -2408,6 +2416,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent)
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
+                //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
                 //.filter(e->e.getPosition().equals("PO99012453") || e.getPosition().equals("PO99014894"))
                 .map(e->HeadcountProjection.builder()
