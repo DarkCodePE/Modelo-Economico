@@ -3,6 +3,7 @@ package ms.hispam.budget.rules.configuration.country;
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.Config;
 import ms.hispam.budget.dto.OperationResponse;
+import ms.hispam.budget.dto.countries.DefaultConfig;
 import ms.hispam.budget.dto.projections.ComponentProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.NominaPaymentComponentLink;
@@ -57,7 +58,7 @@ public class UruguayConfigStrategy extends BaseConfigStrategy{
         //list nominaPaymentComponentLink
         List<NominaPaymentComponentLink> nominaPaymentComponentLink = nominaPaymentComponentLinkRepository.findByBu(vbu.getId());
         //log.debug("combinedComponents {}",combinedComponents);
-        return Config.builder()
+        return DefaultConfig.builder()
                 .components(combinedComponents) // usar los componentes combinados
                 .parameters(parameterRepository.getParameterBu(bu))
                 .icon(vbu.getIcon())

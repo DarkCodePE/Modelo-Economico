@@ -21,4 +21,10 @@ public class CodeNomina {
     @Column(name = "code_nomina")
     private String codeNomina;
     private String name;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "range_type")
+    private NominaRangeType rangeType;
+    public NominaRangeType getRangeType() {
+        return rangeType != null ? rangeType : NominaRangeType.ALL;
+    }
 }

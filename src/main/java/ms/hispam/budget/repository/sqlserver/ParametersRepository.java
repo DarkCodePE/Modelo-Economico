@@ -37,7 +37,8 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
     @Query(nativeQuery = true,value = "select tasa_eur from [cc].T_CC_TasaCambio  where periodo=?1 and divisa=?2")
     Optional<Double> getTypeChange(String period,String divisa);
 
-    //GET REALES
+  //GET REALES
+
     @Query(nativeQuery = true, value = "EXEC get_reales_bu @bu = :bu, @periodo = :periodo, @accountSap = :accountSap")
     List<RealesProjection> getReales(@Param("bu") String bu, @Param("periodo") String periodo, @Param("accountSap") String accountSap);
 

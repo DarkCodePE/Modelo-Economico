@@ -10,6 +10,7 @@ import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.repository.mysql.EmployeeClassificationRepository;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFCell;
 import org.apache.poi.xssf.streaming.SXSSFRow;
@@ -29,6 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.LinkOption;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -43,7 +45,7 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j(topic = "XlsReportService")
 public class XlsReportService {
-
+    private Set<String> conceptSheets = ConcurrentHashMap.newKeySet();
     private final ReportJobRepository reportJobRepository;
 
     private ProjectionService service;
@@ -198,6 +200,9 @@ public class XlsReportService {
 
         CompletableFuture.allOf(sheetCreationTasks, baseExternTasks).join();
 
+        // Crear el índice de conceptos después de que todas las hojas se hayan creado
+        createConceptIndex(workbook, conceptSheets);
+
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             workbook.write(outputStream);
             return outputStream.toByteArray();
@@ -213,7 +218,7 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
+    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob reportJob, String user) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
 
@@ -221,11 +226,13 @@ public class XlsReportService {
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
             accountProjections = null; // Liberar memoria
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
+            double sum = 0.0;
             for (ProjectionDTO data : vdata) {
+                //TODO AGREGAR EL POS DE BASE EXTERNA
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
                     for (MonthProjection projection : component.getProjections()) {
-                        //log.debug("Parameter: {}", parametersByProjection);
+                        //log.info("Position desde report -> : {}", data.getPo());
                         // Obtener los datos de AF
                         Optional<Map<String, Object>> baseExternEntry = parametersByProjection.getBaseExtern().getData().stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
@@ -236,7 +243,7 @@ public class XlsReportService {
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                areaFuncional,
+                                data.getAreaFuncional(),
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
                                 projection.getMonth(),
@@ -246,8 +253,8 @@ public class XlsReportService {
                         GroupData groupData = groupedData.getOrDefault(key, new GroupData(new ArrayList<>(), new HashMap<>(), 0.0));
                         groupData.meses.add(projection.getMonth());
                         groupData.montoPorMes.put(projection.getMonth(), projection.getAmount().doubleValue());
-                        double sum = groupData.sum + projection.getAmount().doubleValue();
-                        groupData.sum = sum;
+                        groupData.sum += projection.getAmount().doubleValue();
+                        sum += projection.getAmount().doubleValue();
                         groupedData.put(key, groupData);
                     }
                     component.setProjections(null); // Liberar memoria
@@ -280,7 +287,11 @@ public class XlsReportService {
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
-                double totalAmount = groupData.sum;
+                //double totalAmount = groupData.sum;
+              /*  if (key.getPo().equals("BC123")) {
+                    log.debug("GroupKey: {}", key);
+                    log.debug("GroupData: {}", groupData);
+                }*/
 
                 for (String mes : groupData.meses) {
                     if (rowNum > 1048575) {
@@ -295,8 +306,8 @@ public class XlsReportService {
                     }
                     Row row = sheet.createRow(rowNum++);
 
-                    row.createCell(0).setCellValue("mes i -1"); // Periodo ejecución/proyección
-                    row.createCell(1).setCellValue("PPTO24"); // Nombre Proyección (ejemplo)
+                    row.createCell(0).setCellValue(parametersByProjection.getPeriod()); // Periodo ejecución/proyección
+                    row.createCell(1).setCellValue(""); // Nombre Proyección (ejemplo)
                     row.createCell(2).setCellValue(key.getPo()); // ID_PO
                     row.createCell(3).setCellValue(key.getIdSsff()); // ID_SSFF
                     row.createCell(4).setCellValue(key.getActividadFuncional()); // Actividad Funcional
@@ -317,9 +328,9 @@ public class XlsReportService {
                     //Q de registros -> cantidad de registros
                     row.createCell(14).setCellValue(groupedData.size());
                     //Importe Total -> suma de los montos
-                    row.createCell(15).setCellValue(totalAmount);
+                    row.createCell(15).setCellValue(sum);
                     //País -> user
-                    row.createCell(16).setCellValue("Perú");
+                    row.createCell(16).setCellValue(bu.getBu());
                 }
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -328,8 +339,8 @@ public class XlsReportService {
             return outputStream.toByteArray();
 
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
+            log.error("Error al generar el planner", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar el planner", e);
         }
     }
 
@@ -348,8 +359,14 @@ public class XlsReportService {
                         Optional<Map<String, Object>> baseExternEntry = parameters.getBaseExtern().getData().stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
                                 .findFirst();
+                        Map<String, Object> baseExtern = parameters.getBaseExtern().getData().stream()
+                                .filter(r -> r.get("po").equals("BC123")).findFirst().orElse(null);
+                        if (baseExtern != null) {
+                            log.debug("Base Externa Entry: {}", baseExtern);
+                        }
                         //log.debug("Base Externa Entry: {}", baseExternEntry);
                         String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
+                        log.debug("Area Funcional: {}", areaFuncional);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
@@ -836,10 +853,10 @@ public class XlsReportService {
         }, executorService);
     }
 
-    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
-           return generatePlanner(projection, vdata,accountProjections,job,userContact);
+           return generatePlanner(projection, vdata,accountProjections, bu, job,userContact);
         });
     }
     //generateCdgAsync
@@ -884,8 +901,8 @@ public class XlsReportService {
     }
     //generatePlannerAsync
     @Async
-    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generatePlannerAsync(projection, vdata, accountProjections, job, userContact)
+    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+        generatePlannerAsync(projection, vdata, accountProjections, bu, job, userContact)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
@@ -932,7 +949,30 @@ public class XlsReportService {
                     return null;
                 });
     }
+    private void createConceptIndex(SXSSFWorkbook workbook, Set<String> conceptSheets) {
+        Sheet indexSheet = workbook.createSheet("Índice de Conceptos");
+        Row headerRow = indexSheet.createRow(0);
+        Cell headerCell = headerRow.createCell(0);
+        headerCell.setCellValue("Concepto");
+        headerCell = headerRow.createCell(1);
+        headerCell.setCellValue("Hoja");
 
+        int rowNum = 1;
+        for (String conceptSheet : conceptSheets) {
+            Row row = indexSheet.createRow(rowNum++);
+            Cell conceptCell = row.createCell(0);
+            conceptCell.setCellValue(conceptSheet);
+            Cell linkCell = row.createCell(1);
+            linkCell.setCellValue("Ir a la hoja");
+
+            Hyperlink link = workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT);
+            link.setAddress("'" + conceptSheet + "'!A1");
+            linkCell.setHyperlink(link);
+        }
+
+        indexSheet.autoSizeColumn(0);
+        indexSheet.autoSizeColumn(1);
+    }
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
         //String sheetName = sheet.getSheetName();
@@ -950,6 +990,7 @@ public class XlsReportService {
                     writeChunkToSheet(sheet, chunk, start, idBu, component);
                     start = end;
                 }
+                conceptSheets.add(sheet.getSheetName());
             } finally {
                 lock.unlock();
             }
