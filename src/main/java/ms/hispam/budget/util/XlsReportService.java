@@ -10,6 +10,7 @@ import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.repository.mysql.EmployeeClassificationRepository;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFCell;
 import org.apache.poi.xssf.streaming.SXSSFRow;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j(topic = "XlsReportService")
 public class XlsReportService {
-
+    private Set<String> conceptSheets = ConcurrentHashMap.newKeySet();
     private final ReportJobRepository reportJobRepository;
 
     private ProjectionService service;
@@ -198,6 +199,9 @@ public class XlsReportService {
         );
 
         CompletableFuture.allOf(sheetCreationTasks, baseExternTasks).join();
+
+        // Crear el índice de conceptos después de que todas las hojas se hayan creado
+        createConceptIndex(workbook, conceptSheets);
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             workbook.write(outputStream);
@@ -945,7 +949,30 @@ public class XlsReportService {
                     return null;
                 });
     }
+    private void createConceptIndex(SXSSFWorkbook workbook, Set<String> conceptSheets) {
+        Sheet indexSheet = workbook.createSheet("Índice de Conceptos");
+        Row headerRow = indexSheet.createRow(0);
+        Cell headerCell = headerRow.createCell(0);
+        headerCell.setCellValue("Concepto");
+        headerCell = headerRow.createCell(1);
+        headerCell.setCellValue("Hoja");
 
+        int rowNum = 1;
+        for (String conceptSheet : conceptSheets) {
+            Row row = indexSheet.createRow(rowNum++);
+            Cell conceptCell = row.createCell(0);
+            conceptCell.setCellValue(conceptSheet);
+            Cell linkCell = row.createCell(1);
+            linkCell.setCellValue("Ir a la hoja");
+
+            Hyperlink link = workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT);
+            link.setAddress("'" + conceptSheet + "'!A1");
+            linkCell.setHyperlink(link);
+        }
+
+        indexSheet.autoSizeColumn(0);
+        indexSheet.autoSizeColumn(1);
+    }
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component) {
         //String sheetName = sheet.getSheetName();
@@ -963,6 +990,7 @@ public class XlsReportService {
                     writeChunkToSheet(sheet, chunk, start, idBu, component);
                     start = end;
                 }
+                conceptSheets.add(sheet.getSheetName());
             } finally {
                 lock.unlock();
             }

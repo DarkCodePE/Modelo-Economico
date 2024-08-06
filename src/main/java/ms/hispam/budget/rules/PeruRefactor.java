@@ -2019,51 +2019,58 @@ public class PeruRefactor {
     //CD$9 = parametro Salario Joven Ejecutivo
     //CD$10 = parametro Salario Practicante
     public void interns(List<PaymentComponentDTO> component, String period, Integer range, String poName, List<ParametersDTO> youngExecutiveSalaryList, List<ParametersDTO> internSalaryList, Map<String, EmployeeClassification> classificationMap) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> youngExecutiveSalaryMap = createCacheMap(youngExecutiveSalaryList);
         Map<String, ParametersDTO> internSalaryMap = createCacheMap(internSalaryList);
 
-        PaymentComponentDTO internsBaseComponent = componentMap.get("INTERNS_BASE");
-        if (internsBaseComponent != null) {
-            Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
-            // Si no hay coincidencia exacta, buscar la posición más similar
-            /*if (optionalEmployeeClassification.isEmpty()) {
-                String mostSimilarPosition = findMostSimilarPosition(poName, classificationMap.keySet());
-                optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(mostSimilarPosition));
-            }*/
-            if (optionalEmployeeClassification.isPresent() && optionalEmployeeClassification.get().getTypeEmp().equals("FLJ")) {
-                EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
-                PaymentComponentDTO internsComponent = new PaymentComponentDTO();
-                internsComponent.setPaymentComponent("INTERNS");
-                double internsBase = internsBaseComponent.getAmount().doubleValue();
-                double youngExecutiveSalary = getCachedValue(youngExecutiveSalaryMap, period);
-                double internSalary = getCachedValue(internSalaryMap, period);
-                double interns = 0;
-                if (poName.equals("Joven ejecutivo")) {
-                    interns = youngExecutiveSalary * (1 + (1 / 12.0));
-                } else if (poName.equals("Practicante")) {
-                    interns = internSalary * (1 + (1 / 12.0));
-                }
-                internsComponent.setAmount(BigDecimal.valueOf(Math.max(interns, internsBase)));
-                internsComponent.setProjections(generateMonthProjection(period, range, internsComponent.getAmount()));
-                List<MonthProjection> projections = new ArrayList<>();
-                for (MonthProjection projection : internsBaseComponent.getProjections()) {
-                    String month = projection.getMonth();
-                    MonthProjection monthProjection = new MonthProjection();
-                    double internsBaseProjection = projection.getAmount().doubleValue();
-                    monthProjection.setMonth(month);
-                    monthProjection.setAmount(BigDecimal.valueOf(internsBaseProjection));
-                    projections.add(monthProjection);
-                }
-                internsComponent.setProjections(projections);
-                component.add(internsComponent);
-            } else {
-                PaymentComponentDTO internsComponentEmpty = new PaymentComponentDTO();
-                internsComponentEmpty.setPaymentComponent("INTERNS");
-                internsComponentEmpty.setAmount(BigDecimal.valueOf(0));
-                internsComponentEmpty.setProjections(generateMonthProjection(period, range, internsComponentEmpty.getAmount()));
-                component.add(internsComponentEmpty);
+        Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
+        if (optionalEmployeeClassification.isPresent() && (optionalEmployeeClassification.get().getTypeEmp().equals("FLJ") || optionalEmployeeClassification.get().getTypeEmp().equals("PRA"))) {
+            EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
+            PaymentComponentDTO internsComponent = new PaymentComponentDTO();
+            internsComponent.setPaymentComponent("INTERNS");
+            double youngExecutiveSalary = getCachedValue(youngExecutiveSalaryMap, period);
+            double internSalary = getCachedValue(internSalaryMap, period);
+            double interns = 0;
+            if (employeeClassification.getTypeEmp().equals("FLJ")) {
+                interns = youngExecutiveSalary * (1 + (1 / 12.0));
+            } else if (employeeClassification.getTypeEmp().equals("PRA")) {
+                interns = internSalary * (1 + (1 / 12.0));
             }
+            internsComponent.setAmount(BigDecimal.valueOf(interns));
+            internsComponent.setProjections(generateMonthProjection(period, range, internsComponent.getAmount()));
+            List<MonthProjection> projections = new ArrayList<>();
+            double lastYoungExecutiveSalary = 0;
+            double lastInternSalary = 0;
+            for (MonthProjection projection : internsComponent.getProjections()) {
+                String month = projection.getMonth();
+                ParametersDTO youngExecutiveSalaryParameter = youngExecutiveSalaryMap.get(month);
+                double youngExecutiveSalaryProjection;
+                if (youngExecutiveSalaryParameter != null) {
+                    youngExecutiveSalaryProjection = youngExecutiveSalaryParameter.getValue();
+                    lastYoungExecutiveSalary = youngExecutiveSalaryProjection;
+                } else {
+                    youngExecutiveSalaryProjection = lastYoungExecutiveSalary;
+                }
+                ParametersDTO internSalaryParameter = internSalaryMap.get(month);
+                double internSalaryProjection;
+                if (internSalaryParameter != null) {
+                    internSalaryProjection = internSalaryParameter.getValue();
+                    lastInternSalary = internSalaryProjection;
+                } else {
+                    internSalaryProjection = lastInternSalary;
+                }
+                double internsProjection = 0;
+                if (employeeClassification.getTypeEmp().equals("FLJ")) {
+                    internsProjection = youngExecutiveSalaryProjection * (1 + (1 / 12.0));
+                } else if (employeeClassification.getTypeEmp().equals("PRA")) {
+                    internsProjection = internSalaryProjection * (1 + (1 / 12.0));
+                }
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(internsProjection));
+                projections.add(monthProjection);
+            }
+            internsComponent.setProjections(projections);
+            component.add(internsComponent);
         } else {
             PaymentComponentDTO internsComponentEmpty = new PaymentComponentDTO();
             internsComponentEmpty.setPaymentComponent("INTERNS");
@@ -5135,9 +5142,9 @@ public class PeruRefactor {
 
         PaymentComponentDTO planPrevDirAportVolEmpBase = componentMap.get("PLAN_PREV_DIR_APORT_VOL_EMP_BASE");
         //log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase);
-        if (planPrevDirAportVolEmpBase.getAmount().doubleValue() > 0){
+        /*if (planPrevDirAportVolEmpBase.getAmount().doubleValue() > 0){
             log.info("planPrevDirAportVolEmpBase: " + planPrevDirAportVolEmpBase.getAmount().doubleValue());
-        }
+        }*/
         PaymentComponentDTO salaryComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO planPrevDirAportVolEmp = new PaymentComponentDTO();
         planPrevDirAportVolEmp.setPaymentComponent("PLAN_PREV_DIR_APORT_VOL_EMP");
@@ -5155,7 +5162,7 @@ public class PeruRefactor {
                /* log.info("baseAmount: " + baseAmount);
                 log.info("currentSalary: " + currentSalary);
                 log.info("previousSalary: " + previousSalary);*/
-                double result = (baseAmount != 0) ? baseAmount * (currentSalary / previousSalary) : 0;
+                double result = (baseAmount != 0) ? baseAmount * (1 + ( previousSalary - currentSalary )) : 0;
 
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
