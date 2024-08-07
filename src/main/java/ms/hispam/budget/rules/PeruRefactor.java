@@ -1025,15 +1025,24 @@ public class PeruRefactor {
         detachmentBonusComponent.setPaymentComponent("DETACHMENT_BONUS");
         if (detachmentBonusBaseComponent != null) {
             double detachmentBonusBase = detachmentBonusBaseComponent.getAmount().doubleValue();
-            double detachmentBonusValue = getCachedValue(detachmentBonusValueMap, nextPeriod);
+            double detachmentBonusValue = getCachedValue(detachmentBonusValueMap, nextPeriod) / 100;
             double detachmentBonusPerMonth = detachmentBonusBase * detachmentBonusValue;
             detachmentBonusComponent.setAmount(BigDecimal.valueOf(detachmentBonusPerMonth));
             detachmentBonusComponent.setProjections(generateMonthProjection(period, range, detachmentBonusComponent.getAmount()));
             List<MonthProjection> projections = new ArrayList<>();
+            double lastDetachmentBonusValue = 0;
             for (MonthProjection projection : detachmentBonusBaseComponent.getProjections()) {
+                ParametersDTO detachmentBonusValueParameter = detachmentBonusValueMap.get(projection.getMonth());
+                double detachmentBonusValueProjection;
+                if (detachmentBonusValueParameter != null) {
+                    detachmentBonusValueProjection = detachmentBonusValueParameter.getValue() / 100;
+                    lastDetachmentBonusValue = detachmentBonusValueProjection;
+                } else {
+                    detachmentBonusValueProjection = lastDetachmentBonusValue;
+                }
                 String month = projection.getMonth();
                 double detachmentBonusBaseProjection = projection.getAmount().doubleValue();
-                double detachmentBonusPerMonthProjection = detachmentBonusBaseProjection * detachmentBonusValue;
+                double detachmentBonusPerMonthProjection = detachmentBonusBaseProjection * detachmentBonusValueProjection;
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(detachmentBonusPerMonthProjection));
@@ -1110,19 +1119,7 @@ public class PeruRefactor {
 
     //COINV(Base Externa)
     //$BY5 = BaseExternaCOINV
-    public void coinv(List<PaymentComponentDTO> component, String period, Integer range) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
-        PaymentComponentDTO coinvComponent = componentMap.get("COINV");
-        if (coinvComponent != null) {
-            component.add(coinvComponent);
-        } else {
-            PaymentComponentDTO coinvComponentEmpty = new PaymentComponentDTO();
-            coinvComponentEmpty.setPaymentComponent("COINV");
-            coinvComponentEmpty.setAmount(BigDecimal.valueOf(0));
-            coinvComponentEmpty.setProjections(generateMonthProjection(period, range, coinvComponentEmpty.getAmount()));
-            component.add(coinvComponentEmpty);
-        }
-    }
+
 
     //PSP(Base Externa)
     //$BW5 = BaseExternaPSP
@@ -1535,7 +1532,7 @@ public class PeruRefactor {
                     mobilityAndRefreshmentAmountValue = lastMobilityAndRefreshmentAmount;
                 }
                 double mobilityAndRefreshmentBaseProjection = projection.getAmount().doubleValue();
-                double mobilityAndRefreshmentProjection = Math.max(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
+                double mobilityAndRefreshmentProjection = Math.min(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(mobilityAndRefreshmentProjection));
@@ -1868,36 +1865,31 @@ public class PeruRefactor {
 
             PaymentComponentDTO schoolAssignmentComponent = new PaymentComponentDTO();
             schoolAssignmentComponent.setPaymentComponent("SCHOOL_ASSIGNMENT");
-            if (schoolAssignmentBaseComponent != null) {
-                double schoolAssignmentBase = schoolAssignmentBaseComponent.getAmount().doubleValue();
-                double schoolAssignmentAmount = getCachedValue(schoolAssignmentAmountMap, nextPeriod);
-                double schoolAssignment = schoolAssignmentBase * schoolAssignmentAmount;
-                schoolAssignmentComponent.setAmount(BigDecimal.valueOf(schoolAssignment));
-                schoolAssignmentComponent.setProjections(generateMonthProjection(period, range, schoolAssignmentComponent.getAmount()));
-                List<MonthProjection> projections = new ArrayList<>();
-                double lastSchoolAssignmentAmount = 0;
-                for (MonthProjection projection : schoolAssignmentBaseComponent.getProjections()) {
-                    ParametersDTO schoolAssignmentAmountParameter = schoolAssignmentAmountMap.get(projection.getMonth());
-                    double schoolAssignmentAmountValue;
-                    if (schoolAssignmentAmountParameter != null) {
-                        schoolAssignmentAmountValue = schoolAssignmentAmountParameter.getValue();
-                        lastSchoolAssignmentAmount = schoolAssignmentAmountValue;
-                    } else {
-                        schoolAssignmentAmountValue = lastSchoolAssignmentAmount;
-                    }
-                    String month = projection.getMonth();
-                    double schoolAssignmentBaseProjection = projection.getAmount().doubleValue();
-                    double schoolAssignmentProjection = schoolAssignmentBaseProjection * schoolAssignmentAmountValue;
-                    MonthProjection monthProjection = new MonthProjection();
-                    monthProjection.setMonth(month);
-                    monthProjection.setAmount(BigDecimal.valueOf(schoolAssignmentProjection));
-                    projections.add(monthProjection);
+            double schoolAssignmentBase = schoolAssignmentBaseComponent.getAmount().doubleValue();
+            double schoolAssignmentAmount = getCachedValue(schoolAssignmentAmountMap, nextPeriod) / 100;
+            double schoolAssignment = schoolAssignmentBase * schoolAssignmentAmount;
+            schoolAssignmentComponent.setAmount(BigDecimal.valueOf(schoolAssignment));
+            schoolAssignmentComponent.setProjections(generateMonthProjection(period, range, schoolAssignmentComponent.getAmount()));
+            List<MonthProjection> projections = new ArrayList<>();
+            double lastSchoolAssignmentAmount = 0;
+            for (MonthProjection projection : schoolAssignmentBaseComponent.getProjections()) {
+                ParametersDTO schoolAssignmentAmountParameter = schoolAssignmentAmountMap.get(projection.getMonth());
+                double schoolAssignmentAmountValue;
+                if (schoolAssignmentAmountParameter != null) {
+                    schoolAssignmentAmountValue = schoolAssignmentAmountParameter.getValue() / 100;
+                    lastSchoolAssignmentAmount = schoolAssignmentAmountValue;
+                } else {
+                    schoolAssignmentAmountValue = lastSchoolAssignmentAmount;
                 }
-                schoolAssignmentComponent.setProjections(projections);
-            } else {
-                schoolAssignmentComponent.setAmount(BigDecimal.valueOf(0));
-                schoolAssignmentComponent.setProjections(generateMonthProjection(period, range, schoolAssignmentComponent.getAmount()));
+                String month = projection.getMonth();
+                double schoolAssignmentBaseProjection = projection.getAmount().doubleValue();
+                double schoolAssignmentProjection = schoolAssignmentBaseProjection * schoolAssignmentAmountValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(schoolAssignmentProjection));
+                projections.add(monthProjection);
             }
+            schoolAssignmentComponent.setProjections(projections);
             component.add(schoolAssignmentComponent);
         } else {
             PaymentComponentDTO schoolAssignmentComponentEmpty = new PaymentComponentDTO();
@@ -2603,51 +2595,6 @@ public class PeruRefactor {
         components.add(epsCreditComponent);
     }
 
-    //Plan Prev Dir Aport Vol Emp
-    //=$BQ5 VOLUNTARY_CONTRIBUTION_BASE
-    //=SI(CC35<>0;CB1001*(CC35/CB35);0)
-    //CB1001 = componentVoluntaryContributionBase
-    //CC35 = theoricSalary
-    //CB35 = Math.max(componentPC960400.getAmount().doubleValue() / 14, componentPC960401.getAmount().doubleValue());
-    public void voluntaryContribution(List<PaymentComponentDTO> components, String period, Integer range) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
-        PaymentComponentDTO PC960400Component = componentMap.get("PC960400");
-        PaymentComponentDTO PC960401Component = componentMap.get("PC960401");
-        PaymentComponentDTO voluntaryContributionBaseComponent = componentMap.get("VOLUNTARY_CONTRIBUTION_BASE");
-        double theoricSalary = theoricSalaryComponent != null ? theoricSalaryComponent.getAmount().doubleValue() : 0;
-        double voluntaryContributionBase = voluntaryContributionBaseComponent != null ? voluntaryContributionBaseComponent.getAmount().doubleValue() : 0;
-        double voluntaryContribution = 0;
-        if (theoricSalary != 0) {
-            double max = Math.max(PC960400Component.getAmount().doubleValue() / 14, PC960401Component.getAmount().doubleValue());
-            voluntaryContribution = voluntaryContributionBase * (theoricSalary / max);
-        }
-        PaymentComponentDTO voluntaryContributionComponent = new PaymentComponentDTO();
-        voluntaryContributionComponent.setPaymentComponent("VOLUNTARY_CONTRIBUTION");
-        voluntaryContributionComponent.setAmount(BigDecimal.valueOf(voluntaryContribution));
-        voluntaryContributionComponent.setProjections(generateMonthProjection(period, range, voluntaryContributionComponent.getAmount()));
-        List<MonthProjection> projections = new ArrayList<>();
-        if (theoricSalaryComponent != null) {
-            for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
-                String month = projection.getMonth();
-                double voluntaryContributionProjection = 0;
-                if (theoricSalary != 0) {
-                    double max = Math.max(PC960400Component.getAmount().doubleValue() / 14, PC960401Component.getAmount().doubleValue());
-                    voluntaryContributionProjection = voluntaryContributionBase * (theoricSalary / max);
-                }
-                MonthProjection monthProjection = new MonthProjection();
-                monthProjection.setMonth(month);
-                monthProjection.setAmount(BigDecimal.valueOf(voluntaryContributionProjection));
-                projections.add(monthProjection);
-            }
-            voluntaryContributionComponent.setProjections(projections);
-        } else {
-            voluntaryContributionComponent.setAmount(BigDecimal.valueOf(0));
-            voluntaryContributionComponent.setProjections(generateMonthProjection(period, range, voluntaryContributionComponent.getAmount()));
-        }
-        components.add(voluntaryContributionComponent);
-    }
-
     //Gratificación - Salario Teórico
     //='Modelo PERU'!CC35*$K$3
     //CC35 = theoricSalary
@@ -2725,6 +2672,7 @@ public class PeruRefactor {
         gratificationComponent.setPaymentComponent("GRATIFICATION-HOUSING");
         double housingCompensation = housingCompensationComponent != null ? housingCompensationComponent.getAmount().doubleValue() : 0;
         ConceptoPresupuestal gratificationConcept = conceptoPresupuestalMap.get("Compensación por Vivienda");
+        //log.info("gratificationConcept: {}", gratificationConcept);
         double gratificationConceptValue = gratificationConcept != null ? gratificationConcept.getGratificacion().doubleValue() : 0;
         double gratification = housingCompensation * gratificationConceptValue;
         gratificationComponent.setAmount(BigDecimal.valueOf(gratification));

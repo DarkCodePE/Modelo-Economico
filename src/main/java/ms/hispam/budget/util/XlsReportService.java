@@ -201,7 +201,7 @@ public class XlsReportService {
         CompletableFuture.allOf(sheetCreationTasks, baseExternTasks).join();
 
         // Crear el índice de conceptos después de que todas las hojas se hayan creado
-        createConceptIndex(workbook, conceptSheets);
+        //createConceptIndex(workbook, conceptSheets);
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             workbook.write(outputStream);
@@ -990,7 +990,7 @@ public class XlsReportService {
                     writeChunkToSheet(sheet, chunk, start, idBu, component);
                     start = end;
                 }
-                conceptSheets.add(sheet.getSheetName());
+                //conceptSheets.add(sheet.getSheetName());
             } finally {
                 lock.unlock();
             }

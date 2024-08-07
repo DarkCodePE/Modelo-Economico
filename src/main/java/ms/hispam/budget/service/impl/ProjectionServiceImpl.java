@@ -36,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -194,7 +195,23 @@ public class ProjectionServiceImpl implements ProjectionService {
         // Inicializar conceptoPresupuestalMap
         List<ConceptoPresupuestal> conceptos = conceptoPresupuestalRepository.findAll();
         for (ConceptoPresupuestal concepto : conceptos) {
-            conceptoPresupuestalMap.put(concepto.getConceptoPresupuestal(), concepto);
+            ConceptoPresupuestal adjustedConcepto = new ConceptoPresupuestal();
+            adjustedConcepto.setConceptoPresupuestal(concepto.getConceptoPresupuestal());
+
+            // Pre-calculate all percentages by dividing by 100
+            if (concepto.getGratificacion() != null) {
+                adjustedConcepto.setGratificacion(concepto.getGratificacion().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            }
+            if (concepto.getCts() != null) {
+                adjustedConcepto.setCts(concepto.getCts().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            }
+            if (concepto.getEssalud() != null) {
+                adjustedConcepto.setEssalud(concepto.getEssalud().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            }
+            if (concepto.getBonifExtTemp() != null) {
+                adjustedConcepto.setBonifExtTemp(concepto.getBonifExtTemp().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+            }
+            conceptoPresupuestalMap.put(concepto.getConceptoPresupuestal(), adjustedConcepto);
         }
         // Inicializar ConventArg
         List<ConventArg> conventArgs = conventArgRepository.findAll();
@@ -815,7 +832,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
-        log.info("countEMP {}", countEMP);
+        //log.info("countEMP {}", countEMP);
         //calcular cantidad de EJC
         long countEJC = headcount.parallelStream()
                 .filter(h -> {
@@ -824,7 +841,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     return optionalEmployeeClassification.map(empClass -> "EJC".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
-        log.info("countEJC {}", countEJC);
+        //log.info("countEJC {}", countEJC);
         //calcular cantidad de GER
         long countGER = headcount.parallelStream()
                 .filter(h -> {
@@ -870,7 +887,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.vacationIncreaseBonus(component, projection.getPeriod(), projection.getRange(), vacationSeasonalityList);
                         methodsPeru.vacationBonus(component, projection.getPeriod(), projection.getRange(), vacationSeasonalityList);
                         methodsPeru.travelExpenses(component, projection.getPeriod(), projection.getRange());
-                        methodsPeru.coinv(component, projection.getPeriod(), projection.getRange());
+                      /*  methodsPeru.coinv(component, projection.getPeriod(), projection.getRange());*/
                         /*methodsPeru.psp(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.rsp(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.tfsp(component, projection.getPeriod(), projection.getRange());*/
@@ -901,7 +918,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.topPerformerBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), ejcPeopleBTPList, ejcBonusBTPList, dirPeopleBTPList, dirBonusBTPList, classificationMap);
                         methodsPeru.epsCredit(component, projection.getPeriod(), projection.getRange());
-                        methodsPeru.voluntaryContribution(component, projection.getPeriod(), projection.getRange());
+                        /*methodsPeru.voluntaryContribution(component, projection.getPeriod(), projection.getRange());*/
                         //public void theoreticalSalaryGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
                         methodsPeru.theoreticalSalaryGratification(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void vacationProvisionGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
@@ -936,6 +953,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             //public void nightWorkBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.nightWorkBonusGratification(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void detachmentBonusGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        //public void detachmentBonus(List<PaymentComponentDTO> components, String period, Integer range, List<ParametersDTO> detachmentBonusValueList)
+                        methodsPeru.detachmentBonus(component, projection.getPeriod(), projection.getRange(), distinctionAllowanceSeasonalityList);
                         methodsPeru.detachmentBonusGratification(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void theoreticalSalaryTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.theoreticalSalaryTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
