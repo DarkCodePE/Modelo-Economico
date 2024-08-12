@@ -164,7 +164,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private Map<String, ConceptoPresupuestal> conceptoPresupuestalMap = new HashMap<>();
     //ConventArg
     private Map<String, ConventArg> conventArgMap = new HashMap<>();
-
+    private BigDecimal totalCommissions;
     private Set<String> annualizedPositions;
     @PostConstruct
     public void init() {
@@ -788,10 +788,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     return vacationSeasonality;
 }
+    public void calculateTotalCommissions(List<ProjectionDTO> headcount) {
+        this.totalCommissions = headcount.stream()
+                .map(h -> {
+                    PaymentComponentDTO commissionsBase = h.getComponents().stream()
+                            .filter(c -> "COMMISSIONS_BASE".equals(c.getPaymentComponent()))
+                            .findFirst()
+                            .orElse(null);
+                    return commissionsBase != null ? commissionsBase.getAmount() : BigDecimal.ZERO;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
     public void isPeru(List<ProjectionDTO> headcount, ParametersByProjection projection) {
         PeruRefactor methodsPeru = new PeruRefactor();
-
+        calculateTotalCommissions(headcount);
         // Parámetros
         List<ParametersDTO> salaryIncreaseList = filterParametersByName(projection.getParameters(), "Rev Salarial EMP %");
         List<ParametersDTO> executiveSalaryIncreaseList = filterParametersByName(projection.getParameters(), "Rev Salarial EJC/GER %");
@@ -827,7 +838,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //calcular cantidad de EMP
         long countEMP = headcount.parallelStream()
                 .filter(h -> {
-                    log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    //log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
                 })
@@ -836,7 +847,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //calcular cantidad de EJC
         long countEJC = headcount.parallelStream()
                 .filter(h -> {
-                    log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    //log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "EJC".equals(empClass.getTypeEmp())).orElse(false);
                 })
@@ -851,7 +862,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .count();
         // Calcular el total de posiciones
         long totalPositions = headcount.parallelStream().filter(h -> h.getPoName() != null).count();
-        log.info("totalPositions {}", countGER);
+        //log.info("totalPositions {}", countGER);
         headcount
                 .stream()
                 .parallel()
@@ -879,7 +890,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.vacationEnjoyment(component, projection.getPeriod(), projection.getRange(), vacationDaysList, vacationSeasonalityList);
                         methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), totalHorasExtras, annualOvertimeValueList, overtimeSeasonalityList);
                         //log.debug("totalComisiones {}", totalComisiones);
-                        methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), totalComisiones, annualCommissionValueList);
+                        methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), this.totalCommissions.doubleValue(), annualCommissionValueList);
                         methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), totalIncentivos, annualIncentiveValueList);
                         methodsPeru.nightBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.availabilityPlus(component, projection.getPeriod(), projection.getRange());
@@ -1072,6 +1083,22 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.calculatePlanPrevDirAportVolEmp(component, projection.getPeriod(), projection.getRange());
                         // public void calculateLifeInsurance(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap, List<ParametersDTO> groupSVList, LocalDate birthDate)
                         //methodsPeru.calculateLifeInsurance(component, projection.getPeriod(), projection.getRange(), ageSVMap, groupSVList, headcountData.getFNac());
+                        //public void housingCompensationCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.housingCompensationCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void afpIncreaseCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.afpIncreaseCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void increase33CTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.increase33CTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void provisionBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.provisionBonusCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void srdBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.srdBonusCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        // public void basicSalaryComplementCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.basicSalaryComplementCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void familyAssignmentCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.familyAssignmentCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //public void tDayCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.tDayCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());
@@ -2532,9 +2559,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .stream()
                             .filter(
                                     t-> {
-                                        //log.debug("t.getName() {}",t.getName());
-                                        //log.debug("entry.getKey() {}",entry.getKey());
-                                        //log.debug("t.getName().equalsIgnoreCase(entry.getKey()) {}",t.getName().equalsIgnoreCase(entry.getKey()));
+                                        log.info("t.getName() {}",t.getName());
+                                        //log.info("entry.getKey() {}",entry.getKey());
                                         return  !entry.getKey().equals(HEADERPO) &&
                                                 t.getName().equalsIgnoreCase(entry.getKey());
                                     }
