@@ -2519,11 +2519,11 @@ public class PeruRefactor {
             if ("EJC".equals(typeEmp)) {
                 double ejcPeopleBTP = getCachedValue(ejcPeopleBTPMap, period);
                 double ejcBonusBTP = getCachedValue(ejcBonusBTPMap, period);
-                topPerformerBonus = srdBonus * ejcPeopleBTP * ejcBonusBTP * 12;
+                topPerformerBonus = srdBonus * ejcPeopleBTP * ejcBonusBTP;
             } else if ("DIR".equals(typeEmp)) {
                 double dirPeopleBTP = getCachedValue(dirPeopleBTPMap, period);
                 double dirBonusBTP = getCachedValue(dirBonusBTPMap, period);
-                topPerformerBonus = srdBonus * dirPeopleBTP * dirBonusBTP * 12;
+                topPerformerBonus = srdBonus * dirPeopleBTP * dirBonusBTP;
             }
         }
 
@@ -2560,9 +2560,9 @@ public class PeruRefactor {
                 String typeEmp = employeeClassification.getTypeEmp();
 
                 if ("EJC".equals(typeEmp)) {
-                    topPerformerBonusProjection = srdBonus * ejcPeopleBTPProjection * ejcBonusBTPProjection * 12;
+                    topPerformerBonusProjection = srdBonus * ejcPeopleBTPProjection * ejcBonusBTPProjection;
                 } else if ("DIR".equals(typeEmp)) {
-                    topPerformerBonusProjection = srdBonus * dirPeopleBTPProjection * dirBonusBTPProjection * 12;
+                    topPerformerBonusProjection = srdBonus * dirPeopleBTPProjection * dirBonusBTPProjection;
                 }
             }
 
@@ -4219,7 +4219,7 @@ public class PeruRefactor {
     //"GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-STORE_DAY", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING_COMPENSATION", "GRATIFICATION-AFP_INCREASE", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-PROVISION_BONUS", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
     //$L$8 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
     public void provisionBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
-        List<String> AllGratification = Arrays.asList("GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-STORE_DAY", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING_COMPENSATION", "GRATIFICATION-AFP_INCREASE", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-PROVISION_BONUS", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
+        List<String> AllGratification = Arrays.asList("GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING_COMPENSATION", "GRATIFICATION-AFP_INCREMENT", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
         Map<String, PaymentComponentDTO> componentMap = components
                 .stream()
                 .filter(component -> AllGratification.contains(component.getPaymentComponent()))
