@@ -26,6 +26,7 @@ public abstract class Config {
     private List<ValidationRule> validationRules;
     private List<ParameterGroup> parameterGroups;
     private List<ConventArgDTO> conventArgs;
+    private List<NominaPaymentComponentLink> nominaPaymentComponentLinks;
     private String money;
     private String icon;
     private Boolean vViewPo;

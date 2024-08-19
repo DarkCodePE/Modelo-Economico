@@ -929,6 +929,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.topPerformerBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), ejcPeopleBTPList, ejcBonusBTPList, dirPeopleBTPList, dirBonusBTPList, classificationMap);
                         methodsPeru.epsCredit(component, projection.getPeriod(), projection.getRange());
+                        // public void extraordinaryTransferBonus(List<PaymentComponentDTO> component, String period, Integer range)
+                        methodsPeru.extraordinaryTransferBonus(component, projection.getPeriod(), projection.getRange());
                         /*methodsPeru.voluntaryContribution(component, projection.getPeriod(), projection.getRange());*/
                         //public void theoreticalSalaryGratification(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
                         methodsPeru.theoreticalSalaryGratification(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
@@ -1754,8 +1756,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t)))
                 .map(p -> {
                     if (p.equalsIgnoreCase("mes_promo")) {
-                        log.info("p {}",p);
-                        log.info("po.get(p) {}",po.get(p));
+                        //log.info("p {}",p);
+                        //log.info("po.get(p) {}",po.get(p));
                         return PaymentComponentDTO.builder()
                                 .paymentComponent(p)
                                 .amountString(po != null && po.get(p) != null ? po.get(p).toString() : null)
@@ -2648,23 +2650,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             ).collect(Collectors.toList());
                                     //log.debug("projectionsComponent {}",projectionsComponent);
                                     if (nominaPaymentComponentLinksCache == null) {
-                                        List<NominaPaymentComponentLink> allLinks = nominaPaymentComponentLinkRepository.findAll()
-                                                .stream()
-                                                .filter(n -> n.getPaymentComponent()
-                                                        .getBu()
-                                                        .equals(projection.getIdBu()))
-                                                .collect(Collectors.toList());
-                                        nominaPaymentComponentLinksCache = allLinks.stream()
+                                        List<NominaPaymentComponentLink> nominaPaymentComponentLinks =
+                                                (projection.getNominaPaymentComponentLink() != null && !projection.getNominaPaymentComponentLink().isEmpty())
+                                                        ? projection.getNominaPaymentComponentLink()
+                                                        : nominaPaymentComponentLinkRepository.findAll();
+
+                                        nominaPaymentComponentLinksCache = nominaPaymentComponentLinks.stream()
+                                                .filter(n -> n.getPaymentComponent().getBu().equals(projection.getIdBu()))
                                                 .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
                                     }
-                                    //log.debug("nominaPaymentComponentLinksCache: {}", nominaPaymentComponentLinksCache);
+
                                     Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
-                                    List<NominaProjection> filteredNominal = nominal
-                                            .parallelStream()
-                                            //.filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
+                                    List<NominaProjection> filteredNominal = nominal.parallelStream()
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
-                                            .collect(Collectors.toList());
-                                    log.debug("filteredNominal: {}", filteredNominal);
+                                            .toList();
+                                    //log.debug("filteredNominal: {}", filteredNominal);
                                     addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
@@ -2945,14 +2945,5 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .amount(BigDecimal.valueOf(amount))
                 .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(amount)))
                 .build();
-    }
-    private PaymentComponentDTO createPaymentComponentDTO(NominaPaymentComponentLink link, NominaProjection h, ParametersByProjection projection) {
-        PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
-        paymentComponentDTO.setPaymentComponent(link.getPaymentComponent().getPaymentComponent()+"_BASE");
-        paymentComponentDTO.setAmount(BigDecimal.valueOf(h.getImporte()));
-        paymentComponentDTO.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(h.getImporte())));
-        paymentComponentDTO.setType(16);
-        paymentComponentDTO.setShow(true);
-        return paymentComponentDTO;
     }
 }

@@ -23,14 +23,15 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
     private final SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository;
     private final ConceptoPresupuestalRepository conceptoPresupuestalRepository;
     private final EdadSVRepository edadSVRepository;
-
+    private final NominaPaymentComponentLinkRepository nominaPaymentComponentLinkRepository;
     @Autowired
-    protected PeruConfigStrategy(DemoRepository sharedRepo, ParameterRepository parameterRepository, BuRepository buRepository, CodeNominaRepository codeNominaRepository, BaseExternRepository baseExternRepository, ParameterDefaultRepository parameterDefaultRepository, ValidationRuleRepository validationRuleRepository, EmployeeClassificationRepository employeeClassificationRepository, SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository, ConceptoPresupuestalRepository conceptoPresupuestalRepository, EdadSVRepository edadSVRepository) {
+    protected PeruConfigStrategy(DemoRepository sharedRepo, ParameterRepository parameterRepository, BuRepository buRepository, CodeNominaRepository codeNominaRepository, BaseExternRepository baseExternRepository, ParameterDefaultRepository parameterDefaultRepository, ValidationRuleRepository validationRuleRepository, EmployeeClassificationRepository employeeClassificationRepository, SeniorityAndQuinquenniumRepository seniorityAndQuinquenniumRepository, ConceptoPresupuestalRepository conceptoPresupuestalRepository, EdadSVRepository edadSVRepository, NominaPaymentComponentLinkRepository nominaPaymentComponentLinkRepository) {
         super(sharedRepo, parameterRepository, buRepository, codeNominaRepository, baseExternRepository, parameterDefaultRepository, validationRuleRepository);
         this.employeeClassificationRepository = employeeClassificationRepository;
         this.seniorityAndQuinquenniumRepository = seniorityAndQuinquenniumRepository;
         this.conceptoPresupuestalRepository = conceptoPresupuestalRepository;
         this.edadSVRepository = edadSVRepository;
+        this.nominaPaymentComponentLinkRepository = nominaPaymentComponentLinkRepository;
     }
 
 
@@ -43,6 +44,7 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
         List<SeniorityAndQuinquennium> seniorityAndQuinquennium = seniorityAndQuinquenniumRepository.findAll();
         //conceptoPresupuestalRepository
         List<ConceptoPresupuestal> conceptoPresupuestal = conceptoPresupuestalRepository.findAll();
+        List<NominaPaymentComponentLink> nominaPaymentComponentLinks = nominaPaymentComponentLinkRepository.findByBu(vbu.getId());
         //edadSVRepository
         List<EdadSV> edadSV = edadSVRepository.findAll();
         return DefaultConfig.builder()
@@ -70,6 +72,7 @@ public class PeruConfigStrategy extends BaseConfigStrategy {
                         .collect(Collectors.toList()))
                 .validationRules(validationRuleRepository.findByBu_Bu(vbu.getId()))
                 .current(vbu.getCurrent())
+                .nominaPaymentComponentLinks(nominaPaymentComponentLinks)
                 .build();
     }
 

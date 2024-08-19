@@ -3,6 +3,7 @@ package ms.hispam.budget.dto;
 import lombok.*;
 import ms.hispam.budget.entity.mysql.Convenio;
 import ms.hispam.budget.entity.mysql.ConvenioBono;
+import ms.hispam.budget.entity.mysql.NominaPaymentComponentLink;
 import ms.hispam.budget.entity.mysql.ParameterDefault;
 
 import javax.validation.constraints.Min;
@@ -42,5 +43,5 @@ public class ParametersByProjection {
     private String current;
     private List<PositionBaselineDTO> disabledPo;
     private Boolean viewPo;
-
+    private List<NominaPaymentComponentLink> nominaPaymentComponentLink;
 }
