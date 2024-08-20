@@ -43,5 +43,5 @@ public class ParametersByProjection {
     private String current;
     private List<PositionBaselineDTO> disabledPo;
     private Boolean viewPo;
-    private List<NominaPaymentComponentLink> nominaPaymentComponentLink;
+    private Map<Integer, List<NominaPaymentComponentLink>> nominaPaymentComponentLinkByYear;
 }

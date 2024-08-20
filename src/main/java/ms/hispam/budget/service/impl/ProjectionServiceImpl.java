@@ -135,6 +135,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private ConfigStrategyFactory configStrategyFactory;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
+    private Map<String, Map<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByYearCache;
     private final MexicoService mexicoService;
     private List<String> excludedPositionsBC = new ArrayList<>();
     List<HeadcountProjection> headcountTemporal = new ArrayList<>();
@@ -236,8 +237,24 @@ public class ProjectionServiceImpl implements ProjectionService {
                 "PO99010668", "PO99015506", "PO10040433", "PO99009829", "PO99010295",
                 "PO10011800", "PO10003371", "PO99010265", "PO10018533"
         ));
-    }
 
+    }
+    // Este método se llamaría al inicio del procesamiento, posiblemente en getHeadcountByAccount
+    private void initializePeruCache(ParametersByProjection projection) {
+        if (nominaPaymentComponentLinksByYearCache == null) {
+            nominaPaymentComponentLinksByYearCache = new HashMap<>();
+            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
+
+            linksByYear.forEach((year, links) -> {
+                String yearString = String.valueOf(year);
+                Map<String, List<NominaPaymentComponentLink>> yearCache = links.stream()
+                        .filter(n -> n.getPaymentComponent().getBu().equals(projection.getIdBu()))
+                        .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
+
+                nominaPaymentComponentLinksByYearCache.put(yearString, yearCache);
+            });
+        }
+    }
     public BigDecimal getQuinquenniumValue(int seniority) {
         return quinquenniumMap.getOrDefault(seniority, BigDecimal.ZERO);
     }
@@ -2456,6 +2473,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 "PO10001848", "PO10001623", "PO99011801", "PO99012453",
                 "PO99010827", "PO99010253", "PO99016659", "PO99011446"
         );
+        initializePeruCache(projection);
         //TODO: ADD MONTH BASE
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
@@ -2648,24 +2666,52 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                     }
 
                                             ).collect(Collectors.toList());
-                                    //log.debug("projectionsComponent {}",projectionsComponent);
-                                    if (nominaPaymentComponentLinksCache == null) {
-                                        List<NominaPaymentComponentLink> nominaPaymentComponentLinks =
-                                                (projection.getNominaPaymentComponentLink() != null && !projection.getNominaPaymentComponentLink().isEmpty())
-                                                        ? projection.getNominaPaymentComponentLink()
-                                                        : nominaPaymentComponentLinkRepository.findAll();
+                                    List<NominaProjection> filteredNominal;
+                                    if ("T. PERU".equalsIgnoreCase(projection.getBu())) {
+                                        if (nominaPaymentComponentLinksByYearCache == null) {
+                                            nominaPaymentComponentLinksByYearCache = new HashMap<>();
+                                            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
 
-                                        nominaPaymentComponentLinksCache = nominaPaymentComponentLinks.stream()
-                                                .filter(n -> n.getPaymentComponent().getBu().equals(projection.getIdBu()))
-                                                .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
+                                            for (Map.Entry<Integer, List<NominaPaymentComponentLink>> entry : linksByYear.entrySet()) {
+                                                String year = entry.getKey().toString();
+                                                List<NominaPaymentComponentLink> links = entry.getValue();
+
+                                                Map<String, List<NominaPaymentComponentLink>> yearCache = links.stream()
+                                                        .filter(n -> n.getPaymentComponent().getBu().equals(projection.getIdBu()))
+                                                        .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
+
+                                                nominaPaymentComponentLinksByYearCache.put(year, yearCache);
+                                            }
+                                        }
+                                        // Usar todos los años en el rango para filtrar nominal
+                                        Set<String> existingNominaCodes = nominaPaymentComponentLinksByYearCache.values().stream()
+                                                .flatMap(yearMap -> yearMap.keySet().stream())
+                                                .collect(Collectors.toSet());
+
+                                        filteredNominal = nominal.parallelStream()
+                                                .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
+                                                .collect(Collectors.toList());
+                                    }else {
+                                        //log.debug("projectionsComponent {}",projectionsComponent);
+                                        if (nominaPaymentComponentLinksCache == null) {
+                                            List<NominaPaymentComponentLink> allLinks = nominaPaymentComponentLinkRepository.findAll()
+                                                    .stream()
+                                                    .filter(n -> n.getPaymentComponent()
+                                                            .getBu()
+                                                            .equals(projection.getIdBu()))
+                                                    .collect(Collectors.toList());
+                                            nominaPaymentComponentLinksCache = allLinks.stream()
+                                                    .collect(Collectors.groupingBy(n -> n.getNominaConcept().getCodeNomina()));
+                                        }
+                                        Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
+                                        filteredNominal = nominal
+                                                .parallelStream()
+                                                //.filter(g -> g.getIdssff().equalsIgnoreCase(list.get(0).getIdssff()))
+                                                .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
+                                                .collect(Collectors.toList());
                                     }
-
-                                    Set<String> existingNominaCodes = nominaPaymentComponentLinksCache.keySet();
-                                    List<NominaProjection> filteredNominal = nominal.parallelStream()
-                                            .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
-                                            .toList();
                                     //log.debug("filteredNominal: {}", filteredNominal);
-                                    addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
+                                    addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
@@ -2869,6 +2915,141 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             } else {
                 addEmptyPaymentComponents(projectionsComponent, bu, projection);
             }
+        }
+    }
+
+    private void addNominalV2(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
+                            List<NominaProjection> nominal, List<CodeNomina> codeNominas,
+                            List<HeadcountProjection> list) {
+        String bu = projection.getBu().toUpperCase();
+        String idssff = list.get(0).getIdssff();
+
+        if (bu.equals("T. ECUADOR")) {
+            processEcuador(nominal, projectionsComponent, projection, idssff);
+        } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
+            if (bu.equals("T. PERU")) {
+                processPeruNominal(nominal, projectionsComponent, projection);
+            } else {
+                processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
+            }
+        }
+    }
+
+    private void processEcuador(List<NominaProjection> nominal, List<PaymentComponentDTO> projectionsComponent,
+                                ParametersByProjection projection, String idssff) {
+        List<NominaProjection> nominalBySSFF = nominal.stream()
+                .filter(n -> n.getIdssff().equals(idssff))
+                .collect(Collectors.toList());
+
+        double hhee = nominalBySSFF.stream()
+                .filter(h -> !"0260".equalsIgnoreCase(h.getCodeNomina()))
+                .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
+                .sum();
+
+        double guarderia = nominalBySSFF.stream()
+                .filter(h -> "0260".equalsIgnoreCase(h.getCodeNomina()))
+                .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
+                .sum();
+
+        projectionsComponent.add(createPaymentComponentDTO("TURN", 7, hhee, projection));
+        projectionsComponent.add(createPaymentComponentDTO("260", 12, guarderia, projection));
+    }
+
+    private void processPeruNominal(List<NominaProjection> nominal,
+                                    List<PaymentComponentDTO> projectionsComponent,
+                                    ParametersByProjection projection) {
+        String bu = "T. PERU";
+        String idssff = nominal.isEmpty() ? "" : nominal.get(0).getIdssff();
+
+        List<NominaProjection> nominalBySSFF = nominal.stream()
+                .filter(n -> n.getIdssff().equals(idssff))
+                .collect(Collectors.toList());
+
+        if (!nominalBySSFF.isEmpty()) {
+            Map<String, Double> componentTotals = new ConcurrentHashMap<>();
+
+            int startYear = Integer.parseInt(projection.getNominaFrom().substring(0, 4));
+            int endYear = Integer.parseInt(projection.getNominaTo().substring(0, 4));
+
+            for (int year = startYear; year <= endYear; year++) {
+                String yearKey = String.valueOf(year);
+                Map<String, List<NominaPaymentComponentLink>> linksForYear = nominaPaymentComponentLinksByYearCache.get(yearKey);
+
+                if (linksForYear != null) {
+                    nominalBySSFF.parallelStream().forEach(h -> {
+                        List<NominaPaymentComponentLink> links = linksForYear.get(h.getCodeNomina());
+                        if (links != null) {
+                            processLinks(links, h, componentTotals, bu);
+                        }
+                    });
+                }
+            }
+
+            processComponentTotals(componentTotals, projectionsComponent, projection, bu);
+        } else {
+            addEmptyPaymentComponents(projectionsComponent, bu, projection);
+        }
+    }
+
+    private void processOtherCountriesNominal(List<NominaProjection> nominal, List<PaymentComponentDTO> projectionsComponent,
+                                              ParametersByProjection projection, String bu, String idssff) {
+        List<NominaProjection> nominalBySSFF = nominal.stream()
+                .filter(n -> n.getIdssff().equals(idssff))
+                .collect(Collectors.toList());
+
+        if (!nominalBySSFF.isEmpty()) {
+            Map<String, Double> componentTotals = new ConcurrentHashMap<>();
+
+            nominalBySSFF.parallelStream().forEach(h -> {
+                List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
+                if (links != null) {
+                    processLinks(links, h, componentTotals, bu);
+                }
+            });
+
+            processComponentTotals(componentTotals, projectionsComponent, projection, bu);
+        } else {
+            addEmptyPaymentComponents(projectionsComponent, bu, projection);
+        }
+    }
+
+
+    private void processLinks(List<NominaPaymentComponentLink> links, NominaProjection nomina,
+                              Map<String, Double> componentTotals, String bu) {
+        links.forEach(link -> {
+            String component = link.getPaymentComponent().getPaymentComponent();
+            double importe = nomina.getImporte() != null ? nomina.getImporte() : 0.0;
+            componentTotals.merge(component, importe, Double::sum);
+        });
+    }
+
+
+    private void processComponentTotals(Map<String, Double> componentTotals,
+                                        List<PaymentComponentDTO> projectionsComponent,
+                                        ParametersByProjection projection, String bu) {
+        componentTotals.forEach((component, total) -> {
+            if (total > 0) {
+                projectionsComponent.add(buildPaymentComponentDTO(component, total,  projection.getPeriod(), projection.getRange()));
+                if (bu.equals("T. PERU")) {
+                    updatePeruTotals(component, total);
+                }
+            } else {
+                projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
+            }
+        });
+    }
+
+    private void updatePeruTotals(String component, double total) {
+        switch (component) {
+            case "OVERTIME_BASE":
+                totalHorasExtrasPorBU += total;
+                break;
+            case "COMMISSIONS_BASE":
+                totalComisionesPorBU += total;
+                break;
+            case "INCENTIVES_BASE":
+                totalIncentivosPorBU += total;
+                break;
         }
     }
 
