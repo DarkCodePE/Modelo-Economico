@@ -2927,11 +2927,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
-            if (bu.equals("T. PERU")) {
-                processPeruNominal(nominal, projectionsComponent, projection);
-            } else {
-                processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
-            }
+            processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
         }
     }
 
