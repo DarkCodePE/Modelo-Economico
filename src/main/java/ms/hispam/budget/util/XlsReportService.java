@@ -243,7 +243,7 @@ public class XlsReportService {
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
-                                data.getAreaFuncional(),
+                                areaFuncional,
                                 data.getCCostos(),
                                 component.getPaymentComponent(),
                                 projection.getMonth(),

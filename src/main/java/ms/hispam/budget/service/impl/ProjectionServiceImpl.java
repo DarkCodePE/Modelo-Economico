@@ -2579,7 +2579,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .stream()
                             .filter(
                                     t-> {
-                                        log.info("t.getName() {}",t.getName());
+                                        //log.info("t.getName() {}",t.getName());
                                         //log.info("entry.getKey() {}",entry.getKey());
                                         return  !entry.getKey().equals(HEADERPO) &&
                                                 t.getName().equalsIgnoreCase(entry.getKey());
@@ -2668,6 +2668,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             ).collect(Collectors.toList());
                                     List<NominaProjection> filteredNominal;
                                     if ("T. PERU".equalsIgnoreCase(projection.getBu())) {
+                                        //TODO: Revisar si es necesario filtrar por BU, por que ya filtramos en initializePeruCache
                                         if (nominaPaymentComponentLinksByYearCache == null) {
                                             nominaPaymentComponentLinksByYearCache = new HashMap<>();
                                             Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
@@ -2927,6 +2928,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
+            /*if (bu.equals("T. PERU")) {
+                processPeruNominal(nominal, projectionsComponent, projection);
+            } else {
+                processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
+            }*/
             processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
         }
     }
