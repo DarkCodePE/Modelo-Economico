@@ -2473,7 +2473,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 "PO10001848", "PO10001623", "PO99011801", "PO99012453",
                 "PO99010827", "PO99010253", "PO99016659", "PO99011446"
         );
-        initializePeruCache(projection);
+        //initializePeruCache(projection);
         //TODO: ADD MONTH BASE
         List<String> entities = legalEntityRepository.findByBu(projection.getBu()).stream().map(LegalEntity::getLegalEntity).collect(Collectors.toList());
         List<String> typeEmployee = typEmployeeRepository.findByBu(projection.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
@@ -2667,7 +2667,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
                                             ).collect(Collectors.toList());
                                     List<NominaProjection> filteredNominal;
-                                    if ("T. PERU".equalsIgnoreCase(projection.getBu())) {
+                                    if ("T. CHILE".equalsIgnoreCase(projection.getBu())) {
                                         //TODO: Revisar si es necesario filtrar por BU, por que ya filtramos en initializePeruCache
                                         if (nominaPaymentComponentLinksByYearCache == null) {
                                             nominaPaymentComponentLinksByYearCache = new HashMap<>();
@@ -2712,7 +2712,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                 .collect(Collectors.toList());
                                     }
                                     //log.debug("filteredNominal: {}", filteredNominal);
-                                    addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
+                                    //addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
+                                    addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
@@ -2928,12 +2929,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
-            /*if (bu.equals("T. PERU")) {
+            if (bu.equals("T. PERU")) {
                 processPeruNominal(nominal, projectionsComponent, projection);
             } else {
                 processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
-            }*/
-            processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
+            }
+            //processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
         }
     }
 
