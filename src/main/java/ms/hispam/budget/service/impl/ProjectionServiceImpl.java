@@ -1700,7 +1700,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
 
         // Procesar todas las entradas en baseExtern.getData()
-        baseExtern.getData().parallelStream().forEach(po -> {
+        baseExtern
+                .getData()
+                .parallelStream()
+                .forEach(po -> {
             String currentPo = (String) po.get("po");
             ProjectionDTO currentProjection = positionsMap.getOrDefault(currentPo,
                     ProjectionDTO.builder()
