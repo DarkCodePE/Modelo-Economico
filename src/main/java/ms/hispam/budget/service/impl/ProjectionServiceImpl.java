@@ -2532,10 +2532,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             LocalDate from = entry.getValue().getLeft();
             LocalDate to = entry.getValue().getRight();
 
-            List<String> relevantCodeNominas = codeNominals.stream()
-                    .filter(cn -> cn.getRangeType() == rangeType)
-                    .map(CodeNomina::getCodeNomina)
-                    .collect(Collectors.toList());
+            List<String> relevantCodeNominas = new ArrayList<>();
+            for (CodeNomina cn : codeNominals) {
+                if (cn.getRangeType() == rangeType) {
+                    String codeNomina = cn.getCodeNomina();
+                    //code 6130
+                    if (codeNomina.equals("6130")) {
+                        log.info("codeNomina {}",codeNomina);
+                        //from
+                        log.info("from {}",from);
+                        //to
+                        log.info("to {}",to);
+                    }
+                    relevantCodeNominas.add(codeNomina);
+                }
+            }
             String initDate = from.format(DateTimeFormatter.ofPattern("yyyyMM"));
             String endDate = to.format(DateTimeFormatter.ofPattern("yyyyMM"));
 
