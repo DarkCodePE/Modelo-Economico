@@ -244,7 +244,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         if (nominaPaymentComponentLinksByYearCache == null) {
             nominaPaymentComponentLinksByYearCache = new HashMap<>();
             Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
-
+            log.info("linksByYear {}", linksByYear);
             linksByYear.forEach((year, links) -> {
                 String yearString = String.valueOf(year);
                 Map<String, List<NominaPaymentComponentLink>> yearCache = links.stream()
