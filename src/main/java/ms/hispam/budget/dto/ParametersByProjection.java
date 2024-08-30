@@ -1,6 +1,9 @@
 package ms.hispam.budget.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.*;
+import ms.hispam.budget.config.NominaPaymentLinksDeserializer;
 import ms.hispam.budget.entity.mysql.Convenio;
 import ms.hispam.budget.entity.mysql.ConvenioBono;
 import ms.hispam.budget.entity.mysql.NominaPaymentComponentLink;
@@ -18,6 +21,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ParametersByProjection {
     @NotEmpty(message="Se requiere bu")
     private String bu;
@@ -43,5 +47,6 @@ public class ParametersByProjection {
     private String current;
     private List<PositionBaselineDTO> disabledPo;
     private Boolean viewPo;
-    private Map<Integer, List<NominaPaymentComponentLink>> nominaPaymentComponentLinkByYear;
+    @JsonDeserialize(using = NominaPaymentLinksDeserializer.class)
+    private Map<Integer, List<NominaPaymentComponentLink>> nominaPaymentLinks;
 }

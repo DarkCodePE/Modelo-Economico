@@ -243,8 +243,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private void initializePeruCache(ParametersByProjection projection) {
         if (nominaPaymentComponentLinksByYearCache == null) {
             nominaPaymentComponentLinksByYearCache = new HashMap<>();
-            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
-
+            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentLinks();
+            log.debug("linksByYear {}", linksByYear);
             linksByYear.forEach((year, links) -> {
                 String yearString = String.valueOf(year);
                 Map<String, List<NominaPaymentComponentLink>> yearCache = links.stream()
@@ -2535,10 +2535,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             LocalDate from = entry.getValue().getLeft();
             LocalDate to = entry.getValue().getRight();
 
-            List<String> relevantCodeNominas = codeNominals.stream()
-                    .filter(cn -> cn.getRangeType() == rangeType)
-                    .map(CodeNomina::getCodeNomina)
-                    .collect(Collectors.toList());
+            List<String> relevantCodeNominas = new ArrayList<>();
+            for (CodeNomina cn : codeNominals) {
+                if (cn.getRangeType() == rangeType) {
+                    String codeNomina = cn.getCodeNomina();
+                    //code 6130
+                    if (codeNomina.equals("6130")) {
+                        log.info("codeNomina {}",codeNomina);
+                        //from
+                        log.info("from {}",from);
+                        //to
+                        log.info("to {}",to);
+                    }
+                    relevantCodeNominas.add(codeNomina);
+                }
+            }
             String initDate = from.format(DateTimeFormatter.ofPattern("yyyyMM"));
             String endDate = to.format(DateTimeFormatter.ofPattern("yyyyMM"));
 
@@ -2674,7 +2685,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                         //TODO: Revisar si es necesario filtrar por BU, por que ya filtramos en initializePeruCache
                                         if (nominaPaymentComponentLinksByYearCache == null) {
                                             nominaPaymentComponentLinksByYearCache = new HashMap<>();
-                                            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentComponentLinkByYear();
+                                            log.debug("nominaPaymentComponentLinksByYearCache {}",projection.getNominaPaymentLinks());
+                                            Map<Integer, List<NominaPaymentComponentLink>> linksByYear = projection.getNominaPaymentLinks();
 
                                             for (Map.Entry<Integer, List<NominaPaymentComponentLink>> entry : linksByYear.entrySet()) {
                                                 String year = entry.getKey().toString();
@@ -2716,7 +2728,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     }
                                     //log.debug("filteredNominal: {}", filteredNominal);
                                     //addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
-                                    addNominal(projection, projectionsComponent, filteredNominal, codeNominals, list);
+                                    addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     return new ProjectionDTO(
                                             list.get(0).getIdssff(),
                                             list.get(0).getPosition(),
@@ -2745,7 +2757,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         for (NominaRangeType rangeType : NominaRangeType.values()) {
             if (codeNominals.stream().anyMatch(cn -> cn.getRangeType() == rangeType)) {
                 LocalDate adjustedFrom = adjustDateRange(projectionTo, rangeType);
-                LocalDate intersectedFrom = adjustedFrom.isAfter(projectionFrom) ? adjustedFrom : projectionFrom;
+                LocalDate intersectedFrom = adjustedFrom.isBefore(projectionFrom) ? projectionFrom : adjustedFrom;
                 intersectedRanges.put(rangeType, Pair.of(intersectedFrom, projectionTo));
             }
         }
@@ -2755,9 +2767,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     private LocalDate adjustDateRange(LocalDate nominaTo, NominaRangeType rangeType) {
         return switch (rangeType) {
-            case ONE_MONTH -> nominaTo.minusMonths(1);
-            case SIX_MONTHS -> nominaTo.minusMonths(6);
-            case TWELVE_MONTHS -> nominaTo.minusMonths(12);
+            case ONE_MONTH -> nominaTo.withDayOfMonth(1); // Primer día del mes actual
+            case SIX_MONTHS -> nominaTo.minusMonths(5).withDayOfMonth(1); // Primer día de 6 meses atrás
+            case TWELVE_MONTHS -> nominaTo.minusMonths(11).withDayOfMonth(1); // Primer día de 12 meses atrás
             case ALL -> nominaTo.minusYears(100); // Un valor muy anterior para incluir todo
         };
     }
@@ -2932,12 +2944,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
-            if (bu.equals("T. PERU")) {
+            /*if (bu.equals("T. PERU")) {
                 processPeruNominal(nominal, projectionsComponent, projection);
             } else {
                 processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
-            }
-            //processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
+            }*/
+            processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
         }
     }
 
