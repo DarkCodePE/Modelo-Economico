@@ -1101,7 +1101,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         //  public void calculatePlanPrevDirAportVolEmp(List<PaymentComponentDTO> components, String period, Integer range)
                         methodsPeru.calculatePlanPrevDirAportVolEmp(component, projection.getPeriod(), projection.getRange());
                         // public void calculateLifeInsurance(List<PaymentComponentDTO> components, String period, Integer range, Map<Tuple<Integer, Integer>, Double> ageSVMap, List<ParametersDTO> groupSVList, LocalDate birthDate)
-                        //methodsPeru.calculateLifeInsurance(component, projection.getPeriod(), projection.getRange(), ageSVMap, groupSVList, headcountData.getFNac());
+                        methodsPeru.calculateLifeInsurance(component, projection.getPeriod(), projection.getRange(), ageSVMap, groupSVList, headcountData.getFNac());
                         //public void housingCompensationCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.housingCompensationCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void afpIncreaseCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)

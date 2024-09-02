@@ -1914,7 +1914,7 @@ public class PeruRefactor {
             studiesBonusComponent.setPaymentComponent("STUDIES_BONUS");
             if (studiesBonusBaseComponent != null) {
                 double studiesBonusBase = studiesBonusBaseComponent.getAmount().doubleValue();
-                double studiesBonusAmount = getCachedValue(studiesBonusAmountMap, nextPeriod);
+                double studiesBonusAmount = getCachedValue(studiesBonusAmountMap, nextPeriod) / 100;
                 double studiesBonus = studiesBonusBase * studiesBonusAmount;
                 studiesBonusComponent.setAmount(BigDecimal.valueOf(studiesBonus));
                 studiesBonusComponent.setProjections(generateMonthProjection(period, range, studiesBonusComponent.getAmount()));
@@ -3255,7 +3255,7 @@ public class PeruRefactor {
     //$N$3 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
     public void theoreticalSalaryTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO theoreticalSalaryComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO theoreticalSalaryComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
         temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-THEORETICAL_SALARY");
         double theoreticalSalary = theoreticalSalaryComponent != null ? theoreticalSalaryComponent.getAmount().doubleValue() : 0;
@@ -3870,7 +3870,7 @@ public class PeruRefactor {
     //$N$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
     public void theoreticalSalaryCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO theoreticalSalaryCTSComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO theoreticalSalaryCTSComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
         temporaryBonusComponent.setPaymentComponent("CTS-THEORETICAL_SALARY");
         double theoreticalSalaryCTS = theoreticalSalaryCTSComponent != null ? theoreticalSalaryCTSComponent.getAmount().doubleValue() : 0;
@@ -4219,24 +4219,28 @@ public class PeruRefactor {
     //"GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-STORE_DAY", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING_COMPENSATION", "GRATIFICATION-AFP_INCREASE", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-PROVISION_BONUS", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
     //$L$8 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
     public void provisionBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
-        List<String> AllGratification = Arrays.asList("GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING_COMPENSATION", "GRATIFICATION-AFP_INCREMENT", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
+        List<String> AllGratification = Arrays.asList("GRATIFICATION-TEORIC-SALARY", "GRATIFICATION-STORE_DAY", "GRATIFICATION-TELEWORK_LAW", "GRATIFICATION-TOP_PERFORMER_BONUS", "GRATIFICATION-GROUP_RESPONSIBLE_BONUS", "GRATIFICATION-HOUSING_ASSIGNMENT", "GRATIFICATION-HOUSING", "GRATIFICATION-AFP_INCREMENT", "GRATIFICATION-INCREASE_SNP_AND_INCREASE", "GRATIFICATION-DETACHMENT_BONUS","GRATIFICATION-NIGHT_BONUS","GRATIFICATION-AVAILABILITY_PLUS","GRATIFICATION-SPECIAL_DAYS_BONUS","GRATIFICATION-JUDICIAL_MANDATE_CONCEPTS","GRATIFICATION-COMPLEMENTARY_BONUS");
+
         Map<String, PaymentComponentDTO> componentMap = components
                 .stream()
                 .filter(component -> AllGratification.contains(component.getPaymentComponent()))
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity()));
+
         BigDecimal totalAmount = AllGratification
                 .stream()
                 .map(componentMap::get)
+                .filter(Objects::nonNull)  // Filtra los componentes null
                 .map(PaymentComponentDTO::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         PaymentComponentDTO provisionBonusComponent = new PaymentComponentDTO();
         provisionBonusComponent.setPaymentComponent("CTS-PROVISION_BONUS");
+
         ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Provisión Gratificación");
-        double temporaryBonusConceptValue = 0;
-        if (temporaryBonusConcept != null && temporaryBonusConcept.getCts() != null) {
-            temporaryBonusConceptValue = temporaryBonusConcept.getCts().doubleValue();
-        }
+        double temporaryBonusConceptValue = (temporaryBonusConcept != null && temporaryBonusConcept.getCts() != null)
+                ? temporaryBonusConcept.getCts().doubleValue()
+                : 0;
+
         double temporaryBonus = totalAmount.doubleValue() * temporaryBonusConceptValue;
         provisionBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
         provisionBonusComponent.setProjections(generateMonthProjection(period, range, provisionBonusComponent.getAmount()));
@@ -4749,7 +4753,7 @@ public class PeruRefactor {
     //$N$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
     public void theoreticalSalaryEssaludTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO theoreticalSalaryEssaludComponent = componentMap.get("THEORETICAL_SALARY");
+        PaymentComponentDTO theoreticalSalaryEssaludComponent = componentMap.get("THEORETICAL-SALARY");
         PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
         temporaryBonusComponent.setPaymentComponent("ESSALUD-THEORETICAL_SALARY");
         double theoreticalSalaryEssalud = theoreticalSalaryEssaludComponent != null ? theoreticalSalaryEssaludComponent.getAmount().doubleValue() : 0;
@@ -5634,7 +5638,8 @@ public class PeruRefactor {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
         Map<String, ParametersDTO> groupSVMap = createCacheMap(groupSVList);
-
+        PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
+        lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
         if (theoricSalaryComponent != null) {
             long age = calculateAge(birthDate, period);
             //log.info("age: " + age);
@@ -5644,8 +5649,7 @@ public class PeruRefactor {
             double groupSV = getCachedValue(groupSVMap, period);
             double lifeInsurance = salary * (ageFactor.doubleValue() + groupSV);
 
-            PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
-            lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
+
             lifeInsuranceComponent.setAmount(BigDecimal.valueOf(lifeInsurance));
             lifeInsuranceComponent.setProjections(generateMonthProjection(period, range, lifeInsuranceComponent.getAmount()));
 
@@ -5664,13 +5668,11 @@ public class PeruRefactor {
 
             }
             lifeInsuranceComponent.setProjections(projections);
-            components.add(lifeInsuranceComponent);
         }else {
-            PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
             lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
             lifeInsuranceComponent.setAmount(BigDecimal.ZERO);
             lifeInsuranceComponent.setProjections(generateMonthProjection(period, range, lifeInsuranceComponent.getAmount()));
-            components.add(lifeInsuranceComponent);
         }
+        components.add(lifeInsuranceComponent);
     }
 }
