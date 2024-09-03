@@ -139,7 +139,8 @@ public class PeruRefactor {
         //log.info("Total salary: {}, month: {}", totalSalary, month);
         return new MonthProjection(month, BigDecimal.valueOf(totalSalary));
     }
-    private Map<String, AtomicReference<Double>> maxAdjustments = new HashMap<>();
+
+    private Map<String, AtomicReference<Double>> maxAdjustments = new ConcurrentHashMap<>();
 
     private double getAdjustment(String typeEmp, String month,
                                  Map<String, ParametersDTO> salaryIncreaseMap,

@@ -6,6 +6,7 @@ import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ReportJob;
+import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.service.ReportDownloadService;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 
 import javax.servlet.http.HttpServletResponse;
@@ -31,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j(topic = "PROJECTION_CONTROLLER")
 @RestController
 @RequestMapping("budget/v1")
-@CrossOrigin("*")
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class ProjectionController {
 
     @Autowired
@@ -40,6 +42,8 @@ public class ProjectionController {
     private ReportDownloadService reportDownloadService;
     @Autowired
     private  ReportJobRepository reportJobRepository;
+    @Autowired
+    private SseReportService sseReportService;
 
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
@@ -114,7 +118,13 @@ public class ProjectionController {
         }
     }*/
     @PostMapping("/download-projection")
-    public ExcelReportDTO downloadProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user, @RequestParam Integer type, @RequestParam Integer idBu) {
+    public ExcelReportDTO downloadProjection(
+            @RequestBody ParametersByProjection projection,
+            @RequestHeader String user,
+            @RequestParam Integer type,
+            @RequestParam Integer idBu,
+            @RequestHeader("X-Session-ID") String sessionId
+    ) {
         try {
             ReportJob job = new ReportJob();
             String taskId = UUID.randomUUID().toString();
@@ -144,6 +154,15 @@ public class ProjectionController {
             log.error("Error al iniciar la descarga de la proyección", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al iniciar la descarga de la proyección", e);
         }
+    }
+
+    @GetMapping(path = "/status/{jobId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getReportStatus(@PathVariable String jobId) {
+        log.info("SSE connection requested for job: {}", jobId);
+        SseEmitter emitter = sseReportService.createEmitter(jobId);
+        log.info("SSE emitter created for job: {}", jobId);
+        sseReportService.sendUpdate(jobId, "en progreso", "Iniciando descarga");
+        return emitter;
     }
 
     // Método para obtener el reporte generado
