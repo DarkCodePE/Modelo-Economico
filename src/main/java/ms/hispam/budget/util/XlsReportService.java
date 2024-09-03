@@ -96,8 +96,8 @@ public class XlsReportService {
     public void setService(@Lazy ProjectionService service) {
         this.service = service;
     }
-    public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob) {
-        String jobId = reportJob.getCode();
+    public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
+
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
         generateParameter(workbook, projection.getParameters());
@@ -130,7 +130,7 @@ public class XlsReportService {
                     String uniqueName = xlsSheetCreationService.generateUniqueSheetName(workbook, c.getName());
                     uniqueComponentNames.put(c, uniqueName); // Actualizar el nombre del componente con el nombre único
                 });
-        sseReportService.sendUpdate(jobId, "processing", "Creando hojas de componentes");
+        sseReportService.sendUpdate(sessionId, "processing", "Creando hojas de componentes");
         //log.info("uniqueComponentNames: {}", uniqueComponentNames);
 
         projection.getBaseExtern()
@@ -141,7 +141,7 @@ public class XlsReportService {
                     String uniqueName = xlsSheetCreationService.generateUniqueSheetName(workbook, c);
                     uniqueHeaderNames.put(c, uniqueName); // Actualizar el nombre del header con el nombre único
                 });
-        sseReportService.sendUpdate(jobId, "processing", "Creando hojas de base externa");
+        sseReportService.sendUpdate(sessionId, "processing", "Creando hojas de base externa");
         // Segunda pasada para crear las hojas físicamente en el workbook
         // Pre-crear todas las hojas
         // Pre-crear todas las hojas
@@ -169,7 +169,7 @@ public class XlsReportService {
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
                                         //log.info("Filling data in sheet: {}", sheetName);
-                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent(), jobId);
+                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent(), sessionId);
                                     }
                                 }, executorService);
                             } else {
@@ -192,7 +192,7 @@ public class XlsReportService {
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
                                         //log.info("Filling data in base extern sheet: {}", sheetName);
-                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c, jobId);
+                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c, sessionId);
                                     }
                                 }, executorService);
                             } else {
@@ -848,12 +848,12 @@ public class XlsReportService {
     /*private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());*/
 
     // Modifica este método para que sea asíncrono
-    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job) {
+    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId) {
         return CompletableFuture.supplyAsync(() -> {
             projection.setViewPo(true);
             ProjectionSecondDTO data = service.getNewProjection(projection);
             //log.info("Data: {}", data);
-            return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job);
+            return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
         }, executorService);
     }
 
@@ -878,23 +878,23 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu) {
-        String jobId = job.getCode();
-        sseReportService.sendUpdate(jobId, "iniciado", "Iniciando generación del reporte");
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId) {
 
-        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job)
+        sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando generación del reporte");
+
+        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId)
                 .thenAccept(reportData -> {
-                    sseReportService.sendUpdate(jobId, "generando", "Generando el archivo Excel");
+                    sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
                     MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                    sseReportService.sendUpdate(jobId, "subiendo", "Subiendo el archivo al almacenamiento");
+                    sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);
                     // Notifica al usuario
-                    sseReportService.sendUpdate(jobId, "completado", "El reporte está listo para descargar");
-                    sseReportService.completeEmitter(jobId);
+                    sseReportService.sendUpdate(sessionId, "completado", "El reporte está listo para descargar");
+                    sseReportService.completeEmitter(sessionId);
                     notifyUser("El reporte de proyección está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
                 })
                 .exceptionally(e -> {
@@ -903,7 +903,7 @@ public class XlsReportService {
                     job.setErrorMessage(String.format("Error al generar el reporte: %s - %s- %s", e.getMessage(), e.getCause(), Arrays.toString(e.getStackTrace())));
                     reportJobRepository.save(job);
                     // Notifica al usuario
-                    sseReportService.sendUpdate(jobId, "fallido", "Error al generar el reporte: " + e.getMessage());
+                    sseReportService.sendUpdate(sessionId, "fallido", "Error al generar el reporte: " + e.getMessage());
                     notifyUser("Falló la generación del reporte de proyección para el usuario con el contacto: " + userContact , userContact);
                     log.error("Error al generar el reporte", (Object) e.getStackTrace());
                     log.info("Error al generar el reporte", e);

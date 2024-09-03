@@ -127,12 +127,12 @@ public class ProjectionController {
     ) {
         try {
             ReportJob job = new ReportJob();
-            String taskId = UUID.randomUUID().toString();
+            //String taskId = UUID.randomUUID().toString();
             job.setStatus("en progreso");
             job.setMonthBase(projection.getPeriod());
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
             job.setCreationDate(java.time.LocalDateTime.now());
-            job.setCode(taskId);
+            job.setCode(sessionId);
             job.setIdBu(projection.getIdBu());
             job.setIdSsff(user);
             job.setTypeReport(type);
@@ -145,7 +145,7 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-                service.downloadProjection(projection, user, jobDB, idBu);
+                service.downloadProjection(projection, user, jobDB, idBu, sessionId);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"
@@ -156,12 +156,12 @@ public class ProjectionController {
         }
     }
 
-    @GetMapping(path = "/status/{jobId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter getReportStatus(@PathVariable String jobId) {
-        log.info("SSE connection requested for job: {}", jobId);
-        SseEmitter emitter = sseReportService.createEmitter(jobId);
-        log.info("SSE emitter created for job: {}", jobId);
-        sseReportService.sendUpdate(jobId, "en progreso", "Iniciando descarga");
+    @GetMapping(path = "/status/{sessionId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getReportStatus(@PathVariable String sessionId) {
+        log.info("SSE connection requested for job: {}", sessionId);
+        SseEmitter emitter = sseReportService.createEmitter(sessionId);
+        log.info("SSE emitter created for job: {}", sessionId);
+        //sseReportService.sendUpdate(sessionId, "en progreso", "Iniciando descarga");
         return emitter;
     }
 

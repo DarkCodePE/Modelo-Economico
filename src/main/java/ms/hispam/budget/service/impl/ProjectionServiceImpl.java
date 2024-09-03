@@ -2140,7 +2140,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Async
     @Override
-    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu) {
+    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId) {
         try {
             Shared.replaceSLash(projection);
 
@@ -2155,7 +2155,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .isComparing(false)
                     .build();
             xlsReportService.generateAndCompleteReportAsync(projection,
-                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu);
+                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu, sessionId);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
