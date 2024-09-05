@@ -2011,9 +2011,9 @@ public class PeruRefactor {
             double youngExecutiveSalary = getCachedValue(youngExecutiveSalaryMap, period);
             double internSalary = getCachedValue(internSalaryMap, period);
             double interns = 0;
-            if (employeeClassification.getTypeEmp().equals("FLJ")) {
+            if (employeeClassification.getCategory().equals("Joven ejecutivo")) {
                 interns = youngExecutiveSalary * (1 + (1 / 12.0));
-            } else if (employeeClassification.getTypeEmp().equals("PRA")) {
+            } else if (employeeClassification.getCategory().equals("Practicante")) {
                 interns = internSalary * (1 + (1 / 12.0));
             }
             internsComponent.setAmount(BigDecimal.valueOf(interns));
