@@ -593,9 +593,12 @@ public class ProjectionServiceImpl implements ProjectionService {
         //log.debug("headcount {}",headcount);
     // Posiciones deshabilitadas
         projection.getDisabledPo().forEach(r-> headcount.stream().filter(p->p.getPo().equals(r.getPosition()))
-                .findFirst().ifPresent(p->
-                        p.getComponents().forEach(t->t.getProjections()
-                                .stream().filter(h->Shared.estaEnRango(r.getFrom(),r.getTo(),h.getMonth()))
+                .findFirst()
+                .ifPresent(p->
+                        p.getComponents()
+                                .forEach(t->t.getProjections()
+                                .stream()
+                                        .filter(h->Shared.estaEnRango(r.getFrom(),r.getTo(),h.getMonth()))
                                 .forEach(m->m.setAmount(BigDecimal.ZERO)))));
 
         Set<String> validComponents = componentesMap.entrySet().stream()
