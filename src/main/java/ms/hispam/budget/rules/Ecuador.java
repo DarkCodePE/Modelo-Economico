@@ -3,6 +3,7 @@ package ms.hispam.budget.rules;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersDTO;
 import ms.hispam.budget.dto.PaymentComponentDTO;
+import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.util.Shared;
 
 import java.math.BigDecimal;
@@ -13,6 +14,11 @@ import java.util.stream.Collectors;
 
 public class Ecuador {
 
+    private final SseReportService sseReportService;
+
+    public Ecuador(SseReportService sseReportService) {
+        this.sseReportService = sseReportService;
+    }
 
     public List<PaymentComponentDTO> iess(List<PaymentComponentDTO> componentDTO , String period  ,
                                            List<ParametersDTO> parameters , Integer range){
