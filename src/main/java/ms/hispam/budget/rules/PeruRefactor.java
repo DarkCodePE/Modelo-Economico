@@ -2004,16 +2004,18 @@ public class PeruRefactor {
         Map<String, ParametersDTO> internSalaryMap = createCacheMap(internSalaryList);
 
         Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(poName.toUpperCase()));
+
         if (optionalEmployeeClassification.isPresent() && (optionalEmployeeClassification.get().getTypeEmp().equals("FLJ") || optionalEmployeeClassification.get().getTypeEmp().equals("PRA"))) {
+
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             PaymentComponentDTO internsComponent = new PaymentComponentDTO();
             internsComponent.setPaymentComponent("INTERNS");
             double youngExecutiveSalary = getCachedValue(youngExecutiveSalaryMap, period);
             double internSalary = getCachedValue(internSalaryMap, period);
             double interns = 0;
-            if (employeeClassification.getCategory().equals("Joven ejecutivo")) {
+            if (employeeClassification.getCategory().equalsIgnoreCase("JOVEN EJECUTIVO")) {
                 interns = youngExecutiveSalary * (1 + (1 / 12.0));
-            } else if (employeeClassification.getCategory().equals("Practicante")) {
+            } else if (employeeClassification.getCategory().equalsIgnoreCase("PRACTICANTE")) {
                 interns = internSalary * (1 + (1 / 12.0));
             }
             internsComponent.setAmount(BigDecimal.valueOf(interns));
@@ -2040,9 +2042,9 @@ public class PeruRefactor {
                     internSalaryProjection = lastInternSalary;
                 }
                 double internsProjection = 0;
-                if (employeeClassification.getTypeEmp().equals("FLJ")) {
+                if (employeeClassification.getCategory().equalsIgnoreCase("JOVEN EJECUTIVO")) {
                     internsProjection = youngExecutiveSalaryProjection * (1 + (1 / 12.0));
-                } else if (employeeClassification.getTypeEmp().equals("PRA")) {
+                } else if (employeeClassification.getCategory().equalsIgnoreCase("PRACTICANTE")) {
                     internsProjection = internSalaryProjection * (1 + (1 / 12.0));
                 }
                 MonthProjection monthProjection = new MonthProjection();

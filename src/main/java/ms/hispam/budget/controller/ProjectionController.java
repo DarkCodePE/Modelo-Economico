@@ -35,7 +35,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j(topic = "PROJECTION_CONTROLLER")
 @RestController
 @RequestMapping("budget/v1")
-@CrossOrigin(origins = "*", allowCredentials = "true")
+@CrossOrigin(origins = "*", allowCredentials = "false")
 public class ProjectionController {
 
     @Autowired

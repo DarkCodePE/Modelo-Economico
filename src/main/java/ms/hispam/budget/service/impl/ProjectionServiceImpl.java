@@ -2689,15 +2689,18 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                 .amount(BigDecimal.ZERO)
                                                                 .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                                                                 .build();
-                                                        list.stream().filter(t-> t.getComponent() !=null && t.getComponent().equalsIgnoreCase(p.getComponent())).findFirst().ifPresent(u->{
-                                                            if (u.getAmount() != null) {
-                                                                r.setPaymentComponent(p.getComponent());
-                                                                r.setType(p.getType());
-                                                                r.setAmount(BigDecimal.valueOf(u.getAmount()));
-                                                                r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
-                                                            } else {
-                                                                throw new BadRequestException("No se encuentra información para el mes base " + projection.getPeriod());
-                                                            }
+                                                        list.stream()
+                                                                .filter(t-> t.getComponent() !=null && t.getComponent().equalsIgnoreCase(p.getComponent()))
+                                                                .findFirst()
+                                                                .ifPresent(u->{
+                                                                    if (u.getAmount() != null) {
+                                                                        r.setPaymentComponent(p.getComponent());
+                                                                        r.setType(p.getType());
+                                                                        r.setAmount(BigDecimal.valueOf(u.getAmount()));
+                                                                        r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
+                                                                    } else {
+                                                                        throw new BadRequestException("No se encuentra información para el mes base " + projection.getPeriod());
+                                                                    }
                                                         });
                                                         return r;
                                                     }

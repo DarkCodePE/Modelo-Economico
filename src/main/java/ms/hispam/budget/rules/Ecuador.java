@@ -122,58 +122,59 @@ public class Ecuador {
     }
 
 
-    public List<PaymentComponentDTO>  adjustSalaryAdjustment(List<PaymentComponentDTO> componentDTO,ParametersDTO dto){
-        componentDTO.stream().filter(f->( f.getType()==1|| f.getType()==2 || f.getType()==7) ).forEach(o->{
-            // Asegurarse de que las proyecciones estén inicializadas
-            if (o.getProjections() == null || o.getProjections().isEmpty()) {
-                o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
-            }
-            int idx = Shared.getIndex(o.getProjections().stream()
-                    .map(d->d.getMonth()).collect(Collectors.toList()),dto.getPeriod());
-            for (int i = idx; i < o.getProjections().size(); i++) {
-                double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
-                        : o.getProjections().get(i-1).getAmount().doubleValue();
-                o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
-                    AtomicReference<Double> coa = new AtomicReference<>((double) 0);
-                    int finalI = i;
-                    if(finalI==0){
-                        componentDTO.stream().filter(w->w.getType()==2).findFirst()
-                                .ifPresent(c-> coa.set(c.getAmount().doubleValue()));
-                    }else{
-                        componentDTO.stream().filter(w->w.getType()==2).findFirst()
-                                .ifPresent(c-> coa.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
+    public List<PaymentComponentDTO> adjustSalaryAdjustment(List<PaymentComponentDTO> componentDTO, ParametersDTO dto) {
+        componentDTO.stream()
+                .filter(f -> f.getType() != null && (f.getType() == 1 || f.getType() == 2 || f.getType() == 7))
+                .forEach(o -> {
+                    // Asegurarse de que las proyecciones estén inicializadas
+                    if (o.getProjections() == null || o.getProjections().isEmpty()) {
+                        o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
                     }
+                    int idx = Shared.getIndex(o.getProjections().stream()
+                            .map(MonthProjection::getMonth).collect(Collectors.toList()), dto.getPeriod());
+                    for (int i = idx; i < o.getProjections().size(); i++) {
+                        double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
+                                : o.getProjections().get(i-1).getAmount().doubleValue();
+                        o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+                        if (o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())) {
+                            AtomicReference<Double> coa = new AtomicReference<>(0.0);
+                            int finalI = i;
+                            if (finalI == 0) {
+                                componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 2).findFirst()
+                                        .ifPresent(c -> coa.set(c.getAmount().doubleValue()));
+                            } else {
+                                componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 2).findFirst()
+                                        .ifPresent(c -> coa.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
+                            }
 
-                    double v;
-                    if(o.getType()==2){
-                        AtomicReference<Double> salary = new AtomicReference<>(0.0);
-                        componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(k->{
-                            salary.set(finalI==0?k.getAmount().doubleValue():k.getProjections().get(finalI-1).getAmount().doubleValue());
-                        });
-                        v = coa.get() * (1 + ((salary.get() + coa.get()) < dto.getValue() ?
-                                (dto.getValue() / (salary.get() + coa.get()) - 1) : 0));
-                    }else if(o.getType()==7){
-                        AtomicReference<Double> sba = new AtomicReference<>((double) 0);
-                        if(finalI==0){
-                            componentDTO.stream().filter(w->w.getType()==1).findFirst()
-                                    .ifPresent(c-> sba.set(c.getAmount().doubleValue()));
-                        }else{
-                            componentDTO.stream().filter(w->w.getType()==1).findFirst()
-                                    .ifPresent(c-> sba.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
+                            double v;
+                            if (o.getType() == 2) {
+                                AtomicReference<Double> salary = new AtomicReference<>(0.0);
+                                componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 1).findFirst().ifPresent(k -> {
+                                    salary.set(finalI == 0 ? k.getAmount().doubleValue() : k.getProjections().get(finalI-1).getAmount().doubleValue());
+                                });
+                                v = coa.get() * (1 + ((salary.get() + coa.get()) < dto.getValue() ?
+                                        (dto.getValue() / (salary.get() + coa.get()) - 1) : 0));
+                            } else if (o.getType() == 7) {
+                                AtomicReference<Double> sba = new AtomicReference<>(0.0);
+                                if (finalI == 0) {
+                                    componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 1).findFirst()
+                                            .ifPresent(c -> sba.set(c.getAmount().doubleValue()));
+                                } else {
+                                    componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 1).findFirst()
+                                            .ifPresent(c -> sba.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
+                                }
+
+                                v = o.getAmount().doubleValue() * (1 + ((sba.get() + coa.get()) < dto.getValue() ?
+                                        (dto.getValue() / (sba.get() + coa.get()) - 1) : 0));
+                            } else {
+                                v = amount * (1 + ((amount + coa.get()) < dto.getValue() ?
+                                        (dto.getValue() / (amount + coa.get()) - 1) : 0));
+                            }
+                            o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
                         }
-
-                        v =o.getAmount().doubleValue() * (1 + ((sba.get() + coa.get()) < dto.getValue() ?
-                                (dto.getValue() / (sba.get() + coa.get()) - 1) : 0));
-                    }else{
-                        v = amount * (1 + ((amount + coa.get()) < dto.getValue() ?
-                                (dto.getValue() / (amount + coa.get()) - 1) : 0));
-
                     }
-                    o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
-                }
-            }
-        });
+                });
         return componentDTO;
     }
 
@@ -258,34 +259,35 @@ public class Ecuador {
         return componentDTO;
     }
 
-    public List<PaymentComponentDTO>  revisionSalary(List<PaymentComponentDTO> componentDTO,ParametersDTO dto  ){
-        double differPercent=0.0;
-        if(Boolean.TRUE.equals(dto.getIsRetroactive())){
+    public List<PaymentComponentDTO> revisionSalary(List<PaymentComponentDTO> componentDTO, ParametersDTO dto) {
+        double differPercent = 0.0;
+        if (Boolean.TRUE.equals(dto.getIsRetroactive())) {
             int idxStart;
             int idxEnd;
-            String[]   period;
+            String[] period;
             period = dto.getPeriodRetroactive().split("-");
-            idxStart=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()),period[0]);
-            idxEnd=  Shared.getIndex(componentDTO.get(1).getProjections().stream()
-                    .map(monthProjection -> monthProjection.getMonth()).collect(Collectors.toList()),period.length==1? period[0]:period[1]);
-            AtomicReference<Double> salaryFirst= new AtomicReference<>(0.0);
-            AtomicReference<Double> salaryEnd= new AtomicReference<>(0.0);
-            AtomicReference<Double> comisionFirst= new AtomicReference<>(0.0);
-            AtomicReference<Double> comisionEnd= new AtomicReference<>(0.0);
-            componentDTO.stream().filter(c->c.getType()==1).findFirst().ifPresent(l->{
+            idxStart = Shared.getIndex(componentDTO.get(1).getProjections().stream()
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()), period[0]);
+            idxEnd = Shared.getIndex(componentDTO.get(1).getProjections().stream()
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()), period.length == 1 ? period[0] : period[1]);
+            AtomicReference<Double> salaryFirst = new AtomicReference<>(0.0);
+            AtomicReference<Double> salaryEnd = new AtomicReference<>(0.0);
+            AtomicReference<Double> comisionFirst = new AtomicReference<>(0.0);
+            AtomicReference<Double> comisionEnd = new AtomicReference<>(0.0);
+            componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 1).findFirst().ifPresent(l -> {
                 salaryFirst.set(l.getProjections().get(idxStart).getAmount().doubleValue());
                 salaryEnd.set(l.getProjections().get(idxEnd).getAmount().doubleValue());
             });
-            componentDTO.stream().filter(c->c.getType()==2).findFirst().ifPresent(l->{
+            componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 2).findFirst().ifPresent(l -> {
                 comisionFirst.set(l.getProjections().get(idxStart).getAmount().doubleValue());
                 comisionEnd.set(l.getProjections().get(idxEnd).getAmount().doubleValue());
             });
-            differPercent=(salaryEnd.get()+comisionEnd.get())/(salaryFirst.get()+comisionFirst.get())-1;
+            differPercent = (salaryEnd.get() + comisionEnd.get()) / (salaryFirst.get() + comisionFirst.get()) - 1;
         }
-        double percent = dto.getValue()/100;
-        for(PaymentComponentDTO o : componentDTO.stream().filter(f->(
-                f.getType()==1|| f.getType()==2 || f.getType()==7)).collect(Collectors.toList())){
+        double percent = dto.getValue() / 100;
+        for (PaymentComponentDTO o : componentDTO.stream()
+                .filter(f -> f.getType() != null && (f.getType() == 1 || f.getType() == 2 || f.getType() == 7))
+                .collect(Collectors.toList())) {
 
             // Asegurarse de que las proyecciones estén inicializadas
             if (o.getProjections() == null || o.getProjections().isEmpty()) {
@@ -293,18 +295,18 @@ public class Ecuador {
             }
 
             int idx = Shared.getIndex(o.getProjections().stream()
-                    .map(MonthProjection::getMonth).collect(Collectors.toList()),dto.getPeriod());
+                    .map(MonthProjection::getMonth).collect(Collectors.toList()), dto.getPeriod());
             for (int i = idx; i < o.getProjections().size(); i++) {
-                double v=0;
+                double v = 0;
                 double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
-                        : o.getProjections().get(i-1).getAmount().doubleValue();
+                        : o.getProjections().get(i - 1).getAmount().doubleValue();
                 o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
-                if(o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())){
-                    if(o.getType()==1 ||o.getType()==7|| o.getType()==2 ){
-                        if(o.getType()==7){
+                if (o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())) {
+                    if (o.getType() == 1 || o.getType() == 7 || o.getType() == 2) {
+                        if (o.getType() == 7) {
                             amount = o.getAmount() != null ? o.getAmount().doubleValue() : 0.0;
                         }
-                        v = amount* (1+(differPercent>=percent?0:percent-differPercent));
+                        v = amount * (1 + (differPercent >= percent ? 0 : percent - differPercent));
                     }
                     o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
                 }
