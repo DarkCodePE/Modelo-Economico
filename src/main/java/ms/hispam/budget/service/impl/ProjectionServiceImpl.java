@@ -2567,12 +2567,30 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 String.join(",", relevantCodeNominas)
                         )
                         .parallelStream()
-                        .map(e -> NominaProjection.builder()
-                                .idssff(e.getID_SSFF())
-                                .codeNomina(e.getCodigoNomina())
-                                .importe(e.getImporte())
-                                .qDiasHoras(e.getQ_Dias_Horas())
-                                .build())
+                        .map(e -> {
+                            double importe = e.getImporte();
+                            // Aplicar la división según el tipo de rango
+                            switch (rangeType) {
+                                case SIX_MONTHS:
+                                    importe /= 6;
+                                    break;
+                                case TWELVE_MONTHS:
+                                    importe /= 12;
+                                    break;
+                                case ALL:
+                                    importe /= 1;
+                                    break;
+                                case ONE_MONTH:
+                                    importe /= 1;
+                                    break;
+                            }
+                            return NominaProjection.builder()
+                                    .idssff(e.getID_SSFF())
+                                    .codeNomina(e.getCodigoNomina())
+                                    .importe(importe)
+                                    .qDiasHoras(e.getQ_Dias_Horas())
+                                    .build();
+                        })
                         .collect(Collectors.toList());
 
                 nominal.addAll(rangeNominal);

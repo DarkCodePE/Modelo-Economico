@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -37,7 +38,10 @@ public class UserSessionService {
             return sessionId;
         }
     }
-
+    //List<UserSession> findByUserId(String userId);
+    public List<UserSession> findByUserId(String userId){
+        return userSessionRepository.findByUserId(userId);
+    }
     public boolean validateSession(String sessionId) {
         return userSessionRepository.findBySessionId(sessionId)
                 .map(session -> {

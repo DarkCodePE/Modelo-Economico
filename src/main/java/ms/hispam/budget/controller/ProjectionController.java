@@ -6,6 +6,7 @@ import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ReportJob;
+import ms.hispam.budget.entity.mysql.UserSession;
 import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
@@ -125,14 +126,11 @@ public class ProjectionController {
             @RequestBody ParametersByProjection projection,
             @RequestHeader String user,
             @RequestParam Integer type,
-            @RequestParam Integer idBu,
-            @RequestHeader("X-Session-ID") String sessionId
+            @RequestParam Integer idBu
     ) {
         try {
             // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
-            if (sessionId == null || !userSessionService.validateSession(sessionId)) {
-                sessionId = userSessionService.createOrUpdateSession(user);
-            }
+            String sessionId = userSessionService.createOrUpdateSession(user);
 
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
