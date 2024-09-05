@@ -1925,7 +1925,7 @@ public class PeruRefactor {
                     ParametersDTO studiesBonusAmountParameter = studiesBonusAmountMap.get(projection.getMonth());
                     double studiesBonusAmountValue;
                     if (studiesBonusAmountParameter != null) {
-                        studiesBonusAmountValue = studiesBonusAmountParameter.getValue();
+                        studiesBonusAmountValue = studiesBonusAmountParameter.getValue() / 100;
                         lastStudiesBonusAmount = studiesBonusAmountValue;
                     } else {
                         studiesBonusAmountValue = lastStudiesBonusAmount;
@@ -3864,6 +3864,43 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
+
+    //Bonif. Ext. Temp. - Bonificación Responsable Grupo
+    //=CC53*$N$20
+    //CC53 = groupResponsibleBonus
+    //$N$20 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
+    public void groupResponsibleBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
+        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
+        PaymentComponentDTO groupResponsibleBonusComponent = componentMap.get("GROUP_RESPONSIBLE_BONUS");
+        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
+        temporaryBonusComponent.setPaymentComponent("TEMPORARY_BONUS-GROUP_RESPONSIBLE_BONUS");
+        double groupResponsibleBonus = groupResponsibleBonusComponent != null ? groupResponsibleBonusComponent.getAmount().doubleValue() : 0;
+        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Bonificación Responsable Grupo");
+        double temporaryBonusConceptValue = 0;
+        if (temporaryBonusConcept != null && temporaryBonusConcept.getBonifExtTemp() != null) {
+            temporaryBonusConceptValue = temporaryBonusConcept.getBonifExtTemp().doubleValue();
+        }
+        double temporaryBonus = groupResponsibleBonus * temporaryBonusConceptValue;
+        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
+        temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        List<MonthProjection> projections = new ArrayList<>();
+        if (groupResponsibleBonusComponent != null) {
+            for (MonthProjection projection : groupResponsibleBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
+                projections.add(monthProjection);
+            }
+            temporaryBonusComponent.setProjections(projections);
+        } else {
+            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
+            temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
+        }
+        components.add(temporaryBonusComponent);
+    }
+
 
     //CTS - Salario Teórico
     //=CC53*$N$20

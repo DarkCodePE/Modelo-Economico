@@ -10,4 +10,5 @@ public class ExcelReportDTO {
     private String code;
     private String URL;
     private String status;
+    private String sessionId;  // Nuevo campo
 }

@@ -1019,6 +1019,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.nightWorkBonusTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void detachmentBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.detachmentBonusTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //  public void groupResponsibleBonusTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
+                        methodsPeru.groupResponsibleBonusTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void theoreticalSalaryCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.theoreticalSalaryCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void vacationProvisionCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)

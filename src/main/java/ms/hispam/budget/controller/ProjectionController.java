@@ -10,6 +10,7 @@ import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.service.ReportDownloadService;
+import ms.hispam.budget.service.UserSessionService;
 import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -44,6 +45,8 @@ public class ProjectionController {
     private  ReportJobRepository reportJobRepository;
     @Autowired
     private SseReportService sseReportService;
+    @Autowired
+    private UserSessionService userSessionService;
 
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
@@ -126,6 +129,11 @@ public class ProjectionController {
             @RequestHeader("X-Session-ID") String sessionId
     ) {
         try {
+            // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
+            if (sessionId == null || !userSessionService.validateSession(sessionId)) {
+                sessionId = userSessionService.createOrUpdateSession(user);
+            }
+
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
             job.setStatus("en progreso");
@@ -141,6 +149,7 @@ public class ProjectionController {
                     .id(job.getId())
                     .code(jobDB.getCode())
                     .status("en progreso")
+                    .sessionId(sessionId)
                     .build();
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
@@ -158,10 +167,8 @@ public class ProjectionController {
 
     @GetMapping(path = "/status/{sessionId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getReportStatus(@PathVariable String sessionId) {
-        log.info("SSE connection requested for job: {}", sessionId);
-        SseEmitter emitter = sseReportService.createEmitter(sessionId);
-        log.info("SSE emitter created for job: {}", sessionId);
-        //sseReportService.sendUpdate(sessionId, "en progreso", "Iniciando descarga");
+        SseEmitter emitter = sseReportService.getOrCreateEmitter(sessionId);
+        log.info("SSE emitter obtained for job: {}", sessionId);
         return emitter;
     }
 
@@ -225,5 +232,12 @@ public class ProjectionController {
         return service.getPositionBaseline(period,filter,bu,idBu);
     }
 
+    // Endpoint para crear una nueva sesión
+    @PostMapping("/create-session")
+    public ResponseEntity<SessionResponseDTO> createSession(@RequestHeader String user) {
+        String sessionId = userSessionService.createOrUpdateSession(user);
+        SessionResponseDTO response = new SessionResponseDTO(sessionId);
+        return ResponseEntity.ok(response);
+    }
 
 }
