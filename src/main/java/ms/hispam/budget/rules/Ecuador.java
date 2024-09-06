@@ -86,11 +86,11 @@ public class Ecuador {
             componentDTO.stream().filter(c->Arrays.asList(comIess).contains(c.getType())).forEach(d->{
                 d.getProjections().stream().filter(g->g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j->{
                     suma[0] += j.getAmount().doubleValue();
-                    f.setAmount(BigDecimal.valueOf(suma[0]));
+                    //f.setAmount(BigDecimal.valueOf(suma[0]));
                 });
             });
-            f.setAmount(BigDecimal.valueOf(f.getAmount().doubleValue()*(parameter.get()/100.0)));
-
+            // Aplicar el parámetro correctamente
+            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100.0)));
         });
         newIess.setProjections(months);
         componentDTO.add(newIess);
@@ -98,31 +98,53 @@ public class Ecuador {
     }
 
     public List<PaymentComponentDTO> decimoTercero(List<PaymentComponentDTO> componentDTO ,String period  ,
-                                                    List<ParametersDTO> parameters , Integer range){
-        Integer[] comIess ={1,2,3,4,7};
-        double amount= 0.0;
+                                                   List<ParametersDTO> parameters , Integer range) {
+        Integer[] comIess = {1, 2, 3, 4, 7};
+        double amount = 0.0;
 
+        // Creación del nuevo componente de décimo tercero
         PaymentComponentDTO newIess = new PaymentComponentDTO();
         newIess.setPaymentComponent("DECIMO3");
-        for(PaymentComponentDTO ed: componentDTO.stream().
-                filter(c->Arrays.asList(comIess).contains(c.getType())).collect(Collectors.toList())){
-            amount+=ed.getAmount().doubleValue();
 
+        // Sumar los montos de los componentes seleccionados
+        for (PaymentComponentDTO ed : componentDTO.stream()
+                .filter(c -> Arrays.asList(comIess).contains(c.getType()))
+                .collect(Collectors.toList())) {
+            amount += ed.getAmount().doubleValue();
         }
-        newIess.setAmount(BigDecimal.valueOf(amount/12));
-        List<MonthProjection> months= Shared.generateMonthProjection(period,range,BigDecimal.ZERO);
-        months.forEach(f->{
+
+        // Verificar el valor acumulado
+        System.out.println("Total acumulado para DECIMO3 antes de dividir: " + amount);
+
+        // Ajuste del monto a dividir por 12
+        newIess.setAmount(BigDecimal.valueOf(amount / 12));
+
+        // Generar las proyecciones para los meses
+        List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
+        months.forEach(f -> {
             double[] suma = {0.0};
-            componentDTO.stream().filter(c->Arrays.asList(comIess).contains(c.getType())).forEach(d->{
-                d.getProjections().stream().filter(g->g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j->{
+            componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
+                d.getProjections().stream().filter(g -> g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j -> {
                     suma[0] += j.getAmount().doubleValue();
-                    f.setAmount(BigDecimal.valueOf(suma[0]));
+                    //f.setAmount(BigDecimal.valueOf(suma[0]));
                 });
             });
-            f.setAmount(BigDecimal.valueOf(f.getAmount().doubleValue()/12));
+            // Dividir por 12 aquí para obtener el promedio mensual correcto
+            f.setAmount(BigDecimal.valueOf(suma[0] / 12));
+            // Depuración del valor de cada mes antes de dividir
+            System.out.println("Suma mensual acumulada para el mes " + f.getMonth() + ": " + f.getAmount().doubleValue());
 
+            // Ajustar el valor mensual dividiendo por 12
+            f.setAmount(BigDecimal.valueOf(f.getAmount().doubleValue() / 12));
+
+            // Verificar el valor mensual después de dividir
+            System.out.println("Monto ajustado para el mes " + f.getMonth() + " después de dividir por 12: " + f.getAmount().doubleValue());
         });
+
+        // Asignar las proyecciones al nuevo componente
         newIess.setProjections(months);
+
+        // Agregar el nuevo componente al listado
         componentDTO.add(newIess);
         return componentDTO;
     }
