@@ -65,87 +65,73 @@ public class Ecuador {
         return componentDTO;
     }
 
-    public List<PaymentComponentDTO> fondoReserva(List<PaymentComponentDTO> componentDTO ,String period  ,
-                                                   List<ParametersDTO> parameters , Integer range){
-        Integer[] comIess ={1,2,3,4,7};
-        double amount= 0.0;
-        AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
-        parameters.stream().filter(c->c.getParameter().getId()==4).findFirst().ifPresent(d-> parameter.set(d.getValue()));
-
-        PaymentComponentDTO newIess = new PaymentComponentDTO();
-        newIess.setPaymentComponent("RESERVA");
-        for(PaymentComponentDTO ed: componentDTO.stream().
-                filter(c->Arrays.asList(comIess).contains(c.getType())).collect(Collectors.toList())){
-            amount+=ed.getAmount().doubleValue();
-
-        }
-        newIess.setAmount(BigDecimal.valueOf(amount*(parameter.get()/100)));
-        List<MonthProjection> months= Shared.generateMonthProjection(period,range,BigDecimal.ZERO);
-        months.forEach(f->{
-            double[] suma = {0.0};
-            componentDTO.stream().filter(c->Arrays.asList(comIess).contains(c.getType())).forEach(d->{
-                d.getProjections().stream().filter(g->g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j->{
-                    suma[0] += j.getAmount().doubleValue();
-                    //f.setAmount(BigDecimal.valueOf(suma[0]));
-                });
-            });
-            // Aplicar el parámetro correctamente
-            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100.0)));
-        });
-        newIess.setProjections(months);
-        componentDTO.add(newIess);
-        return componentDTO;
-    }
-
-    public List<PaymentComponentDTO> decimoTercero(List<PaymentComponentDTO> componentDTO ,String period  ,
-                                                   List<ParametersDTO> parameters , Integer range) {
+    public List<PaymentComponentDTO> fondoReserva(List<PaymentComponentDTO> componentDTO, String period,
+                                                  List<ParametersDTO> parameters, Integer range) {
         Integer[] comIess = {1, 2, 3, 4, 7};
         double amount = 0.0;
+        AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
+        parameters.stream().filter(c -> c.getParameter().getId() == 4).findFirst().ifPresent(d -> parameter.set(d.getValue()));
 
-        // Creación del nuevo componente de décimo tercero
-        PaymentComponentDTO newIess = new PaymentComponentDTO();
-        newIess.setPaymentComponent("DECIMO3");
+        PaymentComponentDTO newReserva = new PaymentComponentDTO();
+        newReserva.setPaymentComponent("RESERVA");
 
-        // Sumar los montos de los componentes seleccionados
         for (PaymentComponentDTO ed : componentDTO.stream()
                 .filter(c -> Arrays.asList(comIess).contains(c.getType()))
                 .collect(Collectors.toList())) {
             amount += ed.getAmount().doubleValue();
         }
 
-        // Verificar el valor acumulado
-        System.out.println("Total acumulado para DECIMO3 antes de dividir: " + amount);
+        // Aplicar el parámetro al monto total anual y luego dividir por 12 para obtener el valor mensual
+        newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100) / 12));
 
-        // Ajuste del monto a dividir por 12
-        newIess.setAmount(BigDecimal.valueOf(amount / 12));
-
-        // Generar las proyecciones para los meses
         List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
             double[] suma = {0.0};
             componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
                 d.getProjections().stream().filter(g -> g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j -> {
                     suma[0] += j.getAmount().doubleValue();
-                    //f.setAmount(BigDecimal.valueOf(suma[0]));
                 });
             });
-            // Dividir por 12 aquí para obtener el promedio mensual correcto
-            f.setAmount(BigDecimal.valueOf(suma[0] / 12));
-            // Depuración del valor de cada mes antes de dividir
-            System.out.println("Suma mensual acumulada para el mes " + f.getMonth() + ": " + f.getAmount().doubleValue());
-
-            // Ajustar el valor mensual dividiendo por 12
-            f.setAmount(BigDecimal.valueOf(f.getAmount().doubleValue() / 12));
-
-            // Verificar el valor mensual después de dividir
-            System.out.println("Monto ajustado para el mes " + f.getMonth() + " después de dividir por 12: " + f.getAmount().doubleValue());
+            // Aplicar el parámetro y dividir por 12 para obtener el valor mensual correcto
+            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100) / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
         });
 
-        // Asignar las proyecciones al nuevo componente
-        newIess.setProjections(months);
+        newReserva.setProjections(months);
+        componentDTO.add(newReserva);
+        return componentDTO;
+    }
 
-        // Agregar el nuevo componente al listado
-        componentDTO.add(newIess);
+    public List<PaymentComponentDTO> decimoTercero(List<PaymentComponentDTO> componentDTO, String period,
+                                                   List<ParametersDTO> parameters, Integer range) {
+        Integer[] comIess = {1, 2, 3, 4, 7};
+        double amount = 0.0;
+
+        PaymentComponentDTO newDecimo = new PaymentComponentDTO();
+        newDecimo.setPaymentComponent("DECIMO3");
+
+        for (PaymentComponentDTO ed : componentDTO.stream()
+                .filter(c -> Arrays.asList(comIess).contains(c.getType()))
+                .collect(Collectors.toList())) {
+            amount += ed.getAmount().doubleValue();
+        }
+
+        // Calcular el promedio anual y dividirlo por 12 para obtener el valor mensual
+        newDecimo.setAmount(BigDecimal.valueOf(amount / 12));
+
+        List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
+        months.forEach(f -> {
+            double[] suma = {0.0};
+            componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
+                d.getProjections().stream().filter(g -> g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j -> {
+                    suma[0] += j.getAmount().doubleValue();
+                });
+            });
+            // Dividir por 12 para obtener el promedio mensual correcto
+            f.setAmount(BigDecimal.valueOf(suma[0] / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
+        });
+
+        newDecimo.setProjections(months);
+        componentDTO.add(newDecimo);
         return componentDTO;
     }
 
