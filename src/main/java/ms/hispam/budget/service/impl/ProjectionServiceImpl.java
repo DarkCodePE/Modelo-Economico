@@ -7,6 +7,7 @@ import ms.hispam.budget.dto.countries.DefaultConfig;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.mysql.*;
 import ms.hispam.budget.entity.mysql.ParameterProjection;
+import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.exception.BadRequestException;
 import ms.hispam.budget.exception.FormatAmountException;
 import ms.hispam.budget.repository.mysql.*;
@@ -17,10 +18,7 @@ import ms.hispam.budget.rules.configuration.ConfigStrategyFactory;
 import ms.hispam.budget.rules.operations.salary.FoodBenefitsOperation;
 import ms.hispam.budget.rules.operations.Operation;
 import ms.hispam.budget.rules.operations.salary.*;
-import ms.hispam.budget.service.BuService;
-import ms.hispam.budget.service.MexicoService;
-import ms.hispam.budget.service.ProjectionService;
-import ms.hispam.budget.service.ReportGenerationService;
+import ms.hispam.budget.service.*;
 import ms.hispam.budget.util.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.similarity.LevenshteinDistance;
@@ -134,6 +132,10 @@ public class ProjectionServiceImpl implements ProjectionService {
     private EdadSVRepository edadSVRepository;
     @Autowired
     private ConfigStrategyFactory configStrategyFactory;
+    @Autowired
+    private SseReportService sseReportService;
+    @Autowired
+    private UserSessionService userSessionService;
     private Map<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private Map<String, Map<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByYearCache;
     private final MexicoService mexicoService;
@@ -1510,7 +1512,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     private void isEcuadorv2(List<ProjectionDTO> headcount, ParametersByProjection projection) {
-        Ecuador methodsEcuador = new Ecuador();
+        Ecuador methodsEcuador = new Ecuador(sseReportService, userSessionService);
         projection.getParameters()
                 .sort((o1, o2) -> Shared.compare(o1.getPeriod(), o2.getPeriod()));
 
@@ -1591,7 +1593,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     private void isEcuador(List<ProjectionDTO> headcount, ParametersByProjection projection) {
-        Ecuador methodsEcuador = new Ecuador();
+        Ecuador methodsEcuador = new Ecuador(sseReportService, userSessionService);
         projection.getParameters()
                 .sort((o1, o2) -> Shared.compare(o1.getPeriod(), o2.getPeriod()));
         //log.info("headcount {}", headcount);

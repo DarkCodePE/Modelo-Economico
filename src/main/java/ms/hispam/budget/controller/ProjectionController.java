@@ -57,8 +57,8 @@ public class ProjectionController {
     }
 
     @PostMapping("/new-projection")
-    public ProjectionSecondDTO getNewProjection(@RequestBody ParametersByProjection projection) {
-        log.debug("Projection: {}", projection);
+    public ProjectionSecondDTO getNewProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
+        //log.debug("Projection: {}", projection);
         Shared.replaceSLash(projection);
         return service.getNewProjection(projection);
     }
