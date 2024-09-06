@@ -2831,11 +2831,21 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         return LocalDate.of(1900, 1, 1).plusDays((long) excelDate - 2);
     }
     public static LocalDate convertStringToLocalDate(String dateString) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        // Formato por defecto "yyyy-MM-dd"
+        DateTimeFormatter formatterDefault = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatterAlternative = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+
         try {
-            return LocalDate.parse(dateString, formatter);
+            // Intenta con el formato por defecto
+            return LocalDate.parse(dateString, formatterDefault);
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("El valor proporcionado no es una fecha válida: " + dateString);
+            // Si falla, intenta con el formato alternativo
+            try {
+                return LocalDate.parse(dateString, formatterAlternative);
+            } catch (DateTimeParseException ex) {
+                // Lanza excepción si no coincide con ninguno de los formatos
+                throw new IllegalArgumentException("El valor proporcionado no es una fecha válida: " + dateString);
+            }
         }
     }
     private HeadcountProjection convertToHeadcountProjection(HeadcountHistoricalProjection e) {
