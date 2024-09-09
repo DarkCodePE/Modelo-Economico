@@ -1622,7 +1622,7 @@ public class PeruRefactor {
 
             PaymentComponentDTO lumpSumBonusComponent = new PaymentComponentDTO();
             lumpSumBonusComponent.setPaymentComponent("LUMP_SUM_BONUS");
-            double lumpSumBonusAmount = getCachedValue(lumpSumBonusAmountMap, nextPeriod);
+            double lumpSumBonusAmount = getCachedValue(lumpSumBonusAmountMap, nextPeriod) / 12;
             double lumpSumBonus = (countEJC > 0 || countGER > 0) ? lumpSumBonusAmount / (countEJC + countGER) : 0;
             lumpSumBonusComponent.setAmount(BigDecimal.valueOf(lumpSumBonus));
             lumpSumBonusComponent.setProjections(generateMonthProjection(period, range, lumpSumBonusComponent.getAmount()));
@@ -1633,7 +1633,7 @@ public class PeruRefactor {
                 ParametersDTO lumpSumBonusAmountParameter = lumpSumBonusAmountMap.get(month);
                 double lumpSumBonusAmountValue;
                 if (lumpSumBonusAmountParameter != null) {
-                    lumpSumBonusAmountValue = lumpSumBonusAmountParameter.getValue();
+                    lumpSumBonusAmountValue = lumpSumBonusAmountParameter.getValue() / 12;
                     lastLumpSumBonusAmount = lumpSumBonusAmountValue;
                 } else {
                     lumpSumBonusAmountValue = lastLumpSumBonusAmount;
@@ -1679,7 +1679,7 @@ public class PeruRefactor {
 
             PaymentComponentDTO signingBonusComponent = new PaymentComponentDTO();
             signingBonusComponent.setPaymentComponent("SIGNING_BONUS");
-            double signingBonusAmount = getCachedValue(signingBonusAmountMap, nextPeriod);
+            double signingBonusAmount = getCachedValue(signingBonusAmountMap, nextPeriod) / 12;
             double signingBonus = (countEJC > 0 || countGER > 0) ? signingBonusAmount / (countEJC + countGER) : 0;
             signingBonusComponent.setAmount(BigDecimal.valueOf(signingBonus));
             signingBonusComponent.setProjections(generateMonthProjection(period, range, signingBonusComponent.getAmount()));
@@ -1690,7 +1690,7 @@ public class PeruRefactor {
                 ParametersDTO signingBonusAmountParameter = signingBonusAmountMap.get(month);
                 double signingBonusAmountValue;
                 if (signingBonusAmountParameter != null) {
-                    signingBonusAmountValue = signingBonusAmountParameter.getValue();
+                    signingBonusAmountValue = signingBonusAmountParameter.getValue() / 12;
                     lastSigningBonusAmount = signingBonusAmountValue;
                 } else {
                     signingBonusAmountValue = lastSigningBonusAmount;
@@ -1735,7 +1735,7 @@ public class PeruRefactor {
 
             PaymentComponentDTO extraordinaryConventionBonusComponent = new PaymentComponentDTO();
             extraordinaryConventionBonusComponent.setPaymentComponent("EXTRAORDINARY_CONVENTION_BONUS");
-            double extraordinaryConventionBonusAmount = getCachedValue(extraordinaryConventionBonusAmountMap, nextPeriod);
+            double extraordinaryConventionBonusAmount = getCachedValue(extraordinaryConventionBonusAmountMap, nextPeriod) / 12;
             double extraordinaryConventionBonus = countEMP > 0 ? extraordinaryConventionBonusAmount / countEMP : 0;
             extraordinaryConventionBonusComponent.setAmount(BigDecimal.valueOf(extraordinaryConventionBonus));
             extraordinaryConventionBonusComponent.setProjections(generateMonthProjection(period, range, extraordinaryConventionBonusComponent.getAmount()));
@@ -1746,7 +1746,7 @@ public class PeruRefactor {
                 ParametersDTO extraordinaryConventionBonusAmountParameter = extraordinaryConventionBonusAmountMap.get(month);
                 double extraordinaryConventionBonusAmountValue;
                 if (extraordinaryConventionBonusAmountParameter != null) {
-                    extraordinaryConventionBonusAmountValue = extraordinaryConventionBonusAmountParameter.getValue();
+                    extraordinaryConventionBonusAmountValue = extraordinaryConventionBonusAmountParameter.getValue() / 12;
                     lastExtraordinaryConventionBonusAmount = extraordinaryConventionBonusAmountValue;
                 } else {
                     extraordinaryConventionBonusAmountValue = lastExtraordinaryConventionBonusAmount;
@@ -1783,7 +1783,7 @@ public class PeruRefactor {
 
         PaymentComponentDTO extraordinaryBonusComponent = new PaymentComponentDTO();
         extraordinaryBonusComponent.setPaymentComponent("EXTRAORDINARY_BONUS");
-        double extraordinaryBonusAmount = getCachedValue(extraordinaryBonusAmountMap, nextPeriod);
+        double extraordinaryBonusAmount = getCachedValue(extraordinaryBonusAmountMap, nextPeriod) / 12;
         double extraordinaryBonus = totalPositions > 0 ? extraordinaryBonusAmount / totalPositions : 0;
         extraordinaryBonusComponent.setAmount(BigDecimal.valueOf(extraordinaryBonus));
         extraordinaryBonusComponent.setProjections(generateMonthProjection(period, range, extraordinaryBonusComponent.getAmount()));
@@ -1794,7 +1794,7 @@ public class PeruRefactor {
             ParametersDTO extraordinaryBonusAmountParameter = extraordinaryBonusAmountMap.get(month);
             double extraordinaryBonusAmountValue;
             if (extraordinaryBonusAmountParameter != null) {
-                extraordinaryBonusAmountValue = extraordinaryBonusAmountParameter.getValue();
+                extraordinaryBonusAmountValue = extraordinaryBonusAmountParameter.getValue() / 12;
                 lastExtraordinaryBonusAmount = extraordinaryBonusAmountValue;
             } else {
                 extraordinaryBonusAmountValue = lastExtraordinaryBonusAmount;

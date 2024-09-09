@@ -37,4 +37,7 @@ public class ValidationRule {
     @ManyToOne
     @JoinColumn(name = "bu", nullable = false)
     private BaseExtern bu;
+
+    @Column(name = "is_base_extern", nullable = false)
+    private Boolean isBaseExtern;
 }

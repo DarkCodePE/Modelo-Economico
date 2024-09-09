@@ -2830,23 +2830,22 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     public static LocalDate convertExcelDateToJavaDate(double excelDate) {
         return LocalDate.of(1900, 1, 1).plusDays((long) excelDate - 2);
     }
-    public static LocalDate convertStringToLocalDate(String dateString) {
-        // Formato por defecto "yyyy-MM-dd"
-        DateTimeFormatter formatterDefault = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter formatterAlternative = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 
-        try {
-            // Intenta con el formato por defecto
-            return LocalDate.parse(dateString, formatterDefault);
-        } catch (DateTimeParseException e) {
-            // Si falla, intenta con el formato alternativo
+    private static final List<DateTimeFormatter> formatters = Arrays.asList(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+            DateTimeFormatter.ofPattern("M/d/yyyy")
+    );
+
+    public static LocalDate convertStringToLocalDate(String dateString) {
+        for (DateTimeFormatter formatter : formatters) {
             try {
-                return LocalDate.parse(dateString, formatterAlternative);
-            } catch (DateTimeParseException ex) {
-                // Lanza excepción si no coincide con ninguno de los formatos
-                throw new IllegalArgumentException("El valor proporcionado no es una fecha válida: " + dateString);
+                return LocalDate.parse(dateString, formatter);
+            } catch (DateTimeParseException e) {
+                // Intenta con el siguiente formato
             }
         }
+        throw new IllegalArgumentException("El valor proporcionado no es una fecha válida: " + dateString);
     }
     private HeadcountProjection convertToHeadcountProjection(HeadcountHistoricalProjection e) {
         try {
