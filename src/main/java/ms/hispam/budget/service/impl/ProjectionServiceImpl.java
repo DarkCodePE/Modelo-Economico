@@ -2492,7 +2492,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent)
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
-                //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
+                .filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
                 //.filter(e->e.getPosition().equals("PO99012453") || e.getPosition().equals("PO99014894"))
                 .map(e->HeadcountProjection.builder()
@@ -2569,30 +2569,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 String.join(",", relevantCodeNominas)
                         )
                         .parallelStream()
-                        .map(e -> {
-                            double importe = e.getImporte();
-                            // Aplicar la división según el tipo de rango
-                            switch (rangeType) {
-                                case SIX_MONTHS:
-                                    importe /= 6;
-                                    break;
-                                case TWELVE_MONTHS:
-                                    importe /= 12;
-                                    break;
-                                case ALL:
-                                    importe /= 1;
-                                    break;
-                                case ONE_MONTH:
-                                    importe /= 1;
-                                    break;
-                            }
-                            return NominaProjection.builder()
-                                    .idssff(e.getID_SSFF())
-                                    .codeNomina(e.getCodigoNomina())
-                                    .importe(importe)
-                                    .qDiasHoras(e.getQ_Dias_Horas())
-                                    .build();
-                        })
+                        .map(e -> NominaProjection.builder()
+                                .idssff(e.getID_SSFF())
+                                .codeNomina(e.getCodigoNomina())
+                                .importe(e.getImporte())
+                                .qDiasHoras(e.getQ_Dias_Horas())
+                                .build())
                         .collect(Collectors.toList());
 
                 nominal.addAll(rangeNominal);

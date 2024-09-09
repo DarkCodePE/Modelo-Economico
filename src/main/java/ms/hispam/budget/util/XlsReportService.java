@@ -573,6 +573,8 @@ public class XlsReportService {
                     .hiringDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FCON")).orElse("").toString())
                     .convent(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("CONV")).orElse("").toString())
                     .level(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("NIV")).orElse("").toString())
+                    //.categoryLocal(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("categoryLocal")).orElse("").toString())
+                    //.estadoVacante(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("estadoVacante")).orElse("").toString())
                     .components(positionMap.get(position))
                     .build();
             //log.debug("newResponse: {}", newResponse);
