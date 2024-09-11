@@ -2580,7 +2580,7 @@ public class PeruRefactor {
     }
 
     private double getCachedOrLastValue(Map<String, ParametersDTO> map, String period, double lastValue) {
-        return map.get(period) != null ? map.get(period).getValue() : lastValue;
+        return map.get(period) != null ? map.get(period).getValue() / 100 : lastValue;
     }
 
     //Crédito EPS (devolución ESSALUD)
