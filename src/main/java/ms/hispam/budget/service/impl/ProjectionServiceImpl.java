@@ -1739,11 +1739,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         return new ArrayList<>(positionsMap.values());
     }
     private void updateProjection2(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
-        List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
-                .map(header -> createPaymentComponent(header, po.get(header), period, range))
-                .collect(Collectors.toList());
-
-        projection.getComponents().addAll(newComponents);
+        relevantHeaders.forEach(header -> {
+            PaymentComponentDTO component = createPaymentComponent(header, po.get(header), period, range);
+            projection.getComponents().add(component);
+        });
         projection.setAreaFuncional(po.get("AF") != null ? po.get("AF").toString() : null);
         projection.setIdssff((String) po.get("idssff"));
     }
