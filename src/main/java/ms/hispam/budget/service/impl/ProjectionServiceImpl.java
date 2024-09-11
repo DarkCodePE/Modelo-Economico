@@ -40,9 +40,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1674,20 +1672,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .amountString(value != null ? value.toString() : null)
                     .build();
         } else {
-            BigDecimal amount = BigDecimal.ZERO;
-            if (value != null) {
-                String strValue = value.toString().trim();
-                if (!strValue.isEmpty()) {
-                    try {
-                        // Eliminar caracteres no numéricos excepto el punto decimal y el signo negativo
-                        strValue = strValue.replaceAll("[^\\d.-]", "");
-                        amount = new BigDecimal(strValue);
-                    } catch (NumberFormatException e) {
-                        //TODO: enviar
-                        log.warn("No se pudo convertir '{}' a BigDecimal para el componente '{}'. Se usará 0.", strValue, header);
-                    }
-                }
-            }
+            BigDecimal amount = value != null ? new BigDecimal(value.toString()) : BigDecimal.ZERO;
             return PaymentComponentDTO.builder()
                     .paymentComponent(header)
                     .amount(amount)
@@ -1707,35 +1692,40 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .collect(Collectors.toList());
         });
     }
-    private List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
-        //log.info("BaseExternResponse {}", baseExtern);
-
-        // Obtener los headers relevantes una sola vez
+    public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
         List<String> relevantHeaders = baseExtern.getHeaders().stream()
                 .filter(t -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(t)))
                 .collect(Collectors.toList());
 
-        // Crear un mapa para almacenar todas las posiciones, incluyendo las nuevas
-        Map<String, ProjectionDTO> positionsMap = new ConcurrentHashMap<>();
+        ConcurrentMap<String, ProjectionDTO> positionsMap = new ConcurrentHashMap<>();
         positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
 
-        // Procesar todas las entradas en baseExtern.getData()
-        baseExtern
-                .getData()
-                .parallelStream()
-                .forEach(po -> {
-            String currentPo = (String) po.get("po");
-            ProjectionDTO currentProjection = positionsMap.getOrDefault(currentPo,
-                    ProjectionDTO.builder()
-                            .po(currentPo)
-                            .components(new ArrayList<>())
-                            .build());
+        // Utilizar un ForkJoinPool personalizado para un mejor control sobre la concurrencia
+        int parallelism = Runtime.getRuntime().availableProcessors();
+        ForkJoinPool customThreadPool = new ForkJoinPool(parallelism);
 
-            updateProjection2(currentProjection, po, relevantHeaders, period, range);
-            positionsMap.put(currentPo, currentProjection);
-        });
+        try {
+            customThreadPool.submit(() ->
+                    baseExtern.getData().parallelStream().forEach(po -> {
+                        String currentPo = (String) po.get("po");
+                        positionsMap.compute(currentPo, (key, existingProjection) -> {
+                            ProjectionDTO projection = (existingProjection != null) ? existingProjection :
+                                    ProjectionDTO.builder()
+                                            .po(currentPo)
+                                            .components(new ArrayList<>())
+                                            .build();
+                            updateProjection2(projection, po, relevantHeaders, period, range);
+                            return projection;
+                        });
+                    })
+            ).get(); // Esperar a que todas las tareas se completen
+        } catch (InterruptedException | ExecutionException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Error processing BaseExtern data", e);
+        } finally {
+            customThreadPool.shutdown();
+        }
 
-        // Devolver una lista con todas las posiciones
         return new ArrayList<>(positionsMap.values());
     }
     private void updateProjection2(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
