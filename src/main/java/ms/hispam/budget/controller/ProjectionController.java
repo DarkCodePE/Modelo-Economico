@@ -28,6 +28,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -126,7 +128,8 @@ public class ProjectionController {
             @RequestBody ParametersByProjection projection,
             @RequestHeader String user,
             @RequestParam Integer type,
-            @RequestParam Integer idBu
+            @RequestParam Integer idBu,
+            @RequestParam(required = false) String reportName
     ) {
         try {
             // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
@@ -134,6 +137,7 @@ public class ProjectionController {
 
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
+            sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
             job.setStatus("en progreso");
             job.setMonthBase(projection.getPeriod());
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
@@ -142,6 +146,11 @@ public class ProjectionController {
             job.setIdBu(projection.getIdBu());
             job.setIdSsff(user);
             job.setTypeReport(type);
+            // Generar el nombre del reporte
+            String finalReportName = (reportName != null && !reportName.isEmpty())
+                    ? reportName
+                    : generateReportName(user, type, projection.getPeriod());
+            job.setReportName(finalReportName);
             ReportJob jobDB =  reportJobRepository.save(job);
             ExcelReportDTO reportInProgress = ExcelReportDTO.builder()
                     .id(job.getId())
@@ -161,6 +170,21 @@ public class ProjectionController {
             log.error("Error al iniciar la descarga de la proyección", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al iniciar la descarga de la proyección", e);
         }
+    }
+    private String generateReportName(String user, Integer type, String period) {
+        String reportType = getReportTypeName(type);
+        LocalDateTime now = LocalDateTime.now();
+        String formattedTime = now.format(DateTimeFormatter.ofPattern("HHmmss"));
+        return String.format("%s_%s_%s_%s", user, reportType, period, formattedTime);
+    }
+
+    private String getReportTypeName(Integer type) {
+        return switch (type) {
+            case 1 -> "Proyeccion";
+            case 2 -> "Planner";
+            case 3 -> "CDG";
+            default -> "Desconocido";
+        };
     }
 
     @GetMapping(path = "/status/{sessionId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -183,10 +207,7 @@ public class ProjectionController {
     @GetMapping("/report-bu")
     @Transactional("mysqlTransactionManager")
     public List<ReportJob> getReportBu(@RequestHeader String user,@RequestParam Integer idBu) {
-        List<ReportJob> reportJobs = reportDownloadService.getReportBu(user,idBu);
-        //log.debug("User: {}, BU: {}", user, idBu);
-        reportJobs.forEach(reportJob -> reportJob.getParameters().size());
-        return reportJobs;
+        return reportDownloadService.getReportBu(user,idBu);
     }
     @GetMapping("/download-report")
     public ResponseEntity<byte[]> downloadFile(@RequestParam String path) {

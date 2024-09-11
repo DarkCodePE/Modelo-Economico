@@ -11,6 +11,6 @@ public interface ReportJobRepository extends JpaRepository<ReportJob, Integer>{
     List<ReportJob> findByIdSsff(String mail);
     List<ReportJob> findByIdSsffOrderByCreationDateDesc(String idSsff);
     //native query report by user and BU
-    @Query(value = "SELECT * FROM report_job WHERE id_ssff = ?1 AND id_bu = ?2 ORDER BY creation_date DESC", nativeQuery = true)
+    @Query("SELECT r FROM ReportJob r LEFT JOIN FETCH r.parameters WHERE r.idSsff = ?1 AND r.idBu = ?2 ORDER BY r.creationDate DESC")
     List<ReportJob> findByIdSsffAndBu(String idSsff, Integer bu);
 }

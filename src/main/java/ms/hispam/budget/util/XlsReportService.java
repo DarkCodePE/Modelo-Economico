@@ -886,11 +886,11 @@ public class XlsReportService {
 
         generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId)
                 .thenAccept(reportData -> {
-                    sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
+                    //sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
+                    sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
                     MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-                    sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);

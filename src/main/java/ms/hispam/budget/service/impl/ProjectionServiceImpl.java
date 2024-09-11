@@ -1674,7 +1674,20 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .amountString(value != null ? value.toString() : null)
                     .build();
         } else {
-            BigDecimal amount = value != null ? new BigDecimal(value.toString()) : BigDecimal.ZERO;
+            BigDecimal amount = BigDecimal.ZERO;
+            if (value != null) {
+                String strValue = value.toString().trim();
+                if (!strValue.isEmpty()) {
+                    try {
+                        // Eliminar caracteres no numéricos excepto el punto decimal y el signo negativo
+                        strValue = strValue.replaceAll("[^\\d.-]", "");
+                        amount = new BigDecimal(strValue);
+                    } catch (NumberFormatException e) {
+                        //TODO: enviar
+                        log.warn("No se pudo convertir '{}' a BigDecimal para el componente '{}'. Se usará 0.", strValue, header);
+                    }
+                }
+            }
             return PaymentComponentDTO.builder()
                     .paymentComponent(header)
                     .amount(amount)
@@ -2546,7 +2559,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             for (CodeNomina cn : codeNominals) {
                 if (cn.getRangeType() == rangeType) {
                     String codeNomina = cn.getCodeNomina();
-                    //code 6130
+                    /*//code 6130
                     if (codeNomina.equals("6130")) {
                         log.info("codeNomina {}",codeNomina);
                         //from
@@ -2564,7 +2577,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         log.info("to {}",to);
                         //frecuencia
                         log.info("frecuencia {}", cn.getRangeType());
-                    }
+                    }*/
                     relevantCodeNominas.add(codeNomina);
                 }
             }
