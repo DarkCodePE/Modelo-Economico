@@ -1736,77 +1736,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         projection.setAreaFuncional(po.get("AF") != null ? po.get("AF").toString() : null);
         projection.setIdssff((String) po.get("idssff"));
     }
-    private void updateProjection(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
-        List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
-
-                .map(header -> {
-                    Object value = po.get(header);
-                    if ("mes_promo".equalsIgnoreCase(header)) {
-                        return PaymentComponentDTO.builder()
-                                .paymentComponent(header)
-                                .amountString(value != null ? value.toString() : null)
-                                .build();
-                    } else {
-                        BigDecimal amount = value != null ? new BigDecimal(value.toString()) : BigDecimal.ZERO;
-                        return PaymentComponentDTO.builder()
-                                .paymentComponent(header)
-                                .amount(amount)
-                                .projections(Shared.generateMonthProjection(period, range, amount))
-                                .build();
-                    }
-                })
-                .collect(Collectors.toList());
-
-        // Combinar los componentes existentes con los nuevos
-        projection.getComponents().addAll(newComponents);
-
-        // Establecer otros campos
-        projection.setAreaFuncional(po.get("AF") != null ? po.get("AF").toString() : null);
-        projection.setIdssff((String) po.get("idssff"));
-        // Añade aquí más campos según sea necesario
-
-        //log.debug("Updated projection for PO {}: {}", projection.getPo(), projection);
-    }
-    private void  addBaseExtern2(ProjectionDTO headcount , BaseExternResponse baseExtern,String period, Integer range){
-        //log.info("BaseExternResponse {}",baseExtern);
-        Map<String, Object>  po = baseExtern
-                .getData()
-                .stream()
-                .filter(u->u.get("po")
-                        .equals(headcount.getPo()))
-                .findFirst()
-                .orElse(null);
-
-        //log.info("baseExtern {}",po);
-        // Extract areaFuncional from the baseExtern data
-        String areaFuncional = po != null && po.get("areaFuncional") != null ? po.get("areaFuncional").toString() : null;
-        //log.info("baseExtern {}",baseExtern);
-        List<PaymentComponentDTO> bases= baseExtern.getHeaders().stream()
-                .filter(t-> Arrays.stream(headers).noneMatch(c->c.equalsIgnoreCase(t)))
-                .map(p -> {
-                    if (p.equalsIgnoreCase("mes_promo")) {
-                        //log.info("p {}",p);
-                        //log.info("po.get(p) {}",po.get(p));
-                        return PaymentComponentDTO.builder()
-                                .paymentComponent(p)
-                                .amountString(po != null && po.get(p) != null ? po.get(p).toString() : null)
-                                .build();
-                    } else {
-                        return PaymentComponentDTO.builder()
-                                .paymentComponent(p)
-                                .amount(BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0))
-                                .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(po != null && po.get(p) != null ? Double.parseDouble(po.get(p).toString()) : 0)))
-                                .build();
-                    }
-                })
-                .collect(Collectors.toList());
-        List<PaymentComponentDTO> combined = new ArrayList<>(headcount.getComponents());
-        combined.addAll(bases);
-        headcount.setComponents(combined);
-        // Set areaFuncional to headcount
-        headcount.setAreaFuncional(areaFuncional);
-        log.debug("headcount.getComponents() {}",headcount);
-    }
 
     @Override
     public Config getComponentByBuV2(String bu){
@@ -3050,7 +2979,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (!nominalBySSFF.isEmpty()) {
             Map<String, Double> componentTotals = new ConcurrentHashMap<>();
 
-            nominalBySSFF.parallelStream().forEach(h -> {
+            nominalBySSFF
+                    .parallelStream()
+                    .forEach(h -> {
                 List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
                 if (links != null) {
                     processLinks(links, h, componentTotals, bu);
