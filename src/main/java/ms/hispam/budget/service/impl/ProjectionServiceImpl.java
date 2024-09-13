@@ -2646,6 +2646,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                             ).collect(Collectors.toList());
                                     List<NominaProjection> filteredNominal;
                                     String bu = projection.getBu().toUpperCase();
+                                    String idssff = list.get(0).getIdssff();
                                     /*if ("T. CHILE".equalsIgnoreCase(projection.getBu())) {
                                         //TODO: Revisar si es necesario filtrar por BU, por que ya filtramos en initializePeruCache
                                         if (nominaPaymentComponentLinksByYearCache == null) {
@@ -2725,7 +2726,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                     filteredNominal = nominal.parallelStream()
                                             .filter(h -> existingNominaCodes.contains(h.getCodeNomina()))
                                             .toList();
-
                                     addNominalV2(projection, projectionsComponent, filteredNominal, codeNominals, list);
                                     //log.info("projectionsComponent {}",projectionsComponent);
                                     return new ProjectionDTO(
@@ -2875,7 +2875,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     private double totalHorasExtrasPorBU = 0.0;
     private  double totalComisionesPorBU = 0.0;
     private double totalIncentivosPorBU = 0.0;
-    private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
+    /*private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
                             List<NominaProjection> nominal, List<CodeNomina> codeNominas,
                             List<HeadcountProjection> list) {
         // Convertir la lista nominal a un mapa para acceso rápido
@@ -2941,7 +2941,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 addEmptyPaymentComponents(projectionsComponent, bu, projection);
             }
         }
-    }
+    }*/
 
     private void addNominalV2(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
                             List<NominaProjection> nominal, List<CodeNomina> codeNominas,
@@ -2956,14 +2956,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
         if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
-            log.info("projectionsComponent {}",projectionsComponent);
+            //log.info("projectionsComponent {}",projectionsComponent);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
             /*if (bu.equals("T. PERU")) {
                 processPeruNominal(nominal, projectionsComponent, projection);
             } else {
                 processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
             }*/
-            log.info("nominal {}",nominal);
+            //log.info("nominal {}",nominal);
             //log.info("codeNominas {}",codeNominas);
             processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
         }
@@ -3026,39 +3026,25 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
 
     private void processOtherCountriesNominal(List<NominaProjection> nominal, List<PaymentComponentDTO> projectionsComponent, ParametersByProjection projection, String bu, String idssff) {
-        log.info("Procesando para BU: {}, IDSSFF: {}", bu, idssff);
-        log.info("Total de registros en nominal: {}", nominal.size());
-
-        // Obtén todos los IDSSFF únicos de los datos de nómina
-        Set<String> availableIdssff = nominal.stream()
-                .map(NominaProjection::getIdssff)
-                .collect(Collectors.toSet());
-
-        log.info("IDSSFF disponibles en los datos de nómina: {}", availableIdssff);
-
         List<NominaProjection> nominalBySSFF = nominal.stream()
                 .filter(n -> n.getIdssff().equals(idssff))
                 .collect(Collectors.toList());
-
-        log.info("Registros filtrados para IDSSFF {}: {}", idssff, nominalBySSFF.size());
-        log.info("Registros filtrados detalle: {}", nominalBySSFF);
 
         if (!nominalBySSFF.isEmpty()) {
             Map<String, Double> componentTotals = new ConcurrentHashMap<>();
 
             nominalBySSFF.forEach(h -> {
-                log.info("Procesando nómina: {}", h);
-                List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
-                log.info("Links para código de nómina {}: {}", h.getCodeNomina(), links != null ? links.size() : 0);
+
+                List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksByBuCache.get(bu).get(h.getCodeNomina());
+
                 if (links != null) {
-                    links.forEach(link -> log.info("Link: {}", link));
                     processLinks(links, h, componentTotals, bu);
                 } else {
                     log.warn("No se encontraron links para el código de nómina: {}", h.getCodeNomina());
                 }
             });
 
-            log.info("Componentes totalizados: {}", componentTotals);
+            //log.info("Componentes totalizados: {}", componentTotals);
 
             processComponentTotals(componentTotals, projectionsComponent, projection, bu);
         } else {
@@ -3073,10 +3059,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         links.forEach(link -> {
             String component = link.getPaymentComponent().getPaymentComponent();
             double importe = nomina.getImporte() != null ? nomina.getImporte() : 0.0;
-            log.info("Procesando link: componente={}, importe={}", component, importe);
+            //log.info("Procesando link: componente={}, importe={}", component, importe);
             componentTotals.merge(component, importe, Double::sum);
         });
-        log.info("ComponentTotals después de procesar links: {}", componentTotals);
+        //log.info("ComponentTotals después de procesar links: {}", componentTotals);
     }
 
 
@@ -3084,13 +3070,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                         List<PaymentComponentDTO> projectionsComponent,
                                         ParametersByProjection projection, String bu) {
         componentTotals.forEach((component, total) -> {
-            log.info("Procesando total para componente: {}, total: {}", component, total);
+            //log.info("Procesando total para componente: {}, total: {}", component, total);
             if (total > 0) {
                 PaymentComponentDTO paymentComponent = buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange());
                 projectionsComponent.add(paymentComponent);
-                log.info("Añadido componente: {}", paymentComponent);
+                //log.info("Añadido componente: {}", paymentComponent);
             } else {
-                log.info("Componente con total cero: {}", component);
+                //log.info("Componente con total cero: {}", component);
                 projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
             }
         });
