@@ -2982,12 +2982,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .filter(h -> !"0260".equalsIgnoreCase(h.getCodeNomina()))
                 .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
                 .sum();
-        log.info("hhee: {}", hhee);
+        //log.info("hhee: {}", hhee);
         double guarderia = nominalBySSFF.stream()
                 .filter(h -> "0260".equalsIgnoreCase(h.getCodeNomina()))
                 .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
                 .sum();
-        log.info("guarderia: {}", guarderia);
+        //log.info("guarderia: {}", guarderia);
         projectionsComponent.add(createPaymentComponentDTO("TURN", 7, hhee, projection));
         projectionsComponent.add(createPaymentComponentDTO("260", 12, guarderia, projection));
     }
@@ -3050,8 +3050,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
                 if (links != null) {
                     processLinks(links, h, componentTotals, bu);
-                } else {
-                    log.warn("No se encontraron links para el código de nómina: {}", h.getCodeNomina());
                 }
             });
 
@@ -3059,7 +3057,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
             processComponentTotals(componentTotals, projectionsComponent, projection, bu);
         } else {
-            log.warn("No se encontraron registros para IDSSFF: {}", idssff);
+            //log.warn("No se encontraron registros para IDSSFF: {}", idssff);
             addEmptyPaymentComponents(projectionsComponent, bu, projection);
         }
     }
