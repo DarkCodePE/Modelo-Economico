@@ -2953,20 +2953,23 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.info("IDSSFF from list: {}", idssff);
         //log.info("Posiciones en list: {}", list.stream().map(HeadcountProjection::getIdssff).collect(Collectors.toList()));
         //log.info("Posiciones en nominal: {}", nominal.stream().map(NominaProjection::getIdssff).distinct().collect(Collectors.toList()));
-
-        if (bu.equals("T. ECUADOR")) {
+        switch (bu) {
+            case "T. ECUADOR" -> processEcuador(nominal, projectionsComponent, projection, idssff);
+            case "T. COLOMBIA", "T. MEXICO", "T. PERU", "T. URUGUAY", "T. ARGENTINA" -> processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
+        }
+        /*if (bu.equals("T. ECUADOR")) {
             processEcuador(nominal, projectionsComponent, projection, idssff);
             //log.info("projectionsComponent {}",projectionsComponent);
         } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
-            /*if (bu.equals("T. PERU")) {
+            *//*if (bu.equals("T. PERU")) {
                 processPeruNominal(nominal, projectionsComponent, projection);
             } else {
                 processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
-            }*/
+            }*//*
             //log.info("nominal {}",nominal);
             //log.info("codeNominas {}",codeNominas);
             processOtherCountriesNominal(nominal, projectionsComponent, projection, bu, idssff);
-        }
+        }*/
     }
 
     private void processEcuador(List<NominaProjection> nominal, List<PaymentComponentDTO> projectionsComponent,
@@ -3033,9 +3036,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (!nominalBySSFF.isEmpty()) {
             Map<String, Double> componentTotals = new ConcurrentHashMap<>();
 
-            nominalBySSFF.forEach(h -> {
+            ConcurrentMap<String, List<NominaPaymentComponentLink>> cacheByBu = nominaPaymentComponentLinksByBuCache.get(bu);
+            if (cacheByBu == null) {
+                log.warn("La caché para la BU {} no está inicializada.", bu);
+                return;
+            }
 
-                List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksByBuCache.get(bu).get(h.getCodeNomina());
+            nominalBySSFF.forEach(h -> {
+                String codeNominaUpper = h.getCodeNomina().toUpperCase();
+                //List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksByBuCache.get(bu).get(h.getCodeNomina());
+                // Obtener la caché específica para la BU actual
+                List<NominaPaymentComponentLink> links = cacheByBu.get(codeNominaUpper);
 
                 if (links != null) {
                     processLinks(links, h, componentTotals, bu);
