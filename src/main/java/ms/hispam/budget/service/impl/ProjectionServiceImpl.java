@@ -1708,20 +1708,24 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
         try {
             customThreadPool.submit(() ->
-                    baseExtern.getData().parallelStream().forEach(po -> {
-                        String currentPo = (String) po.get("po");
-                        positionsMap.compute(currentPo, (key, existingProjection) -> {
-                            ProjectionDTO projection = (existingProjection != null) ? existingProjection :
-                                    ProjectionDTO.builder()
-                                            .po(currentPo)
-                                            .components(new ArrayList<>())
-                                            .build();
+                    baseExtern
+                            .getData()
+                            .parallelStream()
+                            .forEach(po -> {
+                                String currentPo = (String) po.get("po");
+                                positionsMap.compute(currentPo, (key, existingProjection) -> {
+                                    ProjectionDTO projection = (existingProjection != null) ? existingProjection :
+                                            ProjectionDTO.builder()
+                                                    .po(currentPo)
+                                                    .components(new ArrayList<>())
+                                                    .build();
                             updateProjection2(projection, po, relevantHeaders, period, range);
                             return projection;
                         });
                     })
             ).get(); // Esperar a que todas las tareas se completen
         } catch (InterruptedException | ExecutionException e) {
+            log.error("Error processing BaseExtern data", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException("Error processing BaseExtern data", e);
         } finally {
