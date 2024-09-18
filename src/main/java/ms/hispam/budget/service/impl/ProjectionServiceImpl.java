@@ -153,6 +153,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
     private static final Map<String, List<MonthProjection>> PROJECTION_CACHE = new ConcurrentHashMap<>();
     private Map<String, Map<String, Object>> dataMapTemporal = new HashMap<>();
+    private static final ForkJoinPool BASE_EXTERN_THREAD_POOL = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
     @Cacheable("daysVacationCache")
     public List<DaysVacationOfTime> getAllDaysVacation() {
@@ -1703,14 +1704,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
 
         // Utilizar un ForkJoinPool personalizado para un mejor control sobre la concurrencia
-        int parallelism = Runtime.getRuntime().availableProcessors();
-        ForkJoinPool customThreadPool = new ForkJoinPool(parallelism);
+        //int parallelism = Runtime.getRuntime().availableProcessors();
+        //ForkJoinPool customThreadPool = new ForkJoinPool(parallelism);
 
         try {
-            customThreadPool.submit(() ->
+            BASE_EXTERN_THREAD_POOL.submit(() ->
                     baseExtern
                             .getData()
-                            .parallelStream()
+                            //.parallelStream()
                             .forEach(po -> {
                                 String currentPo = (String) po.get("po");
                                 positionsMap.compute(currentPo, (key, existingProjection) -> {
@@ -1723,13 +1724,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             return projection;
                         });
                     })
-            ).get(); // Esperar a que todas las tareas se completen
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("Error processing BaseExtern data", e);
+            ).get(60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("Thread was interrupted", e);
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Error processing BaseExtern data", e);
-        } finally {
-            customThreadPool.shutdown();
+            throw new RuntimeException("Thread was interrupted", e);
+        } catch (ExecutionException e) {
+            log.error("Execution exception", e);
+            throw new RuntimeException("Execution exception", e);
+        } catch (TimeoutException e) {
+            log.error("Task timed out", e);
+            throw new RuntimeException("Task timed out", e);
         }
 
         return new ArrayList<>(positionsMap.values());

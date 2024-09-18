@@ -626,11 +626,15 @@ public class XlsReportService {
             pdataCell.setCellValue(dataBase.getData().get(i).getLevel());
             int starDetail=0;
             for (int j = 0; j < dataBase.getComponents().size(); j++) {
+                log.debug("Componente: {}", dataBase.getComponents().get(j).getComponent());
+                if(dataBase.getComponents().get(j).getComponent().equalsIgnoreCase("Salario 14")){
+                    log.debug("Se encontro el salario 14");
+                }
                 pdataCell = data.createCell(j+8);
                 Cell finalPdataCell = pdataCell;
                 int finalJ = j;
                 dataBase.getData().get(i).getComponents().stream().filter(r-> r.getComponent() != null
-                                && r.getComponent().equalsIgnoreCase(dataBase.getComponents().get(finalJ).getComponent())).findFirst()
+                                && r.getComponent().trim().equalsIgnoreCase(dataBase.getComponents().get(finalJ).getComponent())).findFirst()
                         .ifPresentOrElse(r-> finalPdataCell.setCellValue(r.getAmount().doubleValue()),
                                 ()->finalPdataCell.setCellValue(0));
                 starDetail++;
@@ -1034,7 +1038,7 @@ public class XlsReportService {
         int startHeader = 4;
         for (String m : Shared.generateRangeMonth(period, range)) {
             headerCell = header.createCell(startHeader);
-            headerCell.setCellValue(m);
+            headerCell.setCellValue(m.trim());
             startHeader++;
         }
     }
