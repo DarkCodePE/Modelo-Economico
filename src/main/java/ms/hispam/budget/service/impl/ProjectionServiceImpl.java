@@ -946,7 +946,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.studiesBonus(component, projection.getPeriod(), projection.getRange(), preSchoolAllowanceSeasonalityList);
                         methodsPeru.foodBenefits(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), classificationMap);
                         methodsPeru.interns(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), youngExecutiveSalaryList, internSalaryList, classificationMap);
-                        //methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.medicalInsurance(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationProvision(component, projection.getPeriod(), projection.getRange(), vacationDaysList);
                         methodsPeru.seniority(component, projection.getPeriod(), projection.getRange(), headcountData.getFContra(), quinquenniumMap, classificationMap,  headcountData.getCategoryLocal());
                         methodsPeru.srdBonus(component, projection.getPeriod(), projection.getRange());
@@ -1593,81 +1593,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         projectionDTO.setComponents(components);
     }
 
-    private void isEcuador(List<ProjectionDTO> headcount, ParametersByProjection projection) {
-        Ecuador methodsEcuador = new Ecuador(sseReportService, userSessionService);
-        projection.getParameters()
-                .sort((o1, o2) -> Shared.compare(o1.getPeriod(), o2.getPeriod()));
-        //log.info("headcount {}", headcount);
-        // Procesar BaseExtern antes del bucle principal
-        if (projection.getBaseExtern() != null && !projection.getBaseExtern().getData().isEmpty()) {
-            List<ProjectionDTO> updatedHeadcount = addBaseExtern(headcount.get(0), projection.getBaseExtern(),
-                    projection.getPeriod(), projection.getRange());
-            headcount.clear();
-            headcount.addAll(updatedHeadcount);
-        }
-
-        // Genera las proyecciones del rango
-        for (ProjectionDTO projectionDTO : headcount) {
-            List<PaymentComponentDTO> component = projectionDTO.getComponents();
-            if (!projection.getParameters().isEmpty()) {
-                for (int j = 0; j < projection.getParameters().stream().filter(q -> q.getPeriod() != null).count(); j++) {
-                    component = validate(methodsEcuador, component, projection.getParameters().get(j), projection.getParameters());
-                }
-            }
-
-            // Parámetros que no tienen periodo que se ejecutan siempre
-            methodsEcuador.srv(component, projection.getParameters());
-            methodsEcuador.addDecimoCuarto(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-            methodsEcuador.iess(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-            methodsEcuador.decimoTercero(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-            methodsEcuador.fondoReserva(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-            methodsEcuador.vacations(component, projection.getPeriod(), projection.getParameters(), projection.getRange());
-
-            // Actualizar los componentes del ProjectionDTO
-            projectionDTO.setComponents(component);
-        }
-        //log.debug("headcount {}", headcount);
-        //find pos BC123
-        //log.info("headcount {}", headcount.stream().filter(h -> h.getPo().equals("BC123")).findFirst().orElse(null));
-        //log.debug("headcount {}", headcount.stream().filter(h -> h.getPo().equals("BC123")).findFirst().orElse(null).getComponents());
-    }
-
-    public List<ProjectionDTO> addBaseExternRefactor(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
-        Set<String> excludedHeadersSet = new HashSet<>(Arrays.asList(headers));
-        List<String> relevantHeaders = baseExtern.getHeaders().stream()
-                .filter(header -> !excludedHeadersSet.contains(header))
-                .collect(Collectors.toList());
-
-        Map<String, ProjectionDTO> positionsMap = baseExtern.getData().parallelStream()
-                .collect(Collectors.toConcurrentMap(
-                        po -> (String) po.get("po"),
-                        po -> createOrUpdateProjection(po, relevantHeaders, period, range),
-                        (existing, replacement) -> {
-                            existing.getComponents().addAll(replacement.getComponents());
-                            return existing;
-                        }
-                ));
-
-        positionsMap.putIfAbsent(originalHeadcount.getPo(), originalHeadcount);
-
-        return new ArrayList<>(positionsMap.values());
-    }
-    private ProjectionDTO createOrUpdateProjection(Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
-        String currentPo = (String) po.get("po");
-        ProjectionDTO projection = ProjectionDTO.builder()
-                .po(currentPo)
-                .components(new ArrayList<>())
-                .areaFuncional((String) po.get("AF"))
-                .idssff((String) po.get("idssff"))
-                .build();
-
-        List<PaymentComponentDTO> newComponents = relevantHeaders.stream()
-                .map(header -> createPaymentComponent(header, po.get(header), period, range))
-                .collect(Collectors.toList());
-
-        projection.getComponents().addAll(newComponents);
-        return projection;
-    }
     private PaymentComponentDTO createPaymentComponent(String header, Object value, String period, Integer range) {
         if ("mes_promo".equalsIgnoreCase(header)) {
             return PaymentComponentDTO.builder()
@@ -1741,6 +1666,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private void updateProjection2(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
         relevantHeaders.forEach(header -> {
+            //log.info("po.get(header) {}",po.get(header));
             PaymentComponentDTO component = createPaymentComponent(header, po.get(header), period, range);
             projection.getComponents().add(component);
         });
@@ -2152,47 +2078,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             throw new CompletionException(e);
         }
     }
-    /*@Override
-    public byte[] downloadProjection(ParameterDownload projection) {
-        // Reemplaza los "/" en los períodos con ""
-        projection.setPeriod(projection.getPeriod().replace("/", ""));
-        projection.setNominaFrom(projection.getNominaFrom().replace("/", ""));
-        projection.setNominaTo(projection.getNominaTo().replace("/", ""));
-
-        // Obtiene la lista de componentes de proyección
-        List<ComponentProjection> components = sharedRepo.getComponentByBu(projection.getBu());
-
-        DataRequest dataInit = DataRequest.builder()
-                .idBu(projection.getIdBu())
-                .bu(projection.getBu())
-                .period(projection.getPeriod())
-                .nominaFrom(projection.getNominaFrom())
-                .nominaTo(projection.getNominaTo())
-                .isComparing(false)
-                .build();
-        // Obtiene la base de datos principal
-        DataBaseMainReponse dataBase = getDataBase(dataInit);
-
-        // Crea una lista para almacenar los futuros de las proyecciones de Excel
-        List<CompletableFuture<byte[]>> futures = new ArrayList<>();
-
-        // Para cada componente de proyección, genera una proyección de Excel de manera asíncrona
-        for (ComponentProjection component : components) {
-            futures.add(ReportService.generateExcelProjectionAsync(projection, Arrays.asList(component), dataBase));
-        }
-
-        // Espera a que todas las tareas futuras se completen y fusiona los resultados
-        byte[] mergedData;
-        try {
-            mergedData = ReportService.mergeExcelProjections(futures);
-        } catch (RuntimeException e) {
-            log.error("Error al generar la proyección de Excel", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección de Excel", e);
-        }
-
-        // Devuelve los datos fusionados
-        return mergedData;
-    } */
 
     @Override
     public byte[] downloadProjectionHistorical(Integer id) {
@@ -2369,21 +2254,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         return resp[0];
 
     }
-
-    /*@Override
-    public byte[] downloadFileType(ParametersByProjection projection,Integer type,Integer idBu) {
-        Bu bu = buRepository.findById(idBu).orElseThrow(()-> new BadRequestException("No se encuentra la Bu"));
-        Shared.replaceSLash(projection);
-        Map<String, AccountProjection> componentesMap = new HashMap<>();
-        List<AccountProjection> components =   getAccountsByBu(idBu) ;
-        for (AccountProjection concept : components) {
-            componentesMap.put(concept.getVcomponent(), concept);
-        }
-        log.debug("componentesMap {}",componentesMap);
-        List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
-        return xlsReportService.generateExcelType(headcount,type,bu,sharedRepo.getAccount(idBu));
-    }*/
-
 
     @Override
     public List<PositionBaseline> getPositionBaseline(String period, String filter,String bu,Integer idBu) {
@@ -2855,24 +2725,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
     }
 
-    private void createCache(List<ParametersDTO> parameterList, Map<String, ParametersDTO> parameterMap, Map<String, Double> cache, BiConsumer<ParametersDTO, ParametersDTO> updateMaps) {
-        List<ParametersDTO> sortedParameterList = new ArrayList<>(parameterList);
-        sortedParameterList.sort(Comparator.comparing(ParametersDTO::getPeriod));
-        for (ParametersDTO parameter : parameterList) {
-            ParametersDTO mapParameter = parameterMap.get(parameter.getPeriod());
-            if (mapParameter == null) {
-                mapParameter = findLatestSalaryForPeriod(sortedParameterList, parameter.getPeriod());
-                if (mapParameter != null) {
-                    parameterMap.put(parameter.getPeriod(), mapParameter);
-                }
-            }
-            if (mapParameter != null) {
-                updateMaps.accept(parameter, mapParameter);
-                cache.put(parameter.getPeriod(), mapParameter.getValue());
-            }
-        }
-    }
-
     private ParametersDTO findLatestSalaryForPeriod(List<ParametersDTO> salaryList, String period) {
         for (int i = salaryList.size() - 1; i >= 0; i--) {
             if (salaryList.get(i).getPeriod().compareTo(period) <= 0) {
@@ -2884,74 +2736,6 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     private double totalHorasExtrasPorBU = 0.0;
     private  double totalComisionesPorBU = 0.0;
     private double totalIncentivosPorBU = 0.0;
-    /*private void addNominal(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
-                            List<NominaProjection> nominal, List<CodeNomina> codeNominas,
-                            List<HeadcountProjection> list) {
-        // Convertir la lista nominal a un mapa para acceso rápido
-        Map<String, List<NominaProjection>> nominalBySSFFMap = nominal.parallelStream()
-                .collect(Collectors.groupingByConcurrent(NominaProjection::getIdssff));
-
-        String bu = projection.getBu().toUpperCase();
-        String idssff = list.get(0).getIdssff();
-        List<NominaProjection> nominalBySSFF = nominalBySSFFMap.getOrDefault(idssff, Collections.emptyList());
-
-        if (bu.equals("T. ECUADOR")) {
-            double hhee = nominalBySSFF.parallelStream()
-                    .filter(h -> !"0260".equalsIgnoreCase(h.getCodeNomina()))
-                    .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
-                    .sum();
-
-            double guarderia = nominalBySSFF.parallelStream()
-                    .filter(h -> "0260".equalsIgnoreCase(h.getCodeNomina()))
-                    .mapToDouble(h -> h.getImporte() != null ? h.getImporte() : 0.0)
-                    .sum();
-
-            projectionsComponent.add(createPaymentComponentDTO("TURN", 7, hhee, projection));
-            projectionsComponent.add(createPaymentComponentDTO("260", 12, guarderia, projection));
-        } else if (bu.equals("T. COLOMBIA") || bu.equals("T. MEXICO") || bu.equals("T. PERU") || bu.equals("T. URUGUAY") || bu.equals("T. ARGENTINA")) {
-            if (!nominalBySSFF.isEmpty()) {
-                Map<String, Double> componentTotals = new ConcurrentHashMap<>();
-
-                nominalBySSFF.parallelStream().forEach(h -> {
-                    List<NominaPaymentComponentLink> links = nominaPaymentComponentLinksCache.get(h.getCodeNomina());
-                    if (links != null) {
-                        links.forEach(link -> {
-                            String component = link.getPaymentComponent().getPaymentComponent();
-                            double importe = h.getImporte();
-                            if (bu.equals("T. URUGUAY") && ("0010".equalsIgnoreCase(component) || "0020".equalsIgnoreCase(component))) {
-                                importe = h.getQDiasHoras() == 0 ? 0 : (h.getImporte() / h.getQDiasHoras()) * 30;
-                            }
-                            componentTotals.merge(component, importe, Double::sum);
-                        });
-                    }
-                });
-
-                componentTotals.forEach((component, total) -> {
-                    if (total > 0) {
-                        projectionsComponent.add(buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange()));
-                        if (bu.equals("T. PERU")) {
-                            switch (component) {
-                                case "OVERTIME_BASE":
-                                    totalHorasExtrasPorBU += total;
-                                    break;
-                                case "COMMISSIONS_BASE":
-                                    totalComisionesPorBU += total;
-                                    break;
-                                case "INCENTIVES_BASE":
-                                    totalIncentivosPorBU += total;
-                                    break;
-                            }
-                        }
-                    }else {
-                        projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
-                    }
-                });
-            } else {
-                addEmptyPaymentComponents(projectionsComponent, bu, projection);
-            }
-        }
-    }*/
-
     private void addNominalV2(ParametersByProjection projection, List<PaymentComponentDTO> projectionsComponent,
                             List<NominaProjection> nominal, List<CodeNomina> codeNominas,
                             List<HeadcountProjection> list) {

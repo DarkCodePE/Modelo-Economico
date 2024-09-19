@@ -2065,7 +2065,7 @@ public class PeruRefactor {
 
     //Seguro Medico
     //=$BR5
-   /* public void medicalInsurance(List<PaymentComponentDTO> component, String period, Integer range) {
+    public void medicalInsurance(List<PaymentComponentDTO> component, String period, Integer range) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
 
         PaymentComponentDTO medicalInsuranceBaseComponent = componentMap.get("seguro_medico");
@@ -2093,7 +2093,7 @@ public class PeruRefactor {
             medicalInsuranceComponentEmpty.setProjections(generateMonthProjection(period, range, medicalInsuranceComponentEmpty.getAmount()));
             component.add(medicalInsuranceComponentEmpty);
         }
-    }*/
+    }
 
     //Provisión de Vacaciones
     //==CC35/30*$CC$6/12
