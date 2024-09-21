@@ -904,7 +904,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         List<PaymentComponentDTO> component = headcountData.getComponents();
                         methodsPeru.calculateTheoreticalSalary(component, salaryIncreaseList, headcountData.getCategoryLocal(), projection.getPeriod(), projection.getRange(), executiveSalaryIncreaseList, directorSalaryIncreaseList, classificationMap, annualizedPositions, headcountData.getPo());
                         methodsPeru.relocation(component, projection.getPeriod(), projection.getRange());
-                        methodsPeru.housing(component, projection.getPeriod(), projection.getRange());
+                        methodsPeru.housing(component, projection.getPeriod(), projection.getRange(), headcountData.getPo());
                         methodsPeru.increaseSNP(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.increaseAFP(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.increaseSNPAndIncrease(component, projection.getPeriod(), projection.getRange());
@@ -2416,65 +2416,65 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //log.debug("nominal {}",nominal);
         //log.debug("!projection.getBc() {}", projection.getBc());
         if(!projection.getBc().getData().isEmpty()){
-            for (int i = 0; i < projection.getBc().getData().size() ; i++) {
-                Map<String,Object> resp = projection.getBc().getData().get(i);
+            for (int i = 0; i < projection.getBc().getData().size(); i++) {
+                Map<String, Object> resp = projection.getBc().getData().get(i);
                 String pos = resp.get(HEADERPO).toString();
-                //dataMapTemporal.put(pos, new HashMap<>(resp));
-                headcount
-                        .stream()
-                        .filter(e->e.getPosition()
-                                .equals(pos))
-                        .findFirst()
-                        .ifPresent(headcount::remove);
-                //List<String> excludedPositionsBC = new ArrayList<>();
+
+                // Remover cualquier HeadcountProjection existente con la misma posición
+                headcount.removeIf(e -> e.getPosition().equals(pos));
+
+                LocalDate fNac = resp.get("FNAC") != null ? convertToJavaDate(resp.get("FNAC").toString()) : LocalDate.now();
+                LocalDate fContra = resp.get("FCON") != null ? convertToJavaDate(resp.get("FCON").toString()) : LocalDate.now();
+                String typeEmpl = resp.get("typeEmployee") != null ? resp.get("typeEmployee").toString() : "";
+                String conv = resp.get("CONV") != null ? resp.get("CONV").toString() : "";
+                String level = resp.get("NIV") != null ? resp.get("NIV").toString() : "";
+                String categoryLocal = resp.get("categoryLocal") != null ? resp.get("categoryLocal").toString() : "";
+                String estadoVacante = resp.get("estadoVacante") != null ? resp.get("estadoVacante").toString() : "";
+
+                final int finalI = i;  // Hacemos final esta variable para usarla en la lambda
+
                 for (Map.Entry<String, Object> entry : resp.entrySet()) {
-                    int finalI = i;
+                    String entryKey = entry.getKey();
+                    Object entryValue = entry.getValue();
+
                     projection.getPaymentComponent()
                             .stream()
-                            .filter(
-                                    t-> {
-                                        //log.info("t.getName() {}",t.getName());
-                                        //log.info("entry.getKey() {}",entry.getKey());
-                                        return  !entry.getKey().equals(HEADERPO) &&
-                                                t.getName().equalsIgnoreCase(entry.getKey());
-                                    }
-                            )
+                            .filter(t -> !entryKey.equals(HEADERPO) && t.getName().equalsIgnoreCase(entryKey))
                             .findFirst()
-                            .ifPresentOrElse(t->
-                                    {
-                                        String position = resp.get(HEADERPO).toString();
-                                        LocalDate fNac = resp.get("FNAC")!=null?convertToJavaDate(resp.get("FNAC").toString()): LocalDate.now();
-                                        LocalDate fContra = resp.get("FCON")!=null?convertToJavaDate(resp.get("FCON").toString()): LocalDate.now();
-                                        String typeEmpl = resp.get("typeEmployee") != null ? resp.get("typeEmployee").toString() : "";
-                                        String conv = resp.get("CONV") != null ? resp.get("CONV").toString() : "";
-                                        String level = resp.get("NIV") != null ? resp.get("NIV").toString() : "";
-                                        String categoryLocal = resp.get("categoryLocal") != null ? resp.get("categoryLocal").toString() : "";
-                                        String estadoVacante = resp.get("estadoVacante") != null ? resp.get("estadoVacante").toString() : "";
-                                        headcount.add(HeadcountProjection.builder()
-                                                .position(position)
-                                                .idssff("")
-                                                .poname(resp.get("name").toString())
-                                                .classEmp(typeEmpl)
-                                                .fContra(fNac)
-                                                .fNac(fContra)
-                                                .convent(conv)
-                                                .level(level)
-                                                .categoryLocal(categoryLocal)
-                                                .estadoVacante(estadoVacante)
-                                                .component(t.getComponent())
-                                                .amount(Double.parseDouble(resp.get(t.getName()).toString()))
-                                                .build());
-                                        excludedPositionsBC.add(position);
-                                    },()->
-                                            codeNominals.stream().filter(r->!entry.getKey().equals(HEADERPO) &&
-                                                    r.getName().equalsIgnoreCase(entry.getKey())).findFirst().ifPresent(q->
-                                                    nominal.add(NominaProjection.builder()
-                                                            .idssff(String.valueOf(finalI))
-                                                            .codeNomina(q.getCodeNomina())
-                                                            .importe(Double.parseDouble(resp.get(q.getName()).toString()))
-                                                            .build())
-                                            )
-                            );
+                            .ifPresent(t -> {
+                                HeadcountProjection headcountProjection = HeadcountProjection.builder()
+                                        .position(pos)
+                                        .idssff("")  // Se actualizará más tarde si es necesario
+                                        .poname(resp.get("name").toString())
+                                        .classEmp(typeEmpl)
+                                        .fContra(fContra)
+                                        .fNac(fNac)
+                                        .convent(conv)
+                                        .level(level)
+                                        .categoryLocal(categoryLocal)
+                                        .estadoVacante(estadoVacante)
+                                        .component(t.getComponent())
+                                        .amount(Double.parseDouble(entryValue.toString()))
+                                        .build();
+                                headcount.add(headcountProjection);
+                            });
+
+                    codeNominals.stream()
+                            .filter(r -> !entryKey.equals(HEADERPO) && r.getName().equalsIgnoreCase(entryKey))
+                            .findFirst()
+                            .ifPresent(q -> {
+                                NominaProjection nominaProjection = NominaProjection.builder()
+                                        .idssff(String.valueOf(finalI))
+                                        .codeNomina(q.getCodeNomina())
+                                        .importe(Double.parseDouble(entryValue.toString()))
+                                        .build();
+                                nominal.add(nominaProjection);
+
+                                // Actualizar idssff en los HeadcountProjection correspondientes
+                                headcount.stream()
+                                        .filter(h -> h.getPosition().equals(pos))
+                                        .forEach(h -> h.setIdssff(String.valueOf(finalI)));
+                            });
                 }
             }
         }

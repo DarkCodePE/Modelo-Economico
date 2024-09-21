@@ -322,7 +322,7 @@ public class PeruRefactor {
     }
 
     //Compensación Vivienda
-    public void housing(List<PaymentComponentDTO> component, String period, Integer range) {
+    public void housing(List<PaymentComponentDTO> component, String period, Integer range, String po) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO housingBaseComponent = componentMap.get("HOUSING_BASE");
         if (housingBaseComponent != null) {
@@ -615,7 +615,7 @@ public class PeruRefactor {
         yearMonth = yearMonth.plusMonths(1);
         String nextPeriod = yearMonth.format(formatter);
 
-        double overtimeSeasonality = getCachedValue(overtimeSeasonalityMap, nextPeriod);
+        double overtimeSeasonality = getCachedValue(overtimeSeasonalityMap, nextPeriod) / 100;
         double overtimeValue = getCachedValue(overtimeValueMap, nextPeriod);
 
         PaymentComponentDTO overtimeComponent = new PaymentComponentDTO();
@@ -634,7 +634,7 @@ public class PeruRefactor {
                 ParametersDTO overtimeSeasonalityParameter = overtimeSeasonalityMap.get(month);
                 double overtimeSeasonalityValue;
                 if (overtimeSeasonalityParameter != null) {
-                    overtimeSeasonalityValue = overtimeSeasonalityParameter.getValue();
+                    overtimeSeasonalityValue = overtimeSeasonalityParameter.getValue() / 100;
                     lastOvertimeSeasonality = overtimeSeasonalityValue;
                 } else {
                     overtimeSeasonalityValue = lastOvertimeSeasonality;
@@ -4373,7 +4373,6 @@ public class PeruRefactor {
         }
         double temporaryBonus = familyAssignment * temporaryBonusConceptValue;
         temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
-        temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         List<MonthProjection> projections = new ArrayList<>();
         if (familyAssignmentComponent != null) {
             for (MonthProjection projection : familyAssignmentComponent.getProjections()) {
@@ -4408,7 +4407,6 @@ public class PeruRefactor {
         }
         double temporaryBonus = tDay * temporaryBonusConceptValue;
         temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
-        temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         List<MonthProjection> projections = new ArrayList<>();
         if (tDayComponent != null) {
             for (MonthProjection projection : tDayComponent.getProjections()) {

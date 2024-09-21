@@ -130,7 +130,7 @@ public class XlsReportService {
                     String uniqueName = xlsSheetCreationService.generateUniqueSheetName(workbook, c.getName());
                     uniqueComponentNames.put(c, uniqueName); // Actualizar el nombre del componente con el nombre único
                 });
-        sseReportService.sendUpdate(sessionId, "processing", "Creando hojas de componentes");
+        sseReportService.sendUpdate(sessionId, "procesando", "Creando hojas de componentes");
         //log.info("uniqueComponentNames: {}", uniqueComponentNames);
 
         projection.getBaseExtern()
@@ -141,7 +141,7 @@ public class XlsReportService {
                     String uniqueName = xlsSheetCreationService.generateUniqueSheetName(workbook, c);
                     uniqueHeaderNames.put(c, uniqueName); // Actualizar el nombre del header con el nombre único
                 });
-        sseReportService.sendUpdate(sessionId, "processing", "Creando hojas de base externa");
+        sseReportService.sendUpdate(sessionId, "procesando", "Creando hojas de base externa");
         // Segunda pasada para crear las hojas físicamente en el workbook
         // Pre-crear todas las hojas
         // Pre-crear todas las hojas
@@ -573,8 +573,8 @@ public class XlsReportService {
                     .hiringDate(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("FCON")).orElse("").toString())
                     .convent(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("CONV")).orElse("").toString())
                     .level(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("NIV")).orElse("").toString())
-                    //.categoryLocal(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("categoryLocal")).orElse("").toString())
-                    //.estadoVacante(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("estadoVacante")).orElse("").toString())
+                    .categoryLocal(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("categoryLocal")).orElse("").toString())
+                    .estadoVacante(dataBase2.getBc().getData().stream().filter(r->r.get("po").equals(position)).findFirst().map(r->r.get("estadoVacante")).orElse("").toString())
                     .components(positionMap.get(position))
                     .build();
             //log.debug("newResponse: {}", newResponse);
