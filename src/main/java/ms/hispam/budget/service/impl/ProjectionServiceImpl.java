@@ -2051,7 +2051,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId) {
         try {
             Shared.replaceSLash(projection);
-
+            sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando generación del reporte");
             List<ComponentProjection> componentProjections = sharedRepo.getComponentByBu(projection.getBu());
 
             DataRequest dataBase = DataRequest.builder()
@@ -3003,7 +3003,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .type(16)
                 .paymentComponent(component)
                 .amount(BigDecimal.valueOf(amount))
-                .projections(Shared.generateMonthProjection(period, range, BigDecimal.valueOf(amount)))
+                .projections(Shared.generateMonthProjectionV2(period, range, BigDecimal.valueOf(amount)))
                 .build();
     }
 }

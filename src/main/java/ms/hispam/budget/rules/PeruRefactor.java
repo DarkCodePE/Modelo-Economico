@@ -68,26 +68,30 @@ public class PeruRefactor {
         return component.stream()
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, Function.identity(), (existing, replacement) -> replacement));
     }
+
     public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal baseAmount) {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
 
-        System.out.println("Generating projections from " + monthBase + " for " + (range + 1) + " months");
+        // Add the initial month with the adjusted salary
+        dates.add(MonthProjection.builder()
+                .month(fechaActual.format(formatter))
+                .amount(baseAmount)
+                .build());
 
-        for (int i = 0; i < range; i++) {  // Cambiado de < a <=
-            String currentMonth = fechaActual.format(formatter);
+        // Generate projections for subsequent months starting with the base salary
+        fechaActual = fechaActual.plusMonths(1);
+        for (int i = 0; i < range; i++) {
             dates.add(MonthProjection.builder()
-                    .month(currentMonth)
+                    .month(fechaActual.format(formatter))
                     .amount(baseAmount)
                     .build());
-            System.out.println("Added projection for month: " + currentMonth);
             fechaActual = fechaActual.plusMonths(1);
         }
-
-        System.out.println("Total projections generated: " + dates.size());
         return dates;
     }
+
     public static List<MonthProjection> generateMonthProjectionDefault(String monthBase, int range, BigDecimal amount) {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
@@ -2033,7 +2037,7 @@ public class PeruRefactor {
                 interns = internSalary * (1 + (1 / 12.0));
             }
             internsComponent.setAmount(BigDecimal.valueOf(interns));
-            internsComponent.setProjections(generateMonthProjection(nextPeriod, range, internsComponent.getAmount()));
+            internsComponent.setProjections(generateMonthProjection(period, range, internsComponent.getAmount()));
             List<MonthProjection> projections = new ArrayList<>();
             double lastYoungExecutiveSalary = 0;
             double lastInternSalary = 0;
@@ -3067,7 +3071,7 @@ public class PeruRefactor {
         }
         double gratification = judicialMandateConcepts * gratificationConceptValue;
         gratificationComponent.setAmount(BigDecimal.valueOf(gratification));
-        gratificationComponent.setProjections(generateMonthProjection(period, range, gratificationComponent.getAmount()));
+        //gratificationComponent.setProjections(generateMonthProjection(period, range, gratificationComponent.getAmount()));
         List<MonthProjection> projections = new ArrayList<>();
         if (judicialMandateConceptsComponent != null) {
             for (MonthProjection projection : judicialMandateConceptsComponent.getProjections()) {
