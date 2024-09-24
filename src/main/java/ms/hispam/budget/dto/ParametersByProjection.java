@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.*;
 import ms.hispam.budget.config.NominaPaymentLinksDeserializer;
-import ms.hispam.budget.entity.mysql.Convenio;
-import ms.hispam.budget.entity.mysql.ConvenioBono;
-import ms.hispam.budget.entity.mysql.NominaPaymentComponentLink;
-import ms.hispam.budget.entity.mysql.ParameterDefault;
+import ms.hispam.budget.entity.mysql.*;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
@@ -49,4 +46,6 @@ public class ParametersByProjection {
     private Boolean viewPo;
     @JsonDeserialize(using = NominaPaymentLinksDeserializer.class)
     private Map<Integer, List<NominaPaymentComponentLink>> nominaPaymentLinks;
+    private List<SeniorityAndQuinquennium> seniorityAndQuinquenniums;
+    private List<EmployeeClassification> employeeClassifications;
 }

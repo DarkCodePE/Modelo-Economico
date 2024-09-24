@@ -886,7 +886,7 @@ public class XlsReportService {
     @Async
     public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId) {
 
-        sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando generación del reporte");
+        sseReportService.sendUpdate(sessionId, "procesando", "procesando la información");
 
         generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId)
                 .thenAccept(reportData -> {
@@ -1013,7 +1013,7 @@ public class XlsReportService {
 
                     // Calcular y enviar el progreso
                     int progress = (int) ((double) currentChunk / totalChunks * 100);
-                    log.info("Progress: {}%", progress);
+                    //log.info("Progress: {}%", progress);
                     sseReportService.sendUpdate(jobId, "generando",
                             String.format("Generando el archivo Excel - Componente: %s, Progreso: %d%%", component, progress));
 

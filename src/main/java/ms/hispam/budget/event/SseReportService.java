@@ -66,7 +66,7 @@ public class SseReportService {
                             .data(Map.of("status", status, "message", message))
                             .id(String.valueOf(System.currentTimeMillis()))
                             .name("report_update"));
-                    log.info("Actualización enviada con éxito para jobId: {}", jobId);
+                    //log.info("Actualización enviada con éxito para jobId: {}", jobId);
                 } catch (IOException e) {
                     log.error("Error al enviar actualización para jobId: {}", jobId, e);
                     removeEmitter(jobId);

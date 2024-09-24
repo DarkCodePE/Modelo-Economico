@@ -884,8 +884,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 })
                 .count();
         // Calcular el total de posiciones
-        long totalPositions = headcount.parallelStream().filter(h -> h.getPoName() != null).count();
+        long totalPositions = headcount
+                .parallelStream()
+                .filter(h -> h.getPoName() != null)
+                .count();
         //log.info("totalPositions {}", countGER);
+        // Actualizar todas las cachés relevantes
+        updateCaches(projection);
+
         headcount
                 .stream()
                 .parallel()
@@ -896,6 +902,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             addBaseExtern(headcountData, projection.getBaseExtern(),
                                     projection.getPeriod(), projection.getRange());
                         }
+
                         //log.info("headcountData.getPoName() {}", headcountData);
                         // Obtener el total de horas extras por BU (calculado en addNominal)
                         double totalHorasExtras = totalHorasExtrasPorBU == 0 ? 1 : totalHorasExtrasPorBU;
@@ -1117,7 +1124,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         //public void increase33CTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.increase33CTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void provisionBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
-                        methodsPeru.provisionBonusCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //methodsPeru.provisionBonusCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void srdBonusCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.srdBonusCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         // public void basicSalaryComplementCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
@@ -1135,8 +1142,34 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 });
     }
 
+    private void updateCaches(ParametersByProjection projection) {
+        // Actualizar quinquenniumMap
+        if (projection.getSeniorityAndQuinquenniums() != null && !projection.getSeniorityAndQuinquenniums().isEmpty()) {
+            Map<Integer, BigDecimal> tempQuinquenniumMap = new HashMap<>();
+            for (SeniorityAndQuinquennium item : projection.getSeniorityAndQuinquenniums()) {
+                tempQuinquenniumMap.put(item.getSeniority(), item.getQuinquennium());
+            }
+            synchronized (quinquenniumMap) {
+                quinquenniumMap.clear();
+                quinquenniumMap.putAll(tempQuinquenniumMap);
+            }
+            log.info("Caché de quinquenios actualizada con {} entradas", quinquenniumMap.size());
+        }
 
+        // Actualizar classificationMap
+        if (projection.getEmployeeClassifications() != null && !projection.getEmployeeClassifications().isEmpty()) {
+            Map<String, EmployeeClassification> tempClassificationMap = new HashMap<>();
+            for (EmployeeClassification classification : projection.getEmployeeClassifications()) {
+                tempClassificationMap.put(classification.getCategory(), classification);
+            }
+            synchronized (classificationMap) {
+                classificationMap.clear();
+                classificationMap.putAll(tempClassificationMap);
+            }
+            log.info("Caché de clasificaciones de empleados actualizada con {} entradas", classificationMap.size());
+        }
 
+    }
     private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
         return parameters.stream()
                 .filter(p -> Objects.equals(p.getParameter().getDescription(), name))
@@ -1611,7 +1644,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
         String cacheKey = monthBase + "_" + range + "_" + amount;
         return PROJECTION_CACHE.computeIfAbsent(cacheKey, k -> {
-            YearMonth startDate = YearMonth.parse(monthBase, MONTH_FORMATTER).plusMonths(1);
+            YearMonth startDate = YearMonth.parse(monthBase, MONTH_FORMATTER);
             return IntStream.range(0, range)
                     .mapToObj(i -> MonthProjection.builder()
                             .month(startDate.plusMonths(i).format(MONTH_FORMATTER))

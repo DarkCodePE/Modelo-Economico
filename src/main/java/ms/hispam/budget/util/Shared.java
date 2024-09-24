@@ -22,15 +22,17 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
+import java.util.*;
+
 import org.apache.commons.codec.binary.Base64;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Shared {
-
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
+    private static final Map<String, List<MonthProjection>> PROJECTION_CACHE = new ConcurrentHashMap<>();
     private Shared(){
     }
     //@Value("${password.crypth}")
@@ -53,7 +55,18 @@ public class Shared {
         }
         return dates;
     }
-
+   /* public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
+        String cacheKey = monthBase + "_" + range + "_" + amount;
+        return PROJECTION_CACHE.computeIfAbsent(cacheKey, k -> {
+            YearMonth startDate = YearMonth.parse(monthBase, MONTH_FORMATTER);
+            return IntStream.range(0, range)
+                    .mapToObj(i -> MonthProjection.builder()
+                            .month(startDate.plusMonths(i).format(MONTH_FORMATTER))
+                            .amount(amount)
+                            .build())
+                    .collect(Collectors.toList());
+        });
+    }*/
     public static List<String> generateRangeMonth(String monthBase, int range) {
         List<String> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
