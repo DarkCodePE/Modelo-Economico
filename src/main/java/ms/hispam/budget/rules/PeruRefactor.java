@@ -2027,9 +2027,9 @@ public class PeruRefactor {
             internsComponent.setPaymentComponent("INTERNS");
             String nextPeriod = getNextPeriod(period);
             double youngExecutiveSalary = getCachedValue(youngExecutiveSalaryMap, nextPeriod);
-            log.info("youngExecutiveSalary: {} ", youngExecutiveSalary);
+            //log.info("youngExecutiveSalary: {} ", youngExecutiveSalary);
             double internSalary = getCachedValue(internSalaryMap, nextPeriod);
-            log.info("internSalary: {} ", internSalary);
+            //log.info("internSalary: {} ", internSalary);
             double interns = 0;
             if (employeeClassification.getCategory().equalsIgnoreCase("JOVEN EJECUTIVO")) {
                 interns = youngExecutiveSalary * (1 + (1 / 12.0));
