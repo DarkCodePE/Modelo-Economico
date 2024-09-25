@@ -2060,7 +2060,7 @@ public class PeruRefactor {
                     internSalaryProjection = lastInternSalary;
                 }
                 double internsProjection = 0;
-                log.info("getCategory: {}" , employeeClassification.getCategory()!=null?employeeClassification.getCategory():"no encontrado");
+                //log.info("getCategory: {}" , employeeClassification.getCategory()!=null?employeeClassification.getCategory():"no encontrado");
                 if (employeeClassification.getCategory().equalsIgnoreCase("JOVEN EJECUTIVO")) {
                     internsProjection = youngExecutiveSalaryProjection * (1 + (1 / 12.0));
                 } else if (employeeClassification.getCategory().equalsIgnoreCase("PRACTICANTE")) {
@@ -2361,7 +2361,7 @@ public class PeruRefactor {
             Map<Integer, Double> yearlyBonuses = calculateYearlyBonuses(theoricSalaryComponent, maxBonusBase, startMonth, range);
             projections = generateProjections(startMonth, range, yearlyBonuses);
         } else {
-            log.warn("theoricSalaryComponent or its projections are null. Using zero projections.");
+            //log.warn("theoricSalaryComponent or its projections are null. Using zero projections.");
             projections = generateMonthProjection(period, range, BigDecimal.ZERO);
         }
 

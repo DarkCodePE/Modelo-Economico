@@ -91,26 +91,24 @@ public class XlsReportService {
             classificationMap.put(classification.getCategory(), classification);
         }
     }
-    private void updateProgress(String sessionId, String status, String message, int progress) {
-        sseReportService.sendUpdate(sessionId, status, message, progress);
-    }
+
     @Autowired
     public void setService(@Lazy ProjectionService service) {
         this.service = service;
     }
     public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
-        updateProgress(sessionId, "iniciando", "Iniciando generación del reporte", 5);
+        sseReportService.sendUpdate(sessionId, "procesando", "preparando el archivo Excel", 5);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
-        updateProgress(sessionId, "procesando", "Generando hojas de parámetros e input", 10);
+        sseReportService.sendUpdate(sessionId, "procesando", "Generando hojas de parámetros e input", 10);
         generateParameter(workbook, projection.getParameters());
         // vista Input
         generateInput(workbook, dataBase, projection);
         //Vista anual
-        updateProgress(sessionId, "procesando", "Generando vistas anuales y mensuales", 15);
+        sseReportService.sendUpdate(sessionId, "procesando", "Generando vistas anuales y mensuales", 15);
         generateMoreView("Vista Anual", workbook, data, idBu);
         generateMoreViewMonth("Vista Mensual", workbook, data);
-        updateProgress(sessionId, "procesando", "Creando hojas de componentes", 25);
+        sseReportService.sendUpdate(sessionId, "procesando", "Creando hojas de componentes", 25);
         // Usar un conjunto para rastrear nombres únicos
         Set<String> sheetNames = new HashSet<>();
         Map<ComponentProjection, String> uniqueComponentNames = new ConcurrentHashMap<>();
@@ -136,7 +134,7 @@ public class XlsReportService {
                 });
         //sseReportService.sendUpdatesseReportService.sendUpdate(sessionId, "procesando", "Creando hojas de componentes");
         //log.info("uniqueComponentNames: {}", uniqueComponentNames);
-        updateProgress(sessionId, "procesando", "Creando hojas de base externa", 30);
+        sseReportService.sendUpdate(sessionId, "procesando", "Creando hojas de base externa", 30);
         projection.getBaseExtern()
                 .getHeaders()
                 .stream()
@@ -176,11 +174,11 @@ public class XlsReportService {
                                     if (sheet != null) {
                                         //log.info("Filling data in sheet: {}", sheetName);
                                         processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent(), sessionId);
-                                        updateProgress(sessionId, "generando",
-                                                String.format("Procesando componente: %s", c.getName()),
-                                                currentProgress.addAndGet(progressPerSheet));
+                                        sseReportService.sendDetailUpdate(sessionId, String.format("Procesado componente: %s", c.getName()));
                                     }
-                                }, executorService);
+                                }, executorService).thenRun(() -> {
+                                    sseReportService.sendUpdate(sessionId, "generando", "Generando conceptos de pago", currentProgress.addAndGet(progressPerSheet));
+                                });
                             } else {
                                 //log.info("No data for sheet: {}", c.getComponent());
                                 return CompletableFuture.completedFuture(null);
@@ -202,7 +200,7 @@ public class XlsReportService {
                                     if (sheet != null) {
                                         //log.info("Filling data in base extern sheet: {}", sheetName);
                                         processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c, sessionId);
-                                        updateProgress(sessionId, "generando",
+                                        sseReportService.sendUpdate(sessionId, "generando",
                                                 String.format("Procesando base externa: %s", c),
                                                 currentProgress.addAndGet(progressPerSheet));
                                     }
@@ -215,16 +213,16 @@ public class XlsReportService {
         );
 
         CompletableFuture.allOf(sheetCreationTasks, baseExternTasks).join();
-        updateProgress(sessionId, "finalizando", "Guardando el archivo Excel", 95);
+        sseReportService.sendUpdate(sessionId, "finalizando", "Guardando el archivo Excel", 95);
         // Crear el índice de conceptos después de que todas las hojas se hayan creado
         //createConceptIndex(workbook, conceptSheets);
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             workbook.write(outputStream);
-            updateProgress(sessionId, "completado", "Reporte generado exitosamente", 100);
+            sseReportService.sendUpdate(sessionId, "completado", "Reporte generado exitosamente", 100);
             return outputStream.toByteArray();
         } catch (IOException e) {
-            updateProgress(sessionId, "fallido", "Error al generar el reporte: " + e.getMessage(), 100);
+            sseReportService.sendUpdate(sessionId, "fallido", "Error al generar el reporte: " + e.getMessage(), 100);
             log.error("Error al generar el reporte: " + e.getMessage());
             throw new RuntimeException(e);
         }
@@ -1015,23 +1013,12 @@ public class XlsReportService {
         if (lock != null) {
             lock.lock();
             try {
-                int totalChunks = (int) Math.ceil((double) projections.size() / chunkSize);
-                int currentChunk = 0;
                 int start = 0;
                 while (start < projections.size()) {
                     int end = Math.min(start + chunkSize, projections.size());
                     List<ProjectionDTO> chunk = projections.subList(start, end);
                     writeChunkToSheet(sheet, chunk, start, idBu, component);
                     start = end;
-                    currentChunk++;
-
-                    // Calcular y enviar el progreso
-                    int progress = (int) ((double) currentChunk / totalChunks * 100);
-                    //log.info("Progress: {}%", progress);
-                    sseReportService.sendUpdate(jobId, "generando",
-                            String.format("Generando el archivo Excel - Componente: %s, Progreso: %d%%", component, progress),
-                            progress);
-
                 }
                 //conceptSheets.add(sheet.getSheetName());
             } finally {
