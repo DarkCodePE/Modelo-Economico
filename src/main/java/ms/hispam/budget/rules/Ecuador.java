@@ -343,7 +343,7 @@ public class Ecuador {
             return componentDTO;
         } catch (Exception e) {
             String userId = UserContext.getCurrentUser();
-            sseReportService.sendUpdate(userId, "error", "Error en la revisión salarial: " + e.getMessage());
+            //sseReportService.sendUpdate(userId, "error", "Error en la revisión salarial: " + e.getMessage());
             throw new RuntimeException("Error en la revisión salarial", e);
         }
     }

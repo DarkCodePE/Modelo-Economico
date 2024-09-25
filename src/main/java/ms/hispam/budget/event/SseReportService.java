@@ -56,14 +56,14 @@ public class SseReportService {
         }
     }
 
-    public void sendUpdate(String jobId, String status, String message) {
+    public void sendUpdate(String jobId, String status, String message, int progress) {
         Object lock = emitterLocks.computeIfAbsent(jobId, k -> new Object());
         synchronized (lock) {
             SseEmitter emitter = emitters.get(jobId);
             if (emitter != null) {
                 try {
                     emitter.send(SseEmitter.event()
-                            .data(Map.of("status", status, "message", message))
+                            .data(Map.of("status", status, "message", message, "progress", progress))
                             .id(String.valueOf(System.currentTimeMillis()))
                             .name("report_update"));
                     //log.info("Actualización enviada con éxito para jobId: {}", jobId);

@@ -615,7 +615,7 @@ public class PeruRefactor {
         String nextPeriod = yearMonth.format(formatter);
 
         double overtimeSeasonality = getCachedValue(overtimeSeasonalityMap, nextPeriod) / 100;
-        double overtimeValue = getCachedValue(overtimeValueMap, nextPeriod);
+        double overtimeValue = getCachedValue(overtimeValueMap, nextPeriod) / 12;
 
         PaymentComponentDTO overtimeComponent = new PaymentComponentDTO();
         overtimeComponent.setPaymentComponent("OVER_TIME");
@@ -640,7 +640,7 @@ public class PeruRefactor {
                 ParametersDTO overtimeValueParameter = overtimeValueMap.get(month);
                 double overtimeValueValue;
                 if (overtimeValueParameter != null) {
-                    overtimeValueValue = overtimeValueParameter.getValue();
+                    overtimeValueValue = overtimeValueParameter.getValue() / 12;
                     lastOvertimeValue = overtimeValueValue;
                 } else {
                     overtimeValueValue = lastOvertimeValue;

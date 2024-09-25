@@ -137,7 +137,7 @@ public class ProjectionController {
 
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
-            sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
+            sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando descarga", 0);
             job.setStatus("en progreso");
             job.setMonthBase(projection.getPeriod());
             job.setNominaRange(projection.getNominaFrom() + " - " + projection.getNominaTo());
