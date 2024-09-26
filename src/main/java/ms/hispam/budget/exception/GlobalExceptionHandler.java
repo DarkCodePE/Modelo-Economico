@@ -13,7 +13,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import java.util.HashMap;
 import java.util.Map;
 
-
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     //controla los errores de varios tipos y globalizrlo con un error 500

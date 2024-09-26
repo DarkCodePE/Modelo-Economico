@@ -72,7 +72,9 @@ public class XlsReportService {
     public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service,
                             ExternalService externalService, EmailService emailService,
                             XlsSheetCreationService xlsSheetCreationService,
-                            EmployeeClassificationRepository employeeClassificationRepository, ExecutorService executorService, ConcurrentHashMap<String, Lock> sheetLocks, SseReportService sseReportService) {
+                            EmployeeClassificationRepository employeeClassificationRepository, ExecutorService executorService,
+                            ConcurrentHashMap<String, Lock> sheetLocks,
+                            SseReportService sseReportService) {
         this.reportJobRepository = reportJobRepository;
         this.service = service;
         this.externalService = externalService;
@@ -173,7 +175,7 @@ public class XlsReportService {
                                 return CompletableFuture.runAsync(() -> {
                                     if (sheet != null) {
                                         //log.info("Filling data in sheet: {}", sheetName);
-                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 500, idBu, c.getComponent(), sessionId);
+                                        processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 700, idBu, c.getComponent(), sessionId);
                                         sseReportService.sendDetailUpdate(sessionId, String.format("Procesado componente: %s", c.getName()));
                                     }
                                 }, executorService).thenRun(() -> {

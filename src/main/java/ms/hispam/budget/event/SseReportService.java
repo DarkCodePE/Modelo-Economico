@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -14,17 +16,21 @@ import java.util.concurrent.*;
 public class SseReportService {
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
     private final Map<String, Object> emitterLocks = new ConcurrentHashMap<>();
+    private final Map<String, Instant> lastActivityTime = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
     private final ExecutorService asyncExecutor = Executors.newCachedThreadPool();
+
+    private static final long EMITTER_TIMEOUT = Duration.ofMinutes(30).toMillis();
 
     public synchronized SseEmitter getOrCreateEmitter(String jobId) {
         log.info("Obteniendo o creando emitter para jobId: {}", jobId);
         emitterLocks.putIfAbsent(jobId, new Object());
+        lastActivityTime.put(jobId, Instant.now());
         return emitters.computeIfAbsent(jobId, this::createEmitter);
     }
 
     private SseEmitter createEmitter(String jobId) {
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT);
         emitter.onCompletion(() -> removeEmitter(jobId));
         emitter.onTimeout(() -> removeEmitter(jobId));
         emitter.onError(e -> {
@@ -43,10 +49,12 @@ public class SseReportService {
     }
 
     public void sendUpdate(String jobId, String status, String message, int progress) {
+        log.info("Enviando actualización para jobId: {} - status: {} - message: {} - progress: {}", jobId, status, message, progress);
         sendEventAsync(jobId, "report_update", Map.of("status", status, "message", message, "progress", progress));
     }
 
     public void sendDetailUpdate(String jobId, String message) {
+        log.info("Enviando actualización de detalle para jobId: {} - message: {}", jobId, message);
         sendEventAsync(jobId, "detail_update", Map.of("message", message));
     }
 
@@ -54,9 +62,9 @@ public class SseReportService {
         CompletableFuture.runAsync(() -> {
             try {
                 sendEvent(jobId, eventName, data);
+                lastActivityTime.put(jobId, Instant.now());
             } catch (Exception e) {
                 log.error("Error al enviar evento asíncrono para jobId: {}", jobId, e);
-                // No se propaga la excepción para no bloquear el proceso principal
             }
         }, asyncExecutor);
     }
@@ -82,21 +90,7 @@ public class SseReportService {
     }
 
     public void completeEmitter(String jobId) {
-        Object lock = emitterLocks.get(jobId);
-        if (lock != null) {
-            synchronized (lock) {
-                SseEmitter emitter = emitters.remove(jobId);
-                emitterLocks.remove(jobId);
-                if (emitter != null) {
-                    try {
-                        emitter.complete();
-                        log.info("Emitter completado para jobId: {}", jobId);
-                    } catch (Exception e) {
-                        log.error("Error al completar emitter para jobId: {}", jobId, e);
-                    }
-                }
-            }
-        }
+        removeEmitter(jobId);
     }
 
     private synchronized void removeEmitter(String jobId) {
@@ -104,6 +98,7 @@ public class SseReportService {
         if (lock != null) {
             synchronized (lock) {
                 SseEmitter emitter = emitters.remove(jobId);
+                lastActivityTime.remove(jobId);
                 if (emitter != null) {
                     try {
                         emitter.complete();
@@ -116,12 +111,17 @@ public class SseReportService {
         log.info("Emitter eliminado para jobId: {}", jobId);
     }
 
-    @Scheduled(fixedDelay = 600000) // Ejecuta cada 10 minutos (600000 milisegundos)
-    public void cleanupEmittersJob() {
-        log.info("Ejecutando limpieza de emitters...");
-        cleanupEmitters();
-    }
+    @Scheduled(fixedRate = 600000) // Ejecutar cada 5 minutos
     public void cleanupEmitters() {
-        emitters.keySet().forEach(this::removeEmitter);
+        log.info("Iniciando limpieza de emitters inactivos");
+        Instant now = Instant.now();
+        emitters.keySet().forEach(jobId -> {
+            Instant lastActivity = lastActivityTime.get(jobId);
+            if (lastActivity != null && Duration.between(lastActivity, now).toMillis() > EMITTER_TIMEOUT) {
+                log.info("Eliminando emitter inactivo para jobId: {}", jobId);
+                removeEmitter(jobId);
+            }
+        });
+        log.info("Limpieza de emitters inactivos completada");
     }
 }
