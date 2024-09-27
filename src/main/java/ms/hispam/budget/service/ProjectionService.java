@@ -19,9 +19,9 @@ import java.util.concurrent.CompletableFuture;
 
 public interface ProjectionService {
 
-    public Page<ProjectionDTO> getProjection(ParametersByProjection projection);
+    Page<ProjectionDTO> getProjection(ParametersByProjection projection);
 
-    public ProjectionSecondDTO getNewProjection(ParametersByProjection projection);
+    ProjectionSecondDTO getNewProjection(ParametersByProjection projection);
 
     Config getComponentByBu(String bu);
 

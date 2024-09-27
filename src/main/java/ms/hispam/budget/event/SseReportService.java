@@ -1,6 +1,8 @@
 package ms.hispam.budget.event;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -17,10 +19,19 @@ public class SseReportService {
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
     private final Map<String, Object> emitterLocks = new ConcurrentHashMap<>();
     private final Map<String, Instant> lastActivityTime = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
-    private final ExecutorService asyncExecutor = Executors.newCachedThreadPool();
+    private final ScheduledExecutorService scheduler;
+    private final ExecutorService asyncExecutor;
 
     private static final long EMITTER_TIMEOUT = Duration.ofMinutes(30).toMillis();
+
+    @Autowired
+    public SseReportService(
+            @Qualifier("sseScheduler") ScheduledExecutorService scheduler,
+            @Qualifier("sseAsyncExecutor") ExecutorService asyncExecutor
+    ) {
+        this.scheduler = scheduler;
+        this.asyncExecutor = asyncExecutor;
+    }
 
     public synchronized SseEmitter getOrCreateEmitter(String jobId) {
         log.info("Obteniendo o creando emitter para jobId: {}", jobId);

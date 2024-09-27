@@ -215,4 +215,13 @@ public class Shared {
         return (actualDate.isEqual(fromDate) || actualDate.isAfter(fromDate)) &&
                 (actualDate.isEqual(toDate) || actualDate.isBefore(toDate.plusMonths(1)));
     }
+     public static String generateCacheKey(ParametersByProjection projection) {
+        // Asegúrate de que todos los campos relevantes estén incluidos
+        return projection.getIdBu() + "-" +
+               projection.getPeriod() + "-" +
+               projection.getRange() + "-" +
+               projection.getNominaFrom() + "-" +
+               projection.getNominaTo();
+        // Puedes añadir más campos si es necesario
+    }
 }
