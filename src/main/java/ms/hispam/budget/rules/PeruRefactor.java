@@ -602,7 +602,7 @@ public class PeruRefactor {
     //
     //De esta forma el valor ingresado en parámetros para las HHEE queda distribuido por PO según su proporción de HHEE en el mes base, junto con la aplicación de la estacionalidad del mes.
     //El valor del parámetro es distribuido equitativamente entre el total de POS incluídas en la proyección.
-    public void overtime(List<PaymentComponentDTO> component, String period, Integer range, double totalHorasExtras, List<ParametersDTO> overtimeSeasonalityList, List<ParametersDTO> overtimeValueList) {
+    public void overtime(List<PaymentComponentDTO> component, String period, Integer range, BigDecimal totalHorasExtras, List<ParametersDTO> overtimeSeasonalityList, List<ParametersDTO> overtimeValueList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> overtimeSeasonalityMap = createCacheMap(overtimeSeasonalityList);
         Map<String, ParametersDTO> overtimeValueMap = createCacheMap(overtimeValueList);
@@ -613,15 +613,16 @@ public class PeruRefactor {
         YearMonth yearMonth = YearMonth.parse(period, formatter);
         yearMonth = yearMonth.plusMonths(1);
         String nextPeriod = yearMonth.format(formatter);
-
+        //estacionalidad
         double overtimeSeasonality = getCachedValue(overtimeSeasonalityMap, nextPeriod) / 100;
-        double overtimeValue = getCachedValue(overtimeValueMap, nextPeriod) / 12;
+        //parametro valor horas extras
+        double overtimeValue = getCachedValue(overtimeValueMap, nextPeriod);
 
         PaymentComponentDTO overtimeComponent = new PaymentComponentDTO();
         overtimeComponent.setPaymentComponent("OVER_TIME");
         if (overtimeBaseComponent != null) {
             double overtimeBase = overtimeBaseComponent.getAmount().doubleValue();
-            double overtimePerMonth = (overtimeBase / totalHorasExtras) * overtimeValue * overtimeSeasonality;
+            double overtimePerMonth = (overtimeBase / totalHorasExtras.doubleValue()) * (overtimeValue * overtimeSeasonality);
             overtimeComponent.setAmount(BigDecimal.valueOf(overtimePerMonth));
             List<MonthProjection> projections = new ArrayList<>();
             double lastOvertimeSeasonality = 0;
@@ -640,12 +641,12 @@ public class PeruRefactor {
                 ParametersDTO overtimeValueParameter = overtimeValueMap.get(month);
                 double overtimeValueValue;
                 if (overtimeValueParameter != null) {
-                    overtimeValueValue = overtimeValueParameter.getValue() / 12;
+                    overtimeValueValue = overtimeValueParameter.getValue();
                     lastOvertimeValue = overtimeValueValue;
                 } else {
                     overtimeValueValue = lastOvertimeValue;
                 }
-                double overtimePerMonthProjection = (overtimeBaseProjection / totalHorasExtras) * overtimeValueValue * overtimeSeasonalityValue;
+                double overtimePerMonthProjection = (overtimeBaseProjection / totalHorasExtras.doubleValue()) * overtimeValueValue * overtimeSeasonalityValue;
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(overtimePerMonthProjection));
@@ -732,7 +733,7 @@ public class PeruRefactor {
     //
     //De esta forma el valor ingresado en parámetros para las Comisiones queda distribuido por PO según su proporción de Comisiones en el mes base, junto con la mensualización del costo.
     //El valor del parámetro es distribuido entre el total de POS incluídas en la proyección, proporcionalmente a su participación en el código de nómina.
-    public void incentives(List<PaymentComponentDTO> component, String period, Integer range, double totalIncentives, List<ParametersDTO> incentivesValueList) {
+    public void incentives(List<PaymentComponentDTO> component, String period, Integer range, BigDecimal totalIncentives, List<ParametersDTO> incentivesValueList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> incentivesValueMap = createCacheMap(incentivesValueList);
 
@@ -748,7 +749,7 @@ public class PeruRefactor {
         if (incentivesBaseComponent != null) {
             double incentivesBase = incentivesBaseComponent.getAmount().doubleValue();
             double incentivesValue = getCachedValue(incentivesValueMap, nextPeriod);
-            double incentivesPerMonth = (incentivesBase / totalIncentives) * incentivesValue / 12;
+            double incentivesPerMonth = (incentivesBase / totalIncentives.doubleValue()) * incentivesValue / 12;
             incentivesComponent.setAmount(BigDecimal.valueOf(incentivesPerMonth));
             List<MonthProjection> projections = new ArrayList<>();
             double lastIncentivesValue = 0;
@@ -763,7 +764,7 @@ public class PeruRefactor {
                 } else {
                     incentivesValueValue = lastIncentivesValue;
                 }
-                double incentivesPerMonthProjection = (incentivesBaseProjection / totalIncentives) * incentivesValueValue / 12;
+                double incentivesPerMonthProjection = (incentivesBaseProjection / totalIncentives.doubleValue()) * incentivesValueValue / 12;
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(incentivesPerMonthProjection));
@@ -1378,7 +1379,7 @@ public class PeruRefactor {
                 }
                 String month = projection.getMonth();
                 double transferBonusBaseProjection = projection.getAmount().doubleValue();
-                double transferBonusProjection = transferBonusBaseProjection == 0 ? transferBonusAmountValue :Math.min(transferBonusBaseProjection, transferBonusAmountValue);
+                double transferBonusProjection = Math.min(transferBonusBaseProjection, transferBonusAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(transferBonusProjection));
@@ -1429,7 +1430,7 @@ public class PeruRefactor {
                     clothingBonusAmountValue = lastClothingBonusAmount;
                 }
                 double clothingBonusBaseProjection = projection.getAmount().doubleValue();
-                double clothingBonusProjection = clothingBonusBaseProjection == 0 ? clothingBonusAmountValue : Math.min(clothingBonusBaseProjection, clothingBonusAmountValue);
+                double clothingBonusProjection = Math.min(clothingBonusBaseProjection, clothingBonusAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(clothingBonusProjection));
@@ -1483,9 +1484,7 @@ public class PeruRefactor {
                 }
                 double teleworkLawBaseProjection = projection.getAmount().doubleValue();
                 //double teleworkLawProjection = Math.min(teleworkLawBaseProjection, teleworkLawAmountValue);
-                double teleworkLawProjection = (teleworkLawBaseProjection > 0)
-                        ? Math.min(teleworkLawBaseProjection, teleworkLawAmountValue)
-                        : teleworkLawAmountValue;
+                double teleworkLawProjection = Math.min(teleworkLawBaseProjection, teleworkLawAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(teleworkLawProjection));
@@ -1539,9 +1538,7 @@ public class PeruRefactor {
                 }
                 double mobilityAndRefreshmentBaseProjection = projection.getAmount().doubleValue();
                 //double mobilityAndRefreshmentProjection = Math.min(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
-                double mobilityAndRefreshmentProjection = (mobilityAndRefreshmentBaseProjection > 0)
-                        ? Math.min(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue)
-                        : mobilityAndRefreshmentAmountValue;
+                double mobilityAndRefreshmentProjection = Math.min(mobilityAndRefreshmentBaseProjection, mobilityAndRefreshmentAmountValue);
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(mobilityAndRefreshmentProjection));
