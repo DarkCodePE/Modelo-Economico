@@ -174,6 +174,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     //ConventArg
     private Map<String, ConventArg> conventArgMap = new HashMap<>();
     private BigDecimal totalCommissions;
+    private BigDecimal totalOvertime;
+    private BigDecimal totalIncentives;
     private Set<String> annualizedPositions;
     @PostConstruct
     public void init() {
@@ -846,10 +848,35 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
-
+    //calculate total overtime
+    public void calculateTotalOvertime(List<ProjectionDTO> headcount) {
+        this.totalOvertime = headcount.stream()
+                .map(h -> {
+                    PaymentComponentDTO overtime = h.getComponents().stream()
+                            .filter(c -> "OVERTIME_BASE".equals(c.getPaymentComponent()))
+                            .findFirst()
+                            .orElse(null);
+                    return overtime != null ? overtime.getAmount() : BigDecimal.ZERO;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    //calculate total incentives
+    public void calculateTotalIncentives(List<ProjectionDTO> headcount) {
+        this.totalIncentives = headcount.stream()
+                .map(h -> {
+                    PaymentComponentDTO incentives = h.getComponents().stream()
+                            .filter(c -> "INCENTIVES_BASE".equals(c.getPaymentComponent()))
+                            .findFirst()
+                            .orElse(null);
+                    return incentives != null ? incentives.getAmount() : BigDecimal.ZERO;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
     public void isPeru(List<ProjectionDTO> headcount, ParametersByProjection projection) {
         PeruRefactor methodsPeru = new PeruRefactor();
         calculateTotalCommissions(headcount);
+        calculateTotalOvertime(headcount);
+        calculateTotalIncentives(headcount);
         // Parámetros
         List<ParametersDTO> salaryIncreaseList = filterParametersByName(projection.getParameters(), "Rev Salarial EMP %");
         List<ParametersDTO> executiveSalaryIncreaseList = filterParametersByName(projection.getParameters(), "Rev Salarial EJC/GER %");
@@ -942,10 +969,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.increaseAFP1023(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.housingExpatriates(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationEnjoyment(component, projection.getPeriod(), projection.getRange(), vacationDaysList, vacationSeasonalityList);
-                        methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), totalHorasExtras, annualOvertimeValueList, overtimeSeasonalityList);
+                        methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), this.totalOvertime, annualOvertimeValueList, overtimeSeasonalityList);
                         //log.debug("totalComisiones {}", totalComisiones);
                         methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), this.totalCommissions.doubleValue(), annualCommissionValueList);
-                        methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), totalIncentivos, annualIncentiveValueList);
+                        methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), this.totalIncentives, annualIncentiveValueList);
                         methodsPeru.nightBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.availabilityPlus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.unionClosingBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), laborClosureBonusList, countEMP, classificationMap);
