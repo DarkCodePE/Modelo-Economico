@@ -1,6 +1,7 @@
 package ms.hispam.budget.util;
 
 import lombok.extern.slf4j.Slf4j;
+import ms.hispam.budget.cache.ProjectionCache;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.dto.projections.ComponentProjection;
@@ -19,7 +20,9 @@ import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -33,6 +36,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.LinkOption;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,25 +69,30 @@ public class XlsReportService {
     // Repositorios adicionales
     private final EmployeeClassificationRepository employeeClassificationRepository;
     private static final Map<String, EmployeeClassification> classificationMap = new ConcurrentHashMap<>();
-    private final ExecutorService executorService;
     private final ConcurrentHashMap<String, Lock> sheetLocks;
     private final SseReportService sseReportService;
+    private final ProjectionUtils projectionUtils;
+    private final ProjectionCache projectionCache;
+    private final AsyncTaskExecutor asyncTaskExecutor;
     @Autowired
     public XlsReportService(ReportJobRepository reportJobRepository, ProjectionService service,
                             ExternalService externalService, EmailService emailService,
                             XlsSheetCreationService xlsSheetCreationService,
-                            EmployeeClassificationRepository employeeClassificationRepository, ExecutorService executorService,
+                            EmployeeClassificationRepository employeeClassificationRepository,
                             ConcurrentHashMap<String, Lock> sheetLocks,
-                            SseReportService sseReportService) {
+                            SseReportService sseReportService, ProjectionUtils projectionUtils, ProjectionCache projectionCache,
+                            @Qualifier("reportTaskExecutor") AsyncTaskExecutor asyncTaskExecutor) {
         this.reportJobRepository = reportJobRepository;
         this.service = service;
         this.externalService = externalService;
         this.emailService = emailService;
         this.xlsSheetCreationService = xlsSheetCreationService;
         this.employeeClassificationRepository = employeeClassificationRepository;
-        this.executorService = executorService;
         this.sheetLocks = sheetLocks;
         this.sseReportService = sseReportService;
+        this.projectionUtils = projectionUtils;
+        this.projectionCache = projectionCache;
+        this.asyncTaskExecutor = asyncTaskExecutor;
     }
 
     @PostConstruct
@@ -99,6 +108,7 @@ public class XlsReportService {
         this.service = service;
     }
     public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
+
         sseReportService.sendUpdate(sessionId, "procesando", "preparando el archivo Excel", 5);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
@@ -178,7 +188,7 @@ public class XlsReportService {
                                         processAndWriteDataInChunks(sheet, data.getViewPosition().getPositions(), 700, idBu, c.getComponent(), sessionId);
                                         sseReportService.sendDetailUpdate(sessionId, String.format("Procesado componente: %s", c.getName()));
                                     }
-                                }, executorService).thenRun(() -> {
+                                }, asyncTaskExecutor).thenRun(() -> {
                                     sseReportService.sendUpdate(sessionId, "generando", "Generando conceptos de pago", currentProgress.addAndGet(progressPerSheet));
                                 });
                             } else {
@@ -206,7 +216,7 @@ public class XlsReportService {
                                                 String.format("Procesando base externa: %s", c),
                                                 currentProgress.addAndGet(progressPerSheet));
                                     }
-                                }, executorService);
+                                }, asyncTaskExecutor);
                             } else {
                                 return CompletableFuture.completedFuture(null);
                             }
@@ -677,72 +687,95 @@ public class XlsReportService {
         }
     }
 
-    private static void generateMoreView(String namePage,Workbook workbook ,ProjectionSecondDTO projection, Integer idBu){
+    private static void generateMoreView(String namePage, Workbook workbook, ProjectionSecondDTO projection, Integer idBu) {
         Sheet psheet = workbook.createSheet(namePage);
         Row pheader = psheet.createRow(0);
-        Cell pheaderCell = pheader.createCell(0);
-        int hstart=1;
-       projection.getYearProjections().add(0,MonthProjection.builder().month("Cuenta").build());
-        projection.getYearProjections().add(1,MonthProjection.builder().month("Concepto").build());
 
-        for (int i = 0; i < projection.getYearProjections().size(); i++) {
-            pheaderCell.setCellValue(projection.getYearProjections().get(i).getMonth());
-            pheaderCell = pheader.createCell(hstart);
+        // Agregar "Cuenta" y "Concepto" como las primeras dos columnas
+        pheader.createCell(0).setCellValue("Cuenta");
+        pheader.createCell(1).setCellValue("Concepto");
+
+        int hstart = 2;  // Empezar desde la tercera columna para los años
+
+        // Remover "Cuenta" y "Concepto" si ya están en yearProjections
+        if (!projection.getYearProjections().isEmpty()) {
+            if ("Cuenta".equals(projection.getYearProjections().get(0).getMonth())) {
+                projection.getYearProjections().remove(0);
+            }
+            if (!projection.getYearProjections().isEmpty() && "Concepto".equals(projection.getYearProjections().get(0).getMonth())) {
+                projection.getYearProjections().remove(0);
+            }
+        }
+
+        for (MonthProjection yearProjection : projection.getYearProjections()) {
+            Cell pheaderCell = pheader.createCell(hstart);
+            pheaderCell.setCellValue(yearProjection.getMonth());
             hstart++;
         }
-        int pstart =1;
+
+        int pstart = 1;
 
         for (ResumenComponentDTO resumeAccount : projection.getResumeComponent().getResumeComponentYear()) {
             Row row = psheet.createRow(pstart);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(resumeAccount.getAccount());
-            cell = row.createCell(1);
-            cell.setCellValue(resumeAccount.getComponent());
-                int column = 2;
-                for (int k = 0; k < resumeAccount.getProjections().size(); k++) {
-                    MonthProjection month = resumeAccount.getProjections().get(k);
-                    cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount().doubleValue());
-                    column++;
-                }
+            row.createCell(0).setCellValue(resumeAccount.getAccount());
+            row.createCell(1).setCellValue(resumeAccount.getComponent());
+
+            int column = 2;
+            for (MonthProjection year : resumeAccount.getProjections()) {
+                Cell cell = row.createCell(column);
+                cell.setCellValue(year.getAmount().doubleValue());
+                column++;
+            }
             pstart++;
-
         }
-
     }
 
-    private static void generateMoreViewMonth(String namePage,Workbook workbook ,ProjectionSecondDTO projection){
+    private static void generateMoreViewMonth(String namePage, Workbook workbook, ProjectionSecondDTO projection) {
         Sheet psheet = workbook.createSheet(namePage);
         Row pheader = psheet.createRow(0);
-        Cell pheaderCell = pheader.createCell(0);
-        int hstart=1;
-        projection.getMonthProjections().add(0,MonthProjection.builder().month("Cuenta").build());
-        projection.getMonthProjections().add(1,MonthProjection.builder().month("Concepto").build());
 
-        for (int i = 0; i < projection.getMonthProjections().size(); i++) {
-            pheaderCell.setCellValue(i>1 ?Shared.nameMonth(projection.getMonthProjections().get(i).getMonth()):projection.getMonthProjections().get(i).getMonth());
-            pheaderCell = pheader.createCell(hstart);
+        // Agregar "Cuenta" y "Concepto" como las primeras dos columnas
+        pheader.createCell(0).setCellValue("Cuenta");
+        pheader.createCell(1).setCellValue("Concepto");
+
+        int hstart = 2;  // Empezar desde la tercera columna para los meses
+
+        // Remover "Cuenta" y "Concepto" si ya están en monthProjections
+        if (!projection.getMonthProjections().isEmpty()) {
+            if ("Cuenta".equals(projection.getMonthProjections().get(0).getMonth())) {
+                projection.getMonthProjections().remove(0);
+            }
+            if (!projection.getMonthProjections().isEmpty() && "Concepto".equals(projection.getMonthProjections().get(0).getMonth())) {
+                projection.getMonthProjections().remove(0);
+            }
+        }
+
+        for (MonthProjection monthProjection : projection.getMonthProjections()) {
+            Cell pheaderCell = pheader.createCell(hstart);
+            try {
+                pheaderCell.setCellValue(Shared.nameMonth(monthProjection.getMonth()));
+            } catch (DateTimeParseException e) {
+                // Si no se puede parsear como fecha, usar el valor original
+                pheaderCell.setCellValue(monthProjection.getMonth());
+            }
             hstart++;
         }
-        int pstart =1;
+
+        int pstart = 1;
 
         for (ResumenComponentDTO resumeAccount : projection.getResumeComponent().getResumeComponentMonth()) {
             Row row = psheet.createRow(pstart);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(resumeAccount.getAccount());
-            cell = row.createCell(1);
-            cell.setCellValue(resumeAccount.getComponent());
+            row.createCell(0).setCellValue(resumeAccount.getAccount());
+            row.createCell(1).setCellValue(resumeAccount.getComponent());
+
             int column = 2;
-            for (int k = 0; k < resumeAccount.getProjections().size(); k++) {
-                MonthProjection month = resumeAccount.getProjections().get(k);
-                cell = row.createCell(column);
+            for (MonthProjection month : resumeAccount.getProjections()) {
+                Cell cell = row.createCell(column);
                 cell.setCellValue(month.getAmount().doubleValue());
                 column++;
             }
             pstart++;
-
         }
-
     }
 
     private static Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
@@ -870,21 +903,29 @@ public class XlsReportService {
     // Modifica este método para que sea asíncrono
     public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId) {
         return CompletableFuture.supplyAsync(() -> {
-            projection.setViewPo(true);
-            ProjectionSecondDTO data = service.getNewProjection(projection);
-            //log.info("Data: {}", data);
+            String cacheKey = ProjectionUtils.generateHash(projection);
+            ProjectionSecondDTO data;
+            // Verifica si la proyección ya está en la caché
+            if (projectionCache.containsKey(cacheKey)) {
+                log.info("Usando proyección de la caché para reporte con clave: {}", cacheKey);
+                data = projectionCache.get(cacheKey);
+            } else {
+                // Si no está, genera la proyección y almacénala
+                data =  service.getNewProjection(projection);
+            }
+            //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
-        }, executorService);
+        }, asyncTaskExecutor);
     }
 
-    public static CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact) {
+    public CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
            return generatePlanner(projection, vdata,accountProjections, bu, job,userContact);
         });
     }
     //generateCdgAsync
-    public static CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+    public CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
         return CompletableFuture.supplyAsync(() -> {
             return generateCdg(projection, vdata,bu,accountProjections,job,userContact);
         });

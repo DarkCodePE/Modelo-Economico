@@ -1,6 +1,7 @@
 package ms.hispam.budget.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
+import ms.hispam.budget.cache.ProjectionCache;
 import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.countries.DefaultConfig;
@@ -134,6 +135,11 @@ public class ProjectionServiceImpl implements ProjectionService {
     private SseReportService sseReportService;
     @Autowired
     private UserSessionService userSessionService;
+    @Autowired
+    private ProjectionCache projectionCache;
+    @Autowired
+    private ProjectionUtils projectionUtils;
+    
     private final ConcurrentMap<String, ConcurrentHashMap<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByBuCache = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private Map<String, Map<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByYearCache;
@@ -378,6 +384,24 @@ public class ProjectionServiceImpl implements ProjectionService {
 
     @Override
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
+        String cacheKey = ProjectionUtils.generateHash(projection);
+
+        if (projectionCache.containsKey(cacheKey)) {
+            log.info("Proyección obtenida de la caché para clave: {}", cacheKey);
+            return projectionCache.get(cacheKey);
+        }
+
+        try {
+            ProjectionSecondDTO projectionResult = calculateProjection(projection);
+            projectionCache.put(cacheKey, projectionResult, cacheKey);
+            return projectionResult;
+        } catch (Exception ex) {
+            log.error("Error al generar la proyección: ", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección", ex);
+        }
+    }
+
+    public ProjectionSecondDTO calculateProjection(ParametersByProjection projection) {
         try {
             Map<String, AccountProjection> componentesMap = new HashMap<>();
             //log.debug("projection {}",projection.getIdBu());
@@ -452,10 +476,10 @@ public class ProjectionServiceImpl implements ProjectionService {
             //agrupar por año
             List<MonthProjection> yearReales = groupingByYear(monthReales).stream()
                     .sorted(Comparator.comparing(MonthProjection::getMonth)).collect(Collectors.toList());
-            ViewPosition viewPosition = Boolean.TRUE.equals(projection.getViewPo()) ? ViewPosition.builder()
+            ViewPosition viewPosition = ViewPosition.builder()
                     .positions(headcount)
                     .count(headcount.size())
-                    .build() : null;
+                    .build();
 
             //get rosseta
             List<RosetaDTO> rosseta = getRoseta(projection.getIdBu());
@@ -2046,7 +2070,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             historialProjectionRepository.deleteById(id);
             return true;
     }
-    @Async
+    @Async("reportTaskExecutor")
     @Override
     public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId) {
         try {
@@ -2070,7 +2094,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
     }
 
-    @Async
+    @Async("reportTaskExecutor")
     @Override
     public void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {
         try {
@@ -2091,7 +2115,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         }
     }
 
-    @Async
+    @Async("reportTaskExecutor")
     @Override
     //downloadCdgAsync
     public void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {

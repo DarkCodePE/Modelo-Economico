@@ -1,56 +1,42 @@
 package ms.hispam.budget.util;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import ms.hispam.budget.dto.ParametersByProjection;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
+@Component
 public class ProjectionUtils {
 
-    public static class ProjectionYearRange {
-        private final int startYear;
-        private final int endYear;
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
 
-        public ProjectionYearRange(int startYear, int endYear) {
-            this.startYear = startYear;
-            this.endYear = endYear;
-        }
-
-        public int getStartYear() {
-            return startYear;
-        }
-
-        public int getEndYear() {
-            return endYear;
-        }
-
-        public boolean includesYear(int year) {
-            return year >= startYear && year <= endYear;
-        }
-    }
-
-    public static ProjectionYearRange determineProjectionYearRange(ParametersByProjection projection) {
-        LocalDate startDate = parseDate(projection.getNominaFrom());
-        LocalDate endDate = parseDate(projection.getNominaTo());
-
-        if (startDate == null || endDate == null) {
-            // Fallback en caso de que no se puedan parsear las fechas
-            int currentYear = LocalDate.now().getYear();
-            return new ProjectionYearRange(currentYear, currentYear);
-        }
-
-        int startYear = startDate.getYear();
-        int endYear = endDate.getYear();
-
-        return new ProjectionYearRange(startYear, endYear);
-    }
-
-    private static LocalDate parseDate(String dateString) {
+    public static String generateHash(ParametersByProjection projection) {
         try {
-            return LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyy/MM"));
-        } catch (DateTimeParseException e) {
-            return null;
+            String jsonString = mapper.writeValueAsString(projection);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(jsonString.getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(hash);
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error al generar el hash de la proyección", e);
         }
+    }
+
+    private static String bytesToHex(byte[] hash) {
+        StringBuilder hexString = new StringBuilder(2 * hash.length);
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
 }

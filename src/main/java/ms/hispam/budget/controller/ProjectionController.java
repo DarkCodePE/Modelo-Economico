@@ -161,7 +161,6 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-
                 service.downloadProjection(projection, user, jobDB, idBu, sessionId);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
