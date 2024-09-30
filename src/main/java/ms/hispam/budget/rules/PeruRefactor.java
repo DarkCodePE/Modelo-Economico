@@ -602,7 +602,7 @@ public class PeruRefactor {
     //
     //De esta forma el valor ingresado en parámetros para las HHEE queda distribuido por PO según su proporción de HHEE en el mes base, junto con la aplicación de la estacionalidad del mes.
     //El valor del parámetro es distribuido equitativamente entre el total de POS incluídas en la proyección.
-    public void overtime(List<PaymentComponentDTO> component, String period, Integer range, BigDecimal totalHorasExtras, List<ParametersDTO> overtimeSeasonalityList, List<ParametersDTO> overtimeValueList) {
+    public void overtime(List<PaymentComponentDTO> component, String period, Integer range, BigDecimal totalHorasExtras, List<ParametersDTO> overtimeValueList, List<ParametersDTO> overtimeSeasonalityList) {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         Map<String, ParametersDTO> overtimeSeasonalityMap = createCacheMap(overtimeSeasonalityList);
         Map<String, ParametersDTO> overtimeValueMap = createCacheMap(overtimeValueList);
