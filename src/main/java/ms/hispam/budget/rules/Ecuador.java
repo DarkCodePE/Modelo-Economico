@@ -48,7 +48,7 @@ public class Ecuador {
 
         }
         newIess.setAmount(BigDecimal.valueOf(amount*(parameter.get()/100)));
-        List<MonthProjection> months= Shared.generateMonthProjection(period,range,BigDecimal.ZERO);
+        List<MonthProjection> months= Shared.generateMonthProjectionV2(period,range,BigDecimal.ZERO);
         months.forEach(f->{
             double[] suma = {0.0};
             componentDTO.stream().filter(c->Arrays.asList(comIess).contains(c.getType())).forEach(d->{
@@ -84,7 +84,7 @@ public class Ecuador {
         // Aplicar el parámetro al monto total anual y luego dividir por 12 para obtener el valor mensual
         newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100) / 12));
 
-        List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
+        List<MonthProjection> months = Shared.generateMonthProjectionV2(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
             double[] suma = {0.0};
             componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
@@ -118,7 +118,7 @@ public class Ecuador {
         // Calcular el promedio anual y dividirlo por 12 para obtener el valor mensual
         newDecimo.setAmount(BigDecimal.valueOf(amount / 12));
 
-        List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
+        List<MonthProjection> months = Shared.generateMonthProjectionV2(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
             double[] suma = {0.0};
             componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
@@ -143,7 +143,7 @@ public class Ecuador {
         PaymentComponentDTO decimo = new PaymentComponentDTO();
         decimo.setPaymentComponent("DECIMO4");
         decimo.setAmount(BigDecimal.valueOf(amount.get() /12));
-        decimo.setProjections(Shared.generateMonthProjection(period,range,BigDecimal.valueOf(amount.get()/12)));
+        decimo.setProjections(Shared.generateMonthProjectionV2(period,range,BigDecimal.valueOf(amount.get()/12)));
         componentDTO.add(decimo);
         return componentDTO;
     }
@@ -155,7 +155,7 @@ public class Ecuador {
                 .forEach(o -> {
                     // Asegurarse de que las proyecciones estén inicializadas
                     if (o.getProjections() == null || o.getProjections().isEmpty()) {
-                        o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
+                        o.setProjections(Shared.generateMonthProjectionV2(dto.getPeriod(), 12, BigDecimal.ZERO));
                     }
                     int idx = Shared.getIndex(o.getProjections().stream()
                             .map(MonthProjection::getMonth).collect(Collectors.toList()), dto.getPeriod());
@@ -256,7 +256,7 @@ public class Ecuador {
         PaymentComponentDTO vaca = new PaymentComponentDTO();
         vaca.setPaymentComponent("VACA");
         vaca.setAmount(BigDecimal.valueOf(((salary.get() + coa.get()) * 12) / (24 * 15 * parameter.get())));
-        List<MonthProjection> months = Shared.generateMonthProjection(period, range, BigDecimal.ZERO);
+        List<MonthProjection> months = Shared.generateMonthProjectionV2(period, range, BigDecimal.ZERO);
 
         months.forEach(f -> {
             AtomicReference<Double> salaryMonth = new AtomicReference<>((double) 0);
@@ -319,7 +319,7 @@ public class Ecuador {
 
                 // Asegurarse de que las proyecciones estén inicializadas
                 if (o.getProjections() == null || o.getProjections().isEmpty()) {
-                    o.setProjections(Shared.generateMonthProjection(dto.getPeriod(), 12, BigDecimal.ZERO));
+                    o.setProjections(Shared.generateMonthProjectionV2(dto.getPeriod(), 12, BigDecimal.ZERO));
                 }
 
                 int idx = Shared.getIndex(o.getProjections().stream()

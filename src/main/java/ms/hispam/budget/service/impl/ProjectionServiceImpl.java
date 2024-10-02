@@ -2514,7 +2514,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 String level = resp.get("NIV") != null ? resp.get("NIV").toString() : "";
                 String categoryLocal = resp.get("categoryLocal") != null ? resp.get("categoryLocal").toString() : "";
                 String estadoVacante = resp.get("estadoVacante") != null ? resp.get("estadoVacante").toString() : "";
-
+                String name = resp.get("name") != null ? resp.get("name").toString() : "";
                 final int finalI = i;  // Hacemos final esta variable para usarla en la lambda
 
                 for (Map.Entry<String, Object> entry : resp.entrySet()) {
@@ -2529,7 +2529,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 HeadcountProjection headcountProjection = HeadcountProjection.builder()
                                         .position(pos)
                                         .idssff("")  // Se actualizará más tarde si es necesario
-                                        .poname(resp.get("name").toString())
+                                        .poname(name)
                                         .classEmp(typeEmpl)
                                         .fContra(fContra)
                                         .fNac(fNac)
