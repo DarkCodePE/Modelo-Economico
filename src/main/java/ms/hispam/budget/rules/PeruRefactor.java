@@ -336,7 +336,7 @@ public class PeruRefactor {
             if (housingBaseComponent.getProjections() != null) {
                 for (MonthProjection projection : housingBaseComponent.getProjections()) {
                     String month = projection.getMonth();
-                    double housingPerMonth = housingBaseComponent.getAmount().doubleValue() / 12;
+                    double housingPerMonth = housingBaseComponent.getAmount().doubleValue();
                     MonthProjection monthProjection = new MonthProjection();
                     monthProjection.setMonth(month);
                     monthProjection.setAmount(BigDecimal.valueOf(housingPerMonth));
@@ -5691,7 +5691,7 @@ public class PeruRefactor {
         PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
         Map<String, ParametersDTO> groupSVMap = createCacheMap(groupSVList);
         PaymentComponentDTO lifeInsuranceComponent = new PaymentComponentDTO();
-        lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
+        lifeInsuranceComponent.setPaymentComponent("LIFE_INSURANCE");
         if (theoricSalaryComponent != null) {
             long age = calculateAge(birthDate, period);
             //log.info("age: " + age);
@@ -5721,7 +5721,7 @@ public class PeruRefactor {
             }
             lifeInsuranceComponent.setProjections(projections);
         }else {
-            lifeInsuranceComponent.setPaymentComponent("MEDICAL_INSURANCE");
+            lifeInsuranceComponent.setPaymentComponent("LIFE_INSURANCE");
             lifeInsuranceComponent.setAmount(BigDecimal.ZERO);
             lifeInsuranceComponent.setProjections(generateMonthProjection(period, range, lifeInsuranceComponent.getAmount()));
         }

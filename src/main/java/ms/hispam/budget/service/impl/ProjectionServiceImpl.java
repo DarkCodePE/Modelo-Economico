@@ -1211,7 +1211,15 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (projection.getEmployeeClassifications() != null && !projection.getEmployeeClassifications().isEmpty()) {
             Map<String, EmployeeClassification> tempClassificationMap = new HashMap<>();
             for (EmployeeClassification classification : projection.getEmployeeClassifications()) {
-                tempClassificationMap.put(classification.getCategory(), classification);
+                String key = classification.getCategory().toUpperCase();
+                EmployeeClassification existingClassification = tempClassificationMap.get(key);
+
+                if (existingClassification == null ||
+                        !existingClassification.getTypeEmp().equals(classification.getTypeEmp()) ||
+                        !Objects.equals(existingClassification.getValueAllowance(), classification.getValueAllowance())) {
+
+                    tempClassificationMap.put(key, classification);
+                }
             }
             synchronized (classificationMap) {
                 classificationMap.clear();
@@ -1219,8 +1227,37 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             }
             log.info("Caché de clasificaciones de empleados actualizada con {} entradas", classificationMap.size());
         }
+        // Actualizar conceptoPresupuestalMap
+        if (projection.getConceptoPresupuestals() != null && !projection.getConceptoPresupuestals().isEmpty()) {
+            Map<String, ConceptoPresupuestal> tempConceptoPresupuestalMap = new HashMap<>();
+            for (ConceptoPresupuestal concepto : projection.getConceptoPresupuestals()) {
+                ConceptoPresupuestal adjustedConcepto = new ConceptoPresupuestal();
+                adjustedConcepto.setConceptoPresupuestal(concepto.getConceptoPresupuestal());
 
+                // Pre-calculate all percentages by dividing by 100
+                if (concepto.getGratificacion() != null) {
+                    adjustedConcepto.setGratificacion(concepto.getGratificacion().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getCts() != null) {
+                    adjustedConcepto.setCts(concepto.getCts().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getEssalud() != null) {
+                    adjustedConcepto.setEssalud(concepto.getEssalud().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getBonifExtTemp() != null) {
+                    adjustedConcepto.setBonifExtTemp(concepto.getBonifExtTemp().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+
+                tempConceptoPresupuestalMap.put(concepto.getConceptoPresupuestal(), adjustedConcepto);
+            }
+            synchronized (conceptoPresupuestalMap) {
+                conceptoPresupuestalMap.clear();
+                conceptoPresupuestalMap.putAll(tempConceptoPresupuestalMap);
+            }
+            log.info("Caché de conceptos presupuestales actualizada con {} entradas", conceptoPresupuestalMap.size());
+        }
     }
+
     private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
         return parameters.stream()
                 .filter(p -> Objects.equals(p.getParameter().getDescription(), name))
