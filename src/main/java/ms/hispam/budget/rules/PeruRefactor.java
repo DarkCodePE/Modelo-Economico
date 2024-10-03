@@ -113,10 +113,20 @@ public class PeruRefactor {
                                                       Map<String, ParametersDTO> directorSalaryIncreaseMap,
                                                       String typeEmp,
                                                       Map<String, PaymentComponentDTO> componentMap) {
-        return salaryComponent.getProjections()
-                .stream()
-                .map(projection -> calculateMonthProjection(projection, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap, typeEmp, componentMap))
-                .collect(Collectors.toList());
+        List<MonthProjection> projections = new ArrayList<>();
+        BigDecimal currentSalary = salaryComponent.getAmount();
+
+        for (MonthProjection projection : salaryComponent.getProjections()) {
+            MonthProjection calculatedProjection = calculateMonthProjection(
+                    new MonthProjection(projection.getMonth(), currentSalary),
+                    salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap,
+                    typeEmp, componentMap
+            );
+            projections.add(calculatedProjection);
+            currentSalary = calculatedProjection.getAmount(); // Actualiza el salario para el próximo mes
+        }
+
+        return projections;
     }
 
     private MonthProjection calculateMonthProjection(MonthProjection projection,
@@ -126,37 +136,62 @@ public class PeruRefactor {
                                                      String typeEmp,
                                                      Map<String, PaymentComponentDTO> componentMap) {
         String month = projection.getMonth();
-        // Get the next month for applying adjustments
-        //String nextMonth = getNextPeriod(month);
-
-        double adjustment = getAdjustment(typeEmp, month, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
-        //log.info("Adjustment: {}", adjustment);
-        //log.info("maxAdjustments: {}", maxAdjustments);
-        double adjustmentPercentage = adjustment / 100;
-        //log.info("Adjustment percentage: {}, month: {}", adjustmentPercentage, month);
-        double salary = projection.getAmount().doubleValue() * (1 + adjustmentPercentage);
-        //log.info("Salary: {}, moth {}", salary, month);
-        BigDecimal promo = calculatePromoAdjustment(salary, month, componentMap);
-        //log.info("Promo: {}, month: {}", promo, month);
-        double totalSalary = salary * (1 + promo.doubleValue());
-        //log.info("Total salary: {}, month: {}", totalSalary, month);
-        return new MonthProjection(month, BigDecimal.valueOf(totalSalary));
+        YearMonth currentMonth = YearMonth.parse(month, MONTH_FORMATTER);
+        log.info("typeEmp -> {}", typeEmp);
+        log.info("month -> {}", month);
+        // Obtener el ParametersDTO relevante para el mes actual
+        ParametersDTO relevantParameter = getRelevantParameter(typeEmp, month, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
+        log.info("relevantParameter name -> {}", relevantParameter);
+        // Inicializar el salario base con el valor de la proyección actual
+        BigDecimal salary = projection.getAmount();
+        log.info("salary -> {}", salary);
+        // Aplicar el ajuste solo si hay un parámetro relevante para este mes específico
+        if (relevantParameter != null && currentMonth.equals(YearMonth.parse(relevantParameter.getPeriod(), MONTH_FORMATTER))) {
+            double adjustment = relevantParameter.getValue();
+            double adjustmentPercentage = adjustment / 100;
+            salary = salary.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(adjustmentPercentage)));
+        }
+        log.info("salary -> {}", salary);
+        // Calcular el ajuste de promoción
+        BigDecimal promo = calculatePromoAdjustment(salary.doubleValue(), month, componentMap);
+        log.info("promo -> {}", promo);
+        // Calcular el salario total con promoción
+        BigDecimal totalSalary = salary.multiply(BigDecimal.ONE.add(promo));
+        log.info("totalSalary -> {}", totalSalary);
+        return new MonthProjection(month, totalSalary);
     }
-
-    private Map<String, AtomicReference<Double>> maxAdjustments = new ConcurrentHashMap<>();
-
-    private double getAdjustment(String typeEmp, String month,
-                                 Map<String, ParametersDTO> salaryIncreaseMap,
-                                 Map<String, ParametersDTO> executiveSalaryIncreaseMap,
-                                 Map<String, ParametersDTO> directorSalaryIncreaseMap) {
-        double currentAdjustment = switch (typeEmp) {
-            case "DIR", "DPZ" -> getCachedValue(directorSalaryIncreaseMap, month);
-            case "EJC", "GER" -> getCachedValue(executiveSalaryIncreaseMap, month);
-            default -> getCachedValue(salaryIncreaseMap, month);
+    /**
+     * Método auxiliar para obtener el ParametersDTO relevante para el mes de proyección.
+     */
+    private ParametersDTO getRelevantParameter(String typeEmp, String month,
+                                               Map<String, ParametersDTO> salaryIncreaseMap,
+                                               Map<String, ParametersDTO> executiveSalaryIncreaseMap,
+                                               Map<String, ParametersDTO> directorSalaryIncreaseMap) {
+        Map<String, ParametersDTO> relevantMap = switch (typeEmp) {
+            case "DIR", "DPZ" -> directorSalaryIncreaseMap;
+            case "EJC", "GER" -> executiveSalaryIncreaseMap;
+            default -> salaryIncreaseMap;
         };
 
-        return maxAdjustments.computeIfAbsent(typeEmp, k -> new AtomicReference<>(0.0))
-                .updateAndGet(maxAdjustment -> Math.max(maxAdjustment, currentAdjustment));
+        return relevantMap.get(month);
+    }
+    /**
+     * Método auxiliar para obtener el último ParametersDTO cuyo período es <= al mes dado.
+     */
+    private ParametersDTO getLatestParameter(Map<String, ParametersDTO> map, String month) {
+        return map.entrySet().stream()
+                .filter(entry -> {
+                    try {
+                        YearMonth entryMonth = YearMonth.parse(entry.getKey(), MONTH_FORMATTER);
+                        YearMonth projectionMonth = YearMonth.parse(month, MONTH_FORMATTER);
+                        return !entryMonth.isAfter(projectionMonth);
+                    } catch (DateTimeParseException e) {
+                        return false;
+                    }
+                })
+                .max(Map.Entry.comparingByKey(Comparator.naturalOrder()))
+                .map(Map.Entry::getValue)
+                .orElse(null);
     }
 
     private double getCachedValue(Map<String, ParametersDTO> map, String key) {
@@ -188,9 +223,7 @@ public class PeruRefactor {
                 .collect(Collectors.toMap(PaymentComponentDTO::getPaymentComponent, c -> c));
 
         double salaryBase = calculateSalaryBase(componentMap, annualizedPositions, poName);
-        //log.info("Salary base: {}", salaryBase);
-        String nextPeriod = getNextPeriod(period);
-        double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), nextPeriod,
+        double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), period,
                 salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
 
         PaymentComponentDTO salaryComponent = createSalaryComponent(salaryBase, adjustmentBase, period, range);
@@ -198,8 +231,6 @@ public class PeruRefactor {
                 executiveSalaryIncreaseMap, directorSalaryIncreaseMap, employeeClassification.getTypeEmp(), componentMap);
         salaryComponent.setProjections(projections);
         components.add(salaryComponent);
-        // Reiniciar los ajustes máximos antes de cada cálculo
-        maxAdjustments.clear();
     }
 
     private double calculateSalaryBase(Map<String, PaymentComponentDTO> componentMap, Set<String> annualizedPositions, String poName) {
@@ -261,9 +292,12 @@ public class PeruRefactor {
         YearMonth currentYearMonth = YearMonth.parse(month, MONTH_FORMATTER);
         YearMonth promoYearMonth = parsePromoDate(promoMonthComponent.getAmountString());
 
-        return (promoYearMonth != null && !promoYearMonth.isAfter(currentYearMonth))
-                ? promoComponent.getAmount()
-                : BigDecimal.ZERO;
+        if (promoYearMonth != null && promoYearMonth.equals(currentYearMonth)) {
+            log.debug("Aplicando promoción del {}: {}%", month, promoComponent.getAmount());
+            return promoComponent.getAmount();
+        } else {
+            return BigDecimal.ZERO;
+        }
     }
 
     private YearMonth parsePromoDate(String dateString) {
@@ -5699,7 +5733,8 @@ public class PeruRefactor {
             //log.info("ageFactor: " + ageFactor);
             double salary = theoricSalaryComponent.getAmount().doubleValue();
             double groupSV = getCachedValue(groupSVMap, period);
-            double lifeInsurance = salary * (ageFactor.doubleValue() + groupSV);
+            double ageFactorPercentage = ageFactor.doubleValue() / 100;
+            double lifeInsurance = salary * (ageFactorPercentage + groupSV);
 
 
             lifeInsuranceComponent.setAmount(BigDecimal.valueOf(lifeInsurance));
@@ -5711,7 +5746,8 @@ public class PeruRefactor {
                 long ageProjection = calculateAge(birthDate, month);
                 double groupSVP = getCachedValue(groupSVMap, month);
                 BigDecimal ageFactorProjection = getAgeFactorValue((int) ageProjection, ageSVMap);
-                double lifeInsuranceProjection = projection.getAmount().doubleValue() * (ageFactorProjection.doubleValue() + groupSVP);
+                double ageFactorPercentageProjection = ageFactorProjection.doubleValue() / 100;
+                double lifeInsuranceProjection = projection.getAmount().doubleValue() * (ageFactorPercentageProjection + groupSVP);
 
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);

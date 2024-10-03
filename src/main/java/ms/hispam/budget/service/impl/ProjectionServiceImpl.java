@@ -2413,8 +2413,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> filterPositions = Arrays.asList(
-                "PO10001848", "PO10001623", "PO99011801", "PO99012453",
-                "PO99010827", "PO99010253", "PO99016659", "PO99011446"
+                "PO10009248", "PO99010245", "PO10008133", "PO99010341",
+                "PO10005869"
         );
         //initializePeruCache(projection);
         //TODO: ADD MONTH BASE
@@ -2427,7 +2427,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .parallelStream() // Use parallel stream here
                 //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
-                //.filter(e->e.getPosition().equals("PO99012453") || e.getPosition().equals("PO99014894"))
+                //.filter(e->e.getPosition().equals("PO10009248"))
                 .map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
