@@ -137,27 +137,27 @@ public class PeruRefactor {
                                                      Map<String, PaymentComponentDTO> componentMap) {
         String month = projection.getMonth();
         YearMonth currentMonth = YearMonth.parse(month, MONTH_FORMATTER);
-        log.info("typeEmp -> {}", typeEmp);
-        log.info("month -> {}", month);
+        //log.info("typeEmp -> {}", typeEmp);
+        //log.info("month -> {}", month);
         // Obtener el ParametersDTO relevante para el mes actual
         ParametersDTO relevantParameter = getRelevantParameter(typeEmp, month, salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
-        log.info("relevantParameter name -> {}", relevantParameter);
+        //log.info("relevantParameter name -> {}", relevantParameter);
         // Inicializar el salario base con el valor de la proyección actual
         BigDecimal salary = projection.getAmount();
-        log.info("salary -> {}", salary);
+        //log.info("salary -> {}", salary);
         // Aplicar el ajuste solo si hay un parámetro relevante para este mes específico
         if (relevantParameter != null && currentMonth.equals(YearMonth.parse(relevantParameter.getPeriod(), MONTH_FORMATTER))) {
             double adjustment = relevantParameter.getValue();
             double adjustmentPercentage = adjustment / 100;
             salary = salary.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(adjustmentPercentage)));
         }
-        log.info("salary -> {}", salary);
+        //log.info("salary -> {}", salary);
         // Calcular el ajuste de promoción
         BigDecimal promo = calculatePromoAdjustment(salary.doubleValue(), month, componentMap);
-        log.info("promo -> {}", promo);
+        //log.info("promo -> {}", promo);
         // Calcular el salario total con promoción
         BigDecimal totalSalary = salary.multiply(BigDecimal.ONE.add(promo));
-        log.info("totalSalary -> {}", totalSalary);
+        //log.info("totalSalary -> {}", totalSalary);
         return new MonthProjection(month, totalSalary);
     }
     /**
