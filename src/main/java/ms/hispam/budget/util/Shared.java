@@ -77,6 +77,20 @@ public class Shared {
         }
         return dates;
     }
+    public static List<MonthProjection> generateMonthProjectionV3(String monthBase, int range, BigDecimal baseAmount) {
+        List<MonthProjection> dates = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
+        YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
+        //fechaActual = fechaActual.plusMonths(1);
+        for (int i = 0; i < range; i++) {
+            dates.add(MonthProjection.builder()
+                    .month(fechaActual.format(formatter))
+                    .amount(baseAmount)
+                    .build());
+            fechaActual = fechaActual.plusMonths(1);
+        }
+        return dates;
+    }
    /* public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
         String cacheKey = monthBase + "_" + range + "_" + amount;
         return PROJECTION_CACHE.computeIfAbsent(cacheKey, k -> {

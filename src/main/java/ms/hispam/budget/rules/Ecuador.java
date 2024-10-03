@@ -9,6 +9,7 @@ import ms.hispam.budget.service.UserSessionService;
 import ms.hispam.budget.util.Shared;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,10 @@ public class Ecuador {
         List<MonthProjection> months= Shared.generateMonthProjectionV2(period,range,BigDecimal.ZERO);
         months.forEach(f->{
             double[] suma = {0.0};
-            componentDTO.stream().filter(c->Arrays.asList(comIess).contains(c.getType())).forEach(d->{
+            componentDTO
+                    .stream()
+                    .filter(c->Arrays.asList(comIess).contains(c.getType()))
+                    .forEach(d->{
                 d.getProjections().stream().filter(g->g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j->{
                     suma[0] += j.getAmount().doubleValue();
                     f.setAmount(BigDecimal.valueOf(suma[0]));
@@ -206,7 +210,6 @@ public class Ecuador {
     }
 
     public List<PaymentComponentDTO> srv(List<PaymentComponentDTO> componentDTO, List<ParametersDTO> parameters) {
-        // PARAMETROS PARA LA COLUMNA
         AtomicReference<Double> iess = new AtomicReference<>((double) 0);
         AtomicReference<Double> fr = new AtomicReference<>((double) 0);
         parameters.stream().filter(c -> c.getParameter().getId() == 3).findFirst().ifPresent(d -> iess.set(d.getValue()));
@@ -217,14 +220,32 @@ public class Ecuador {
                 .filter(f -> f.getType() != null && f.getType() == 5)
                 .forEach(o -> {
                     Double valueDefault = o.getAmount().doubleValue();
-                    for (int i = 0; i < o.getProjections().size(); i++) {
+                    // Usamos el tamaño de las proyecciones del componente actual
+                    int projectionSize = o.getProjections().size();
+                    for (int i = 0; i < projectionSize; i++) {
                         AtomicReference<Double> sb = new AtomicReference<>(0.0);
                         AtomicReference<Double> co = new AtomicReference<>(0.0);
                         int finalI = i;
-                        componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 1).findFirst().ifPresent(f ->
-                                sb.set(f.getProjections().get(finalI).getAmount().doubleValue()));
-                        componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 2).findFirst().ifPresent(f ->
-                                co.set(f.getProjections().get(finalI).getAmount().doubleValue()));
+
+                        // Aseguramos que no excedemos los límites de las proyecciones
+                        componentDTO.stream()
+                                .filter(c -> c.getType() != null && c.getType() == 1)
+                                .findFirst()
+                                .ifPresent(f -> {
+                                    if (finalI < f.getProjections().size()) {
+                                        sb.set(f.getProjections().get(finalI).getAmount().doubleValue());
+                                    }
+                                });
+
+                        componentDTO.stream()
+                                .filter(c -> c.getType() != null && c.getType() == 2)
+                                .findFirst()
+                                .ifPresent(f -> {
+                                    if (finalI < f.getProjections().size()) {
+                                        co.set(f.getProjections().get(finalI).getAmount().doubleValue());
+                                    }
+                                });
+
                         double v = (((sb.get() + co.get()) * 13 * valueDefault / 100) *
                                 (1 + (1.0 / 12.0) + percent)) / 12;
                         o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
@@ -235,6 +256,7 @@ public class Ecuador {
                 });
         return componentDTO;
     }
+
     public List<PaymentComponentDTO> vacations(List<PaymentComponentDTO> componentDTO, String period,
                                                List<ParametersDTO> parameters, Integer range) {
         AtomicReference<Double> parameter = new AtomicReference<>((double) 0);
