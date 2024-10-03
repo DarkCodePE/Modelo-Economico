@@ -2635,7 +2635,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                         r.setPaymentComponent(p.getComponent());
                                                                         r.setType(p.getType());
                                                                         r.setAmount(BigDecimal.valueOf(u.getAmount()));
-                                                                        r.setProjections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
+                                                                        r.setProjections(Shared.generateMonthProjectionV2(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
                                                                     } else {
                                                                         throw new BadRequestException("No se encuentra información para el mes base " + projection.getPeriod());
                                                                     }
@@ -3025,7 +3025,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .type(type)
                 .paymentComponent(paymentComponent)
                 .amount(BigDecimal.valueOf(amount))
-                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(amount)))
+                .projections(Shared.generateMonthProjectionV2(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(amount)))
                 .build();
     }
 
