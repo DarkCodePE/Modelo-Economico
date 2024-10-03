@@ -48,4 +48,5 @@ public class ParametersByProjection {
     private Map<Integer, List<NominaPaymentComponentLink>> nominaPaymentLinks;
     private List<SeniorityAndQuinquennium> seniorityAndQuinquenniums;
     private List<EmployeeClassification> employeeClassifications;
+    private List<ConceptoPresupuestal> conceptoPresupuestals;
 }

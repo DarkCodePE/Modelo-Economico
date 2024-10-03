@@ -1211,7 +1211,15 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if (projection.getEmployeeClassifications() != null && !projection.getEmployeeClassifications().isEmpty()) {
             Map<String, EmployeeClassification> tempClassificationMap = new HashMap<>();
             for (EmployeeClassification classification : projection.getEmployeeClassifications()) {
-                tempClassificationMap.put(classification.getCategory(), classification);
+                String key = classification.getCategory().toUpperCase();
+                EmployeeClassification existingClassification = tempClassificationMap.get(key);
+
+                if (existingClassification == null ||
+                        !existingClassification.getTypeEmp().equals(classification.getTypeEmp()) ||
+                        !Objects.equals(existingClassification.getValueAllowance(), classification.getValueAllowance())) {
+
+                    tempClassificationMap.put(key, classification);
+                }
             }
             synchronized (classificationMap) {
                 classificationMap.clear();
@@ -1219,8 +1227,37 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             }
             log.info("Caché de clasificaciones de empleados actualizada con {} entradas", classificationMap.size());
         }
+        // Actualizar conceptoPresupuestalMap
+        if (projection.getConceptoPresupuestals() != null && !projection.getConceptoPresupuestals().isEmpty()) {
+            Map<String, ConceptoPresupuestal> tempConceptoPresupuestalMap = new HashMap<>();
+            for (ConceptoPresupuestal concepto : projection.getConceptoPresupuestals()) {
+                ConceptoPresupuestal adjustedConcepto = new ConceptoPresupuestal();
+                adjustedConcepto.setConceptoPresupuestal(concepto.getConceptoPresupuestal());
 
+                // Pre-calculate all percentages by dividing by 100
+                if (concepto.getGratificacion() != null) {
+                    adjustedConcepto.setGratificacion(concepto.getGratificacion().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getCts() != null) {
+                    adjustedConcepto.setCts(concepto.getCts().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getEssalud() != null) {
+                    adjustedConcepto.setEssalud(concepto.getEssalud().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+                if (concepto.getBonifExtTemp() != null) {
+                    adjustedConcepto.setBonifExtTemp(concepto.getBonifExtTemp().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                }
+
+                tempConceptoPresupuestalMap.put(concepto.getConceptoPresupuestal(), adjustedConcepto);
+            }
+            synchronized (conceptoPresupuestalMap) {
+                conceptoPresupuestalMap.clear();
+                conceptoPresupuestalMap.putAll(tempConceptoPresupuestalMap);
+            }
+            log.info("Caché de conceptos presupuestales actualizada con {} entradas", conceptoPresupuestalMap.size());
+        }
     }
+
     private List<ParametersDTO> filterParametersByName(List<ParametersDTO> parameters, String name) {
         return parameters.stream()
                 .filter(p -> Objects.equals(p.getParameter().getDescription(), name))
@@ -2376,8 +2413,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> filterPositions = Arrays.asList(
-                "PO10001848", "PO10001623", "PO99011801", "PO99012453",
-                "PO99010827", "PO99010253", "PO99016659", "PO99011446"
+                "PO10009248", "PO99010245", "PO10008133", "PO99010341",
+                "PO10005869"
         );
         //initializePeruCache(projection);
         //TODO: ADD MONTH BASE
@@ -2390,7 +2427,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .parallelStream() // Use parallel stream here
                 //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
-                //.filter(e->e.getPosition().equals("PO99012453") || e.getPosition().equals("PO99014894"))
+                //.filter(e->e.getPosition().equals("PO10009248"))
                 .map(e->HeadcountProjection.builder()
                         .position(e.getPosition())
                         .poname(e.getPoname())
@@ -2514,7 +2551,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 String level = resp.get("NIV") != null ? resp.get("NIV").toString() : "";
                 String categoryLocal = resp.get("categoryLocal") != null ? resp.get("categoryLocal").toString() : "";
                 String estadoVacante = resp.get("estadoVacante") != null ? resp.get("estadoVacante").toString() : "";
-
+                String name = resp.get("name") != null ? resp.get("name").toString() : "";
                 final int finalI = i;  // Hacemos final esta variable para usarla en la lambda
 
                 for (Map.Entry<String, Object> entry : resp.entrySet()) {
@@ -2529,7 +2566,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 HeadcountProjection headcountProjection = HeadcountProjection.builder()
                                         .position(pos)
                                         .idssff("")  // Se actualizará más tarde si es necesario
-                                        .poname(resp.get("name").toString())
+                                        .poname(name)
                                         .classEmp(typeEmpl)
                                         .fContra(fContra)
                                         .fNac(fNac)
