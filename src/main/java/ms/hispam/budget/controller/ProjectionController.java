@@ -9,6 +9,7 @@ import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.entity.mysql.UserSession;
 import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
+import ms.hispam.budget.service.ProjectionHistoryService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.service.ReportDownloadService;
 import ms.hispam.budget.service.UserSessionService;
@@ -50,6 +51,8 @@ public class ProjectionController {
     private SseReportService sseReportService;
     @Autowired
     private UserSessionService userSessionService;
+    @Autowired
+    private ProjectionHistoryService projectionHistoryService;
 
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
@@ -258,5 +261,27 @@ public class ProjectionController {
         SessionResponseDTO response = new SessionResponseDTO(sessionId);
         return ResponseEntity.ok(response);
     }
-
+    /**
+     * Endpoint para guardar una nueva proyección en el historial.
+     *
+     * @param saveRequest Objeto con los parámetros y resultado de la proyección
+     * @return La proyección resultante.
+     */
+    @PostMapping("/save-projection-history")
+    public ResponseEntity<ProjectionSecondDTO> saveProjection(
+            @RequestBody ProjectionSaveRequestDTO saveRequest
+    ) {
+        try {
+            projectionHistoryService.saveProjectionAsync(
+                    saveRequest.getProjection(),
+                    saveRequest.getProjectionResult(),
+                    saveRequest.getSessionId(),
+                    saveRequest.getReportName()
+            );
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
+        } catch (Exception e) {
+            log.error("Error al guardar la proyección: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 }

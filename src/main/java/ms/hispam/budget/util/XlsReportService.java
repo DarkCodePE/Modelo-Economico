@@ -778,128 +778,6 @@ public class XlsReportService {
         }
     }
 
-    private static Sheet createSheetWithUniqueName(Workbook workbook, String baseName) {
-        lock.lock();
-        try {
-            String uniqueName = baseName;
-            int index = 1;
-            while (workbook.getSheet(uniqueName) != null || sheetNames.contains(uniqueName)) {
-                uniqueName = baseName + " (" + index++ + ")";
-                if (index > 3) {
-                    throw new RuntimeException("No se pudo crear una hoja con un nombre único después de varios intentos.");
-                }
-            }
-            sheetNames.add(uniqueName);
-            return workbook.createSheet(uniqueName);
-        } finally {
-            lock.unlock();
-        }
-    }
-    private final Object sheetLock = new Object();
-    private void clearSheet(SXSSFSheet sheet) {
-        synchronized (sheetLock) {
-            for (int i = 0; i <= sheet.getLastRowNum(); i++) {
-                SXSSFRow row = sheet.getRow(i);
-                if (row != null) {
-                    for (int j = 0; j < row.getLastCellNum(); j++) {
-                        SXSSFCell cell = row.getCell(j);
-                        if (cell != null) {
-                            cell.setCellValue(""); // Limpiar el contenido de la celda
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void writeExcelPageNewExcel(SXSSFSheet sheet, String component, String period, Integer range, List<ProjectionDTO> projection, Integer idBu) {
-        sheet.setColumnWidth(0, 5000);
-        sheet.setColumnWidth(1, 4000);
-
-        if (sheet.getPhysicalNumberOfRows() > 0) {
-            // No se pueden limpiar las filas en SXSSF, crear una nueva hoja temporal
-            sheet = createTemporarySheet(sheet.getWorkbook(), sheet.getSheetName());
-        }
-
-        Row header = sheet.createRow(0);
-        Cell headerCell = header.createCell(0);
-        headerCell.setCellValue("POSSFF");
-        headerCell = header.createCell(1);
-        headerCell.setCellValue("IDSSFF");
-        headerCell = header.createCell(2);
-        headerCell.setCellValue("TIPO DE EMPLEADO");
-        headerCell = header.createCell(3);
-        headerCell.setCellValue(Shared.nameMonth(period));
-        int startHeader = 4;
-        for (String m : Shared.generateRangeMonth(period, range)) {
-            headerCell = header.createCell(startHeader);
-            headerCell.setCellValue(m);
-            startHeader++;
-        }
-
-        CellStyle style = sheet.getWorkbook().createCellStyle();
-        style.setWrapText(true);
-        int start = 1;
-        for (ProjectionDTO projectionDTO : projection) {
-            Row row = sheet.createRow(start);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(projectionDTO.getPo());
-            cell.setCellStyle(style);
-            cell = row.createCell(1);
-            cell.setCellValue(projectionDTO.getIdssff());
-            cell.setCellStyle(style);
-            cell = row.createCell(2);
-            String type;
-            boolean isCp = projectionDTO.getPoName() != null && projectionDTO.getPoName().contains("CP");
-            if (idBu == 4) {
-                type = isCp ? "CP" : "NO CP";
-            } else if (idBu == 5) {
-                String localCategory = projectionDTO.getCategoryLocal();
-                if (localCategory == null) {
-                    type = "No se encontró la categoría";
-                } else {
-                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(localCategory.toUpperCase()));
-                    if (optionalEmployeeClassification.isPresent()) {
-                        type = optionalEmployeeClassification.get().getCategory();
-                    } else {
-                        type = String.format("No se encontró la categoría %s", localCategory);
-                    }
-                }
-            } else {
-                type = projectionDTO.getClassEmployee();
-            }
-            cell.setCellValue(type);
-            cell.setCellStyle(style);
-
-            Optional<PaymentComponentDTO> componentDTO = projectionDTO.getComponents().stream()
-                    .filter(u -> u.getPaymentComponent().equalsIgnoreCase(component))
-                    .findFirst();
-
-            if (componentDTO.isPresent()) {
-                //log.info("Componente y->: {}", componentDTO.get().getPaymentComponent());
-                cell = row.createCell(3);
-                cell.setCellValue(componentDTO.get().getAmount().doubleValue());
-                cell.setCellStyle(style);
-                int column = 4;
-                for (MonthProjection month : componentDTO.get().getProjections()) {
-                    cell = row.createCell(column);
-                    cell.setCellValue(month.getAmount().doubleValue());
-                    cell.setCellStyle(style);
-                    column++;
-                }
-                start++;
-            }
-        }
-    }
-
-    private SXSSFSheet createTemporarySheet(SXSSFWorkbook workbook, String originalSheetName) {
-        // Crea una nueva hoja temporal con un nombre único
-        return workbook.createSheet(originalSheetName + "_temp");
-    }
-
-    // Añade un ExecutorService para la ejecución de tareas asíncronas
-    /*private static final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());*/
-
     // Modifica este método para que sea asíncrono
     public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId) {
         return CompletableFuture.supplyAsync(() -> {
@@ -911,7 +789,7 @@ public class XlsReportService {
                 data = projectionCache.get(cacheKey);
             } else {
                 // Si no está, genera la proyección y almacénala
-                data =  service.getNewProjection(projection);
+                data = service.getNewProjection(projection);
             }
             //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
@@ -1021,30 +899,6 @@ public class XlsReportService {
                     log.error("Error al generar el reporte", e);
                     return null;
                 });
-    }
-    private void createConceptIndex(SXSSFWorkbook workbook, Set<String> conceptSheets) {
-        Sheet indexSheet = workbook.createSheet("Índice de Conceptos");
-        Row headerRow = indexSheet.createRow(0);
-        Cell headerCell = headerRow.createCell(0);
-        headerCell.setCellValue("Concepto");
-        headerCell = headerRow.createCell(1);
-        headerCell.setCellValue("Hoja");
-
-        int rowNum = 1;
-        for (String conceptSheet : conceptSheets) {
-            Row row = indexSheet.createRow(rowNum++);
-            Cell conceptCell = row.createCell(0);
-            conceptCell.setCellValue(conceptSheet);
-            Cell linkCell = row.createCell(1);
-            linkCell.setCellValue("Ir a la hoja");
-
-            Hyperlink link = workbook.getCreationHelper().createHyperlink(HyperlinkType.DOCUMENT);
-            link.setAddress("'" + conceptSheet + "'!A1");
-            linkCell.setHyperlink(link);
-        }
-
-        indexSheet.autoSizeColumn(0);
-        indexSheet.autoSizeColumn(1);
     }
 
     private void processAndWriteDataInChunks(SXSSFSheet sheet, List<ProjectionDTO> projections, int chunkSize, Integer idBu, String component, String jobId) {

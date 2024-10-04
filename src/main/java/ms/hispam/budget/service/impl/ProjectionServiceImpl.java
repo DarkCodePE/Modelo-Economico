@@ -1420,10 +1420,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         //getRangeBuDetails value is equal to 1
-        RangeBuDTO rangeBuByBU = projection.getTemporalParameters().stream()
+        List<RangeBuDTO> temporalParameters = projection.getTemporalParameters();
+        RangeBuDTO rangeBuByBU = temporalParameters != null ? temporalParameters.stream()
                 .filter(r -> r.getIdBu().equals(projection.getIdBu()))
                 .findFirst()
-                .orElse(null);
+                .orElse(null) : null;
         //log.debug("rangeBuByBU {}",rangeBuByBU);
         List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : new ArrayList<>();
         //log.debug("rangeBuDetail {}",rangeBuDetail);

@@ -50,10 +50,10 @@ public class ProjectionHistoryService {
     }
 
     @Async("asyncTaskExecutor")
-    public CompletableFuture<Void> saveProjectionAsync(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String userContact, String sessionId, String reportName) {
+    public CompletableFuture<Void> saveProjectionAsync(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
         sseReportService.sendHistoryUpdate(sessionId, "procesando", "Guardando la proyección en el historial", 50);
         try {
-            saveProjectionToHistory(parameters, projectionResult, sessionId);
+            saveProjectionToHistory(parameters, projectionResult, sessionId, reportName);
             sseReportService.sendHistoryUpdate(sessionId, "completado", "Proyección guardada en el historial", 100);
         } catch (Exception e) {
             sseReportService.sendHistoryUpdate(sessionId, "error", "Error al guardar la proyección en el historial", 100);
@@ -63,7 +63,7 @@ public class ProjectionHistoryService {
         return CompletableFuture.completedFuture(null);
     }
 
-    private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId) {
+    private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
         try {
             String cacheKey = ProjectionUtils.generateHash(parameters);
             byte[] serializedData = serializeAndCompress(projectionResult);
@@ -77,6 +77,7 @@ public class ProjectionHistoryService {
                     .fileUrl(fileUrl)
                     .createdAt(LocalDateTime.now())
                     .hash(cacheKey)
+                    .reportName(reportName)
                     .build();
 
             historyRepository.save(history);
