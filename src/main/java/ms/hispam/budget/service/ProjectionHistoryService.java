@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.sql.rowset.serial.SerialException;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -37,16 +38,18 @@ public class ProjectionHistoryService {
     private final SseReportService sseReportService;
     private final ProjectionUtils projectionUtils;
     private final UserSessionRepository userSessionRepository;
+    private final ObjectMapper objectMapper; // Inyectado
     @Autowired
     public ProjectionHistoryService(ProjectionHistoryRepository historyRepository,
                                     ExternalService externalService,
                                     SseReportService sseReportService,
-                                    ProjectionUtils projectionUtils, UserSessionRepository userSessionRepository) {
+                                    ProjectionUtils projectionUtils, UserSessionRepository userSessionRepository, ObjectMapper objectMapper) {
         this.historyRepository = historyRepository;
         this.externalService = externalService;
         this.sseReportService = sseReportService;
         this.projectionUtils = projectionUtils;
         this.userSessionRepository = userSessionRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Async("asyncTaskExecutor")
@@ -66,7 +69,7 @@ public class ProjectionHistoryService {
     private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
         try {
             String cacheKey = ProjectionUtils.generateHash(parameters);
-            byte[] serializedData = serializeAndCompress(projectionResult);
+            byte[] serializedData = serializeJSONAndCompress(projectionResult);
             UserSession userSession = userSessionRepository.findBySessionId(sessionId)
                     .orElseThrow(() -> new NoSuchElementException("La sesión no es válida"));
             String fileUrl = externalService.uploadProjectionFile(userSession.getId().intValue(), serializedData, cacheKey);
@@ -86,16 +89,36 @@ public class ProjectionHistoryService {
             throw new HistorySaveException("Error al guardar la proyección en el historial", e);
         }
     }
-    private byte[] serializeAndCompress(ProjectionSecondDTO projectionResult) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
-             ObjectOutputStream oos = new ObjectOutputStream(gzipOut)) {
-            oos.writeObject(projectionResult);
-            oos.flush();
-            gzipOut.finish();
+    private byte[] serializeJSONAndCompress(ProjectionSecondDTO projectionResult) {
+        try {
+            String jsonString = objectMapper.writeValueAsString(projectionResult);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
+                gzipOut.write(jsonString.getBytes(StandardCharsets.UTF_8));
+            }
             return baos.toByteArray();
         } catch (IOException e) {
             throw new SerialHistoryException("Error al serializar y comprimir la proyección", e);
+        }
+    }
+    private ProjectionSecondDTO decompressJSONAndDeserialize(byte[] data) {
+        try {
+            ByteArrayInputStream bais = new ByteArrayInputStream(data);
+            GZIPInputStream gzipIn = new GZIPInputStream(bais);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = gzipIn.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+
+
+            String jsonString = baos.toString(StandardCharsets.UTF_8);
+            return objectMapper.readValue(jsonString, ProjectionSecondDTO.class);
+        } catch (IOException e) {
+            throw new SerialHistoryException("Error al deserializar la proyección", e);
         }
     }
 
@@ -117,17 +140,7 @@ public class ProjectionHistoryService {
 
         // Descargar y deserializar la proyección
         byte[] data = externalService.downloadProjectionFile(history.getFileUrl());
-        return decompressAndDeserialize(data);
-    }
-
-    private ProjectionSecondDTO decompressAndDeserialize(byte[] data) {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
-             GZIPInputStream gzipIn = new GZIPInputStream(bais);
-             ObjectInputStream ois = new ObjectInputStream(gzipIn)) {
-            return (ProjectionSecondDTO) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException("Error al deserializar la proyección", e);
-        }
+        return decompressJSONAndDeserialize(data);
     }
 }
 
