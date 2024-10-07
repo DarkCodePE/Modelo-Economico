@@ -12,6 +12,10 @@ import java.time.LocalDateTime;
 @Setter
 @Builder
 @AllArgsConstructor
+/**
+ * @Lob: Indica que el campo debe ser tratado como un objeto grande (Large Object). En este caso, LONGTEXT es apropiado para almacenar grandes cantidades de texto.
+ * @LONGTEXT permite almacenar hasta 4,294,967,295 caracteres
+ */
 public class ProjectionHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,7 +23,8 @@ public class ProjectionHistory {
 
     private Long userId;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String parameters;
 
     private String fileUrl;

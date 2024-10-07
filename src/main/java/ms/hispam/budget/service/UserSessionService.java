@@ -38,10 +38,7 @@ public class UserSessionService {
             return sessionId;
         }
     }
-    //List<UserSession> findByUserId(String userId);
-    public List<UserSession> findByUserId(String userId){
-        return userSessionRepository.findByUserId(userId);
-    }
+
     public boolean validateSession(String sessionId) {
         return userSessionRepository.findBySessionId(sessionId)
                 .map(session -> {

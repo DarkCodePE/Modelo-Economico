@@ -5,6 +5,7 @@ import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ProjectionHistory;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.entity.mysql.UserSession;
 import ms.hispam.budget.event.SseReportService;
@@ -283,5 +284,26 @@ public class ProjectionController {
             log.error("Error al guardar la proyección: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
+    }
+    /**
+     * Endpoint para obtener el historial de proyecciones de un usuario.
+     *
+     * @param user Correo del usuario
+     * @return Lista de proyecciones históricas del usuario
+     */
+    @GetMapping("/history-projections")
+    public List<ProjectionHistory> getUserProjections(@RequestHeader String user) {
+        return projectionHistoryService.getUserProjections(user);
+    }
+
+    /**
+     * Obtiene una proyección desde el historial basada en su ID y el ID del usuario.
+     *
+     * @param historyId Identificador único de la proyección en el historial
+     * @return La proyección deserializada
+     */
+    @GetMapping("/history-projections-id")
+    public ProjectionSaveRequestDTO getProjectionFromHistory(@RequestParam Long historyId) {
+        return projectionHistoryService.getProjectionFromHistory(historyId);
     }
 }

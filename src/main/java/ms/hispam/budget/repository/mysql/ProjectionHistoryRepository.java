@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface ProjectionHistoryRepository extends JpaRepository<ProjectionHistory, Long> {
     List<ProjectionHistory> findByUserId(Long userId);
     Optional<ProjectionHistory> findByIdAndUserId(Long id, Long userId);
+    Optional<ProjectionHistory> findByIdAndReportName(Long id, String reportName);
 }

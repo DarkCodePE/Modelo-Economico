@@ -22,5 +22,5 @@ public class ParameterDefault {
     @Column(name = "v_parameter")
     private Integer vParameter;
     private Double value;
-
+    private String periodo;
 }

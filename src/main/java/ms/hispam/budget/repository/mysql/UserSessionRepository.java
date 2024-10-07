@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface UserSessionRepository extends JpaRepository<UserSession, Long> {
     Optional<UserSession> findBySessionId(String sessionId);
     //Optional<UserSession> findByUserIdAndActive(String userId, boolean active);
-    List<UserSession> findByUserId(String userId);
+    Optional<UserSession> findByUserId(String userId);
     UserSession findByUserIdAndActive(String userId, boolean active);
 }

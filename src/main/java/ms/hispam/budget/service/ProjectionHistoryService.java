@@ -3,12 +3,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.dto.ParametersByProjection;
+import ms.hispam.budget.dto.ProjectionSaveRequestDTO;
 import ms.hispam.budget.dto.ProjectionSecondDTO;
 import ms.hispam.budget.entity.mysql.ProjectionHistory;
 import ms.hispam.budget.entity.mysql.UserSession;
 import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.exception.HistorySaveException;
 import ms.hispam.budget.exception.SerialHistoryException;
+import ms.hispam.budget.exception.SerialParameterException;
 import ms.hispam.budget.repository.mysql.HistorialProjectionRepository;
 import ms.hispam.budget.repository.mysql.ProjectionHistoryRepository;
 import ms.hispam.budget.repository.mysql.UserSessionRepository;
@@ -127,20 +129,44 @@ public class ProjectionHistoryService {
             ObjectMapper mapper = new ObjectMapper();
             return mapper.writeValueAsString(parameters);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error al serializar los parámetros de la proyección", e);
+            throw new SerialParameterException("Error al serializar los parámetros de la proyección", e);
         }
     }
-    public List<ProjectionHistory> getUserProjections(Long userId) {
-        return historyRepository.findByUserId(userId);
+    // Método auxiliar para deserializar los parámetros
+    private ParametersByProjection deserializeParameters(String parametersJson) {
+        try {
+            return objectMapper.readValue(parametersJson, ParametersByProjection.class);
+        } catch (JsonProcessingException e) {
+            throw new SerialParameterException("Error al deserializar los parámetros de la proyección", e);
+        }
+    }
+    public List<ProjectionHistory> getUserProjections(String userContact) {
+        UserSession userSession = userSessionRepository
+                .findByUserId(userContact)
+                .orElseThrow(() -> new RuntimeException("No se encontraron proyecciones"));
+        return historyRepository.findByUserId(userSession.getId());
     }
 
-    public ProjectionSecondDTO getProjectionFromHistory(Long historyId, Long userId) {
-        ProjectionHistory history = historyRepository.findByIdAndUserId(historyId, userId)
+    public ProjectionSaveRequestDTO getProjectionFromHistory(Long historyId) {
+        ProjectionHistory history = historyRepository.findById(historyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proyección no encontrada"));
 
-        // Descargar y deserializar la proyección
+        // Deserializar los parámetros
+        ParametersByProjection parameters = deserializeParameters(history.getParameters());
+
+        // Descargar y deserializar el resultado de la proyección
         byte[] data = externalService.downloadProjectionFile(history.getFileUrl());
-        return decompressJSONAndDeserialize(data);
+        ProjectionSecondDTO projectionResult = decompressJSONAndDeserialize(data);
+
+        // Construir ProjectionSaveRequestDTO
+        ProjectionSaveRequestDTO saveRequest = new ProjectionSaveRequestDTO();
+        saveRequest.setProjection(parameters);
+        saveRequest.setProjectionResult(projectionResult);
+        saveRequest.setReportName(history.getReportName());
+        // Manejar sessionId según corresponda. Si no está disponible, puede ser null o manejarse de otra manera.
+        saveRequest.setSessionId(null); // Ajustar según necesidad
+
+        return saveRequest;
     }
 }
 
