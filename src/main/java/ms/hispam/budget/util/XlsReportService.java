@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -108,7 +109,8 @@ public class XlsReportService {
         this.service = service;
     }
     public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
-
+        log.info("Número de hilos activos en el ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getActiveCount());
+        log.info("Tamaño de la cola del ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getThreadPoolExecutor().getQueue().size());
         sseReportService.sendUpdate(sessionId, "procesando", "preparando el archivo Excel", 5);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
@@ -779,7 +781,7 @@ public class XlsReportService {
     }
 
     // Modifica este método para que sea asíncrono
-    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId) {
+    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName) {
         return CompletableFuture.supplyAsync(() -> {
             String cacheKey = ProjectionUtils.generateHash(projection);
             ProjectionSecondDTO data;
@@ -789,7 +791,7 @@ public class XlsReportService {
                 data = projectionCache.get(cacheKey);
             } else {
                 // Si no está, genera la proyección y almacénala
-                data = service.getNewProjection(projection);
+                data = service.getNewProjection(projection,sessionId,reportName);
             }
             //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
@@ -817,11 +819,11 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId) {
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName) {
 
         //sseReportService.sendUpdate(sessionId, "procesando", "procesando la información");
 
-        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId)
+        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName)
                 .thenAccept(reportData -> {
                     //sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
                     //sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");
@@ -932,9 +934,9 @@ public class XlsReportService {
         headerCell.setCellValue("IDSSFF");
         headerCell = header.createCell(2);
         headerCell.setCellValue("TIPO DE EMPLEADO");
-        headerCell = header.createCell(3);
-        headerCell.setCellValue(Shared.nameMonth(period));
-        int startHeader = 4;
+        //headerCell = header.createCell(3);
+        //headerCell.setCellValue(Shared.nameMonth(period));
+        int startHeader = 3;
         for (String m : Shared.generateRangeMonth(period, range)) {
             headerCell = header.createCell(startHeader);
             headerCell.setCellValue(m.trim());

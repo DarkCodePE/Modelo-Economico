@@ -63,10 +63,18 @@ public class ProjectionController {
     }
 
     @PostMapping("/new-projection")
-    public ProjectionSecondDTO getNewProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
+    public ProjectionSecondDTO getNewProjection(
+            @RequestBody ParametersByProjection projection,
+            @RequestHeader String user,
+            @RequestParam(required = false) String reportName
+    ) {
         //log.debug("Projection: {}", projection);
         Shared.replaceSLash(projection);
-        return service.getNewProjection(projection);
+        String sessionId = userSessionService.createOrUpdateSession(user);
+        String finalReportName = (reportName != null && !reportName.isEmpty())
+                ? reportName
+                : generateReportName(user, projection.getPeriod());
+        return service.getNewProjection(projection, sessionId, finalReportName);
     }
 
     @PostMapping("/data-base")
@@ -165,7 +173,7 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-                service.downloadProjection(projection, user, jobDB, idBu, sessionId);
+                service.downloadProjection(projection, user, jobDB, idBu, sessionId, finalReportName);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"
@@ -181,7 +189,11 @@ public class ProjectionController {
         String formattedTime = now.format(DateTimeFormatter.ofPattern("HHmmss"));
         return String.format("%s_%s_%s_%s", user, reportType, period, formattedTime);
     }
-
+    private String generateReportName(String user, String period) {
+        LocalDateTime now = LocalDateTime.now();
+        String formattedTime = now.format(DateTimeFormatter.ofPattern("HHmmss"));
+        return String.format("%s_%s_%s", user, period, formattedTime);
+    }
     private String getReportTypeName(Integer type) {
         return switch (type) {
             case 1 -> "Proyeccion";

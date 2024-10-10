@@ -18,7 +18,7 @@ public class SseExecutor {
                 5, 20,
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(),
-                new ThreadPoolExecutor.CallerRunsPolicy()
+                new ThreadPoolExecutor.AbortPolicy()
         );
     }
 }

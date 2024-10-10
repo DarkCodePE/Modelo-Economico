@@ -71,6 +71,13 @@ public class ProjectionHistoryService {
     private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
         try {
             String cacheKey = ProjectionUtils.generateHash(parameters);
+
+            // Verificar si ya existe una proyección con el mismo hash
+            if (historyRepository.findByHash(cacheKey).isPresent()) {
+                log.info("Proyección ya existe en historial para hash: {}", cacheKey);
+                return; // Salir sin guardar nuevamente
+            }
+
             byte[] serializedData = serializeJSONAndCompress(projectionResult);
             UserSession userSession = userSessionRepository.findBySessionId(sessionId)
                     .orElseThrow(() -> new NoSuchElementException("La sesión no es válida"));
@@ -91,6 +98,7 @@ public class ProjectionHistoryService {
             throw new HistorySaveException("Error al guardar la proyección en el historial", e);
         }
     }
+
     private byte[] serializeJSONAndCompress(ProjectionSecondDTO projectionResult) {
         try {
             String jsonString = objectMapper.writeValueAsString(projectionResult);
@@ -149,6 +157,30 @@ public class ProjectionHistoryService {
 
     public ProjectionSaveRequestDTO getProjectionFromHistory(Long historyId) {
         ProjectionHistory history = historyRepository.findById(historyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proyección no encontrada"));
+
+        // Deserializar los parámetros
+        ParametersByProjection parameters = deserializeParameters(history.getParameters());
+
+        // Descargar y deserializar el resultado de la proyección
+        byte[] data = externalService.downloadProjectionFile(history.getFileUrl());
+        ProjectionSecondDTO projectionResult = decompressJSONAndDeserialize(data);
+
+        // Construir ProjectionSaveRequestDTO
+        ProjectionSaveRequestDTO saveRequest = new ProjectionSaveRequestDTO();
+        saveRequest.setProjection(parameters);
+        saveRequest.setProjectionResult(projectionResult);
+        saveRequest.setReportName(history.getReportName());
+        // Manejar sessionId según corresponda. Si no está disponible, puede ser null o manejarse de otra manera.
+        saveRequest.setSessionId(null); // Ajustar según necesidad
+
+        return saveRequest;
+    }
+    public boolean existsProjection(String cacheKey) {
+        return historyRepository.existsByHash(cacheKey);
+    }
+    public ProjectionSaveRequestDTO getProjectionFromHistoryHash(String hash) {
+        ProjectionHistory history = historyRepository.findByHash(hash)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proyección no encontrada"));
 
         // Deserializar los parámetros

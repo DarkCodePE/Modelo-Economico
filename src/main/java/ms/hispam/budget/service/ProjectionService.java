@@ -21,7 +21,7 @@ public interface ProjectionService {
 
     Page<ProjectionDTO> getProjection(ParametersByProjection projection);
 
-    ProjectionSecondDTO getNewProjection(ParametersByProjection projection);
+    ProjectionSecondDTO getNewProjection(ParametersByProjection projection, String sessionId, String reportName);
 
     Config getComponentByBu(String bu);
 
@@ -34,7 +34,7 @@ public interface ProjectionService {
 
     Boolean deleteHistorical( Integer id);
 
-    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId);
+    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName);
     void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     byte[] downloadProjectionHistorical(Integer id);

@@ -22,7 +22,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setMaxPoolSize(100);
         executor.setQueueCapacity(1000);
         executor.setThreadNamePrefix("Async-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy()); // Política en caso de que la tarea no pueda ser ejecutada inmediatamente
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy()); // Política en caso de que la tarea no pueda ser ejecutada inmediatamente
         executor.initialize();
         return executor;
     }
@@ -36,7 +36,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("ProjectionAsync-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
 
         return executor;
@@ -51,7 +51,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("ReportTask-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
 
         return executor;

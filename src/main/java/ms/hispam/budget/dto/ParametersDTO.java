@@ -29,4 +29,5 @@ public class ParametersDTO {
     private ConventArgDTO conventArg;
     private String vname;
     private Boolean vrange;
+    private String uniqueId;
 }

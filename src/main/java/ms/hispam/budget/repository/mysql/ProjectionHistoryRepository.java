@@ -10,4 +10,6 @@ public interface ProjectionHistoryRepository extends JpaRepository<ProjectionHis
     List<ProjectionHistory> findByUserId(Long userId);
     Optional<ProjectionHistory> findByIdAndUserId(Long id, Long userId);
     Optional<ProjectionHistory> findByIdAndReportName(Long id, String reportName);
+    Optional<ProjectionHistory> findByHash(String hash);
+    boolean existsByHash(String hash);
 }
