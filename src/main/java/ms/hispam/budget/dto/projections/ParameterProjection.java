@@ -15,4 +15,5 @@ public interface ParameterProjection {
     public String getRestringed();
     public String getConvenio();
     public String getArea();
+    public String getUniqueId();
 }

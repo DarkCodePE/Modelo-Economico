@@ -5,10 +5,12 @@ import ms.hispam.budget.dto.*;
 import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
+import ms.hispam.budget.entity.mysql.ProjectionHistory;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import ms.hispam.budget.entity.mysql.UserSession;
 import ms.hispam.budget.event.SseReportService;
 import ms.hispam.budget.repository.mysql.ReportJobRepository;
+import ms.hispam.budget.service.ProjectionHistoryService;
 import ms.hispam.budget.service.ProjectionService;
 import ms.hispam.budget.service.ReportDownloadService;
 import ms.hispam.budget.service.UserSessionService;
@@ -50,6 +52,8 @@ public class ProjectionController {
     private SseReportService sseReportService;
     @Autowired
     private UserSessionService userSessionService;
+    @Autowired
+    private ProjectionHistoryService projectionHistoryService;
 
     @PostMapping("/projection")
     public Page<ProjectionDTO> getProjection(@RequestBody @Valid ParametersByProjection projection) {
@@ -59,10 +63,18 @@ public class ProjectionController {
     }
 
     @PostMapping("/new-projection")
-    public ProjectionSecondDTO getNewProjection(@RequestBody ParametersByProjection projection, @RequestHeader String user) {
+    public ProjectionSecondDTO getNewProjection(
+            @RequestBody ParametersByProjection projection,
+            @RequestHeader String user,
+            @RequestParam(required = false) String reportName
+    ) {
         //log.debug("Projection: {}", projection);
         Shared.replaceSLash(projection);
-        return service.getNewProjection(projection);
+        String sessionId = userSessionService.createOrUpdateSession(user);
+        String finalReportName = (reportName != null && !reportName.isEmpty())
+                ? reportName
+                : generateReportName(user, projection.getPeriod());
+        return service.getNewProjection(projection, sessionId, finalReportName);
     }
 
     @PostMapping("/data-base")
@@ -161,7 +173,7 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-                service.downloadProjection(projection, user, jobDB, idBu, sessionId);
+                service.downloadProjection(projection, user, jobDB, idBu, sessionId, finalReportName);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"
@@ -177,7 +189,11 @@ public class ProjectionController {
         String formattedTime = now.format(DateTimeFormatter.ofPattern("HHmmss"));
         return String.format("%s_%s_%s_%s", user, reportType, period, formattedTime);
     }
-
+    private String generateReportName(String user, String period) {
+        LocalDateTime now = LocalDateTime.now();
+        String formattedTime = now.format(DateTimeFormatter.ofPattern("HHmmss"));
+        return String.format("%s_%s_%s", user, period, formattedTime);
+    }
     private String getReportTypeName(Integer type) {
         return switch (type) {
             case 1 -> "Proyeccion";
@@ -258,5 +274,48 @@ public class ProjectionController {
         SessionResponseDTO response = new SessionResponseDTO(sessionId);
         return ResponseEntity.ok(response);
     }
+    /**
+     * Endpoint para guardar una nueva proyección en el historial.
+     *
+     * @param saveRequest Objeto con los parámetros y resultado de la proyección
+     * @return La proyección resultante.
+     */
+    @PostMapping("/save-projection-history")
+    public ResponseEntity<ProjectionSecondDTO> saveProjection(
+            @RequestBody ProjectionSaveRequestDTO saveRequest
+    ) {
+        try {
+            projectionHistoryService.saveProjectionAsync(
+                    saveRequest.getProjection(),
+                    saveRequest.getProjectionResult(),
+                    saveRequest.getSessionId(),
+                    saveRequest.getReportName()
+            );
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
+        } catch (Exception e) {
+            log.error("Error al guardar la proyección: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+    /**
+     * Endpoint para obtener el historial de proyecciones de un usuario.
+     *
+     * @param user Correo del usuario
+     * @return Lista de proyecciones históricas del usuario
+     */
+    @GetMapping("/history-projections")
+    public List<ProjectionHistory> getUserProjections(@RequestHeader String user) {
+        return projectionHistoryService.getUserProjections(user);
+    }
 
+    /**
+     * Obtiene una proyección desde el historial basada en su ID y el ID del usuario.
+     *
+     * @param historyId Identificador único de la proyección en el historial
+     * @return La proyección deserializada
+     */
+    @GetMapping("/history-projections-id")
+    public ProjectionSaveRequestDTO getProjectionFromHistory(@RequestParam Long historyId) {
+        return projectionHistoryService.getProjectionFromHistory(historyId);
+    }
 }

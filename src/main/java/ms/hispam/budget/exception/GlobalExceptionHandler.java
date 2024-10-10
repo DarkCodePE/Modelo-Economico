@@ -54,4 +54,11 @@ public class GlobalExceptionHandler {
         ApiResponse apiResponse = new ApiResponse(mapErrors, webRequest.getDescription(false));
         return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
     }
+    @ExceptionHandler({HistorySaveException.class, SerialHistoryException.class})
+    public ResponseEntity<ApiResponse> handlerHistorySaveException(HistorySaveException exception,
+                                                                   WebRequest webRequest) {
+        ApiResponse apiResponse = new ApiResponse(exception.getMessage(), webRequest.getDescription(false));
+        apiResponse.setExceptionDetails(exception.getCause() != null ? exception.getCause().toString() : "No cause available");
+        return new ResponseEntity<>(apiResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

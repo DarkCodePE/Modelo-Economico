@@ -51,7 +51,7 @@ public class Colombia {
             salaryComponent.setAmount(BigDecimal.ZERO);
         }
         salaryComponent.setSalaryType(salaryType);
-        salaryComponent.setProjections(Shared.generateMonthProjectionV2(period,range,salaryComponent.getAmount()));
+        salaryComponent.setProjections(Shared.generateMonthProjectionV3(period,range,salaryComponent.getAmount()));
         Map<String, Object> result = new HashMap<>();
         result.put("salaryComponent", salaryComponent);
         result.put("salaryType", salaryType);
@@ -74,7 +74,7 @@ public class Colombia {
             salaryComponent.setAmount(BigDecimal.ZERO);
         }
         salaryComponent.setSalaryType(salaryType);
-        salaryComponent.setProjections(Shared.generateMonthProjectionV2(period,range,salaryComponent.getAmount()));
+        salaryComponent.setProjections(Shared.generateMonthProjectionV3(period,range,salaryComponent.getAmount()));
         Map<String, Object> result = new HashMap<>();
         result.put("salaryComponent", salaryComponent);
         result.put("salaryType", salaryType);
@@ -103,7 +103,7 @@ public class Colombia {
         } else {
             commissionComponent.setAmount(BigDecimal.ZERO);
         }
-        commissionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,commissionComponent.getAmount()));
+        commissionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,commissionComponent.getAmount()));
         Map<String, Object> result = new HashMap<>();
         result.put("commissionComponent", commissionComponent);
         return result;
@@ -125,7 +125,7 @@ public class Colombia {
         } else {
             commissionComponent.setAmount(BigDecimal.ZERO);
         }
-        commissionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,commissionComponent.getAmount()));
+        commissionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,commissionComponent.getAmount()));
         Map<String, Object> result = new HashMap<>();
         result.put("commissionComponent", commissionComponent);
         return result;
@@ -148,7 +148,7 @@ public class Colombia {
             salaryComponent.setAmount(BigDecimal.ZERO);
         }
         salaryComponent.setSalaryType(salaryType);
-        salaryComponent.setProjections(Shared.generateMonthProjectionV2(period,range,salaryComponent.getAmount()));
+        salaryComponent.setProjections(Shared.generateMonthProjectionV3(period,range,salaryComponent.getAmount()));
         Map<String, Object> result = new HashMap<>();
         result.put("salaryComponent", salaryComponent);
         result.put("salaryType", salaryType);
@@ -361,7 +361,7 @@ public class Colombia {
             }
         }else {
             paymentComponentDTO.setAmount(BigDecimal.ZERO);
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
         }
         component.add(paymentComponentDTO);
         //log.debug("component -> {}","salary");
@@ -429,21 +429,21 @@ public class Colombia {
                     PaymentComponentDTO paymentComponentDTO1 = new PaymentComponentDTO();
                     paymentComponentDTO1.setPaymentComponent(TEMPORAL_SALARY);
                     paymentComponentDTO1.setAmount(BigDecimal.ZERO);
-                    paymentComponentDTO1.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO1.getAmount()));
+                    paymentComponentDTO1.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO1.getAmount()));
                     component.add(paymentComponentDTO1);
                 }
             }else {
                 PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
                 paymentComponentDTO.setPaymentComponent(TEMPORAL_SALARY);
                 paymentComponentDTO.setAmount(BigDecimal.ZERO);
-                paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+                paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
                 component.add(paymentComponentDTO);
             }
         } else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent(TEMPORAL_SALARY);
             paymentComponentDTO.setAmount(BigDecimal.ZERO);
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         //log.debug("component -> {}", "temporalSalary");
@@ -675,7 +675,7 @@ public class Colombia {
             surchargesComponent.setProjections(projections);
         }else {
             surchargesComponent.setAmount(BigDecimal.valueOf(0));
-            surchargesComponent.setProjections(Shared.generateMonthProjectionV2(period,range,surchargesComponent.getAmount()));
+            surchargesComponent.setProjections(Shared.generateMonthProjectionV3(period,range,surchargesComponent.getAmount()));
         }
         component.add(surchargesComponent);
         //log.debug("component -> {}", "surcharges");
@@ -735,7 +735,7 @@ public class Colombia {
             component.add(overtimeComponent);
         }else {
             overtimeComponent.setAmount(BigDecimal.valueOf(0));
-            overtimeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,overtimeComponent.getAmount()));
+            overtimeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,overtimeComponent.getAmount()));
             component.add(overtimeComponent);
         }
         //log.debug("component -> {}", "overtime");
@@ -770,7 +770,7 @@ public class Colombia {
             double commission = commissionMap.get(nextPeriod) == null ? 0.0 : commissionMap.get(nextPeriod).getValue() / 12;
             double commissionProBase = maxCommission / sumCommission.doubleValue();
             paymentComponentDTO.setAmount(BigDecimal.valueOf(commission * commissionProBase));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             //log.debug("paymentComponentDTO -> {}", paymentComponentDTO);
             List<MonthProjection> projections = new ArrayList<>();
             double lastCommission = commission;
@@ -797,7 +797,7 @@ public class Colombia {
             PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
             commissionComponent.setPaymentComponent(COMMISSION);
             commissionComponent.setAmount(BigDecimal.valueOf(0));
-            commissionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,commissionComponent.getAmount()));
+            commissionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,commissionComponent.getAmount()));
             component.add(commissionComponent);
         }
         //log.debug("component -> {}", "commission");
@@ -848,7 +848,7 @@ public class Colombia {
             PaymentComponentDTO commissionComponent = new PaymentComponentDTO();
             commissionComponent.setPaymentComponent(COMMISSION);
             commissionComponent.setAmount(BigDecimal.valueOf(0));
-            commissionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,commissionComponent.getAmount()));
+            commissionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,commissionComponent.getAmount()));
             component.add(commissionComponent);
         }
         //log.debug("component -> {}", "commission");
@@ -899,11 +899,11 @@ public class Colombia {
                 monthlyPrimeComponent.setProjections(projections);
             } else {
                 monthlyPrimeComponent.setAmount(BigDecimal.valueOf(0));
-                monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,monthlyPrimeComponent.getAmount()));
+                monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,monthlyPrimeComponent.getAmount()));
             }
         }else {
             monthlyPrimeComponent.setAmount(BigDecimal.valueOf(0));
-            monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,monthlyPrimeComponent.getAmount()));
+            monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,monthlyPrimeComponent.getAmount()));
         }
         component.add(monthlyPrimeComponent);
        // log.debug("component -> {}", "prodMonthPrime");
@@ -987,7 +987,7 @@ public class Colombia {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("CONSOLIDADO_VACACIONES");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         //log.debug("component -> {}", "consolidatedVacation");
@@ -1040,7 +1040,7 @@ public class Colombia {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("CONSOLIDADO_CESANTIAS");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         //log.debug("component -> {}", "consolidatedSeverance");
@@ -1080,7 +1080,7 @@ public class Colombia {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         //log.debug("component -> {}", "consolidatedSeveranceInterest");
@@ -1177,7 +1177,7 @@ public class Colombia {
             transportSubsidyComponent.setProjections(projections);
         }else {
             transportSubsidyComponent.setAmount(BigDecimal.valueOf(0));
-            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV2(period,range,transportSubsidyComponent.getAmount()));
+            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV3(period,range,transportSubsidyComponent.getAmount()));
         }
         component.add(transportSubsidyComponent);
         log.debug("component -> {}", "transportSubsidy");
@@ -1233,7 +1233,7 @@ public class Colombia {
             boxContributionComponent.setProjections(projections);
         }else {
             boxContributionComponent.setAmount(BigDecimal.valueOf(0));
-            boxContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,boxContributionComponent.getAmount()));
+            boxContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,boxContributionComponent.getAmount()));
         }
         component.add(boxContributionComponent);
         //log.debug("component -> {}", "contributionBox");
@@ -1357,14 +1357,14 @@ public class Colombia {
                 healthContributionComponent.setProjections(projections);
             } else {
                 healthContributionComponent.setAmount(BigDecimal.valueOf(0));
-                healthContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, healthContributionComponent.getAmount()));
+                healthContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, healthContributionComponent.getAmount()));
             }
             component.add(healthContributionComponent);
         }else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("APORTE_SALUD_EMPRESA");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         log.debug("component -> {}", "companyHealthContribution");
@@ -1464,11 +1464,11 @@ public class Colombia {
                 riskContributionComponent.setProjections(projections);
             }else {
                 riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-                riskContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,riskContributionComponent.getAmount()));
+                riskContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,riskContributionComponent.getAmount()));
             }
         }else {
             riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-            riskContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,riskContributionComponent.getAmount()));
+            riskContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,riskContributionComponent.getAmount()));
         }
         component.add(riskContributionComponent);
         log.debug("component -> {}", "companyRiskContribution");
@@ -1544,14 +1544,14 @@ public class Colombia {
                 riskContributionComponent.setProjections(projections);
             } else {
                 riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-                riskContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, riskContributionComponent.getAmount()));
+                riskContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, riskContributionComponent.getAmount()));
             }
             component.add(riskContributionComponent);
         }else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("APORTE_RIESGO_EMPRESA_BECARIOS");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         log.debug("component -> {}", "companyRiskContributionTrainee");
@@ -1622,11 +1622,11 @@ public class Colombia {
                 icbfContributionComponent.setProjections(projections);
             }else {
                 icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
-                icbfContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,icbfContributionComponent.getAmount()));
+                icbfContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,icbfContributionComponent.getAmount()));
             }
         }else {
             icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
-            icbfContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,icbfContributionComponent.getAmount()));
+            icbfContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,icbfContributionComponent.getAmount()));
         }
         component.add(icbfContributionComponent);
         log.debug("component -> {}", "icbfContribution");
@@ -1689,11 +1689,11 @@ public class Colombia {
                 senaContributionComponent.setProjections(projections);
             }else {
                 senaContributionComponent.setAmount(BigDecimal.valueOf(0));
-                senaContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,senaContributionComponent.getAmount()));
+                senaContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,senaContributionComponent.getAmount()));
             }
         }else {
             senaContributionComponent.setAmount(BigDecimal.valueOf(0));
-            senaContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,senaContributionComponent.getAmount()));
+            senaContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,senaContributionComponent.getAmount()));
         }
         component.add(senaContributionComponent);
         log.debug("component -> {}", "senaContribution");
@@ -1796,11 +1796,11 @@ public class Colombia {
                 pensionContributionComponent.setProjections(projections);
             }else {
                 pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
-                pensionContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,pensionContributionComponent.getAmount()));
+                pensionContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,pensionContributionComponent.getAmount()));
             }
         }else {
             pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
-            pensionContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,pensionContributionComponent.getAmount()));
+            pensionContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,pensionContributionComponent.getAmount()));
         }
         component.add(pensionContributionComponent);
         log.debug("component -> {}", "companyPensionContribution");
@@ -1906,11 +1906,11 @@ public class Colombia {
                 sodexoComponent.setProjections(projections);
             }else {
                 sodexoComponent.setAmount(BigDecimal.valueOf(0));
-                sodexoComponent.setProjections(Shared.generateMonthProjectionV2(period,range,sodexoComponent.getAmount()));
+                sodexoComponent.setProjections(Shared.generateMonthProjectionV3(period,range,sodexoComponent.getAmount()));
             }
         }else {
             sodexoComponent.setAmount(BigDecimal.valueOf(0));
-            sodexoComponent.setProjections(Shared.generateMonthProjectionV2(period,range,sodexoComponent.getAmount()));
+            sodexoComponent.setProjections(Shared.generateMonthProjectionV3(period,range,sodexoComponent.getAmount()));
         }
         component.add(sodexoComponent);
         log.debug("component -> {}", "sodexo");
@@ -2025,7 +2025,7 @@ public class Colombia {
             }
         }else {
             newComponent.setAmount(BigDecimal.valueOf(0));
-            newComponent.setProjections(Shared.generateMonthProjectionV2(period,range,newComponent.getAmount()));
+            newComponent.setProjections(Shared.generateMonthProjectionV3(period,range,newComponent.getAmount()));
         }
         newComponent.setProjections(projections);
         component.add(newComponent);
@@ -2064,11 +2064,11 @@ public class Colombia {
                 uniqueBonusComponent.setProjections(newProjections);
             }else {
                 uniqueBonusComponent.setAmount(BigDecimal.valueOf(0));
-                uniqueBonusComponent.setProjections(Shared.generateMonthProjectionV2(period,range,uniqueBonusComponent.getAmount()));
+                uniqueBonusComponent.setProjections(Shared.generateMonthProjectionV3(period,range,uniqueBonusComponent.getAmount()));
             }
         }else {
             uniqueBonusComponent.setAmount(BigDecimal.valueOf(0));
-            uniqueBonusComponent.setProjections(Shared.generateMonthProjectionV2(period,range,uniqueBonusComponent.getAmount()));
+            uniqueBonusComponent.setProjections(Shared.generateMonthProjectionV3(period,range,uniqueBonusComponent.getAmount()));
         }
         component.add(uniqueBonusComponent);
         log.debug("component -> {}", "uniqueBonus");
@@ -2161,14 +2161,14 @@ public class Colombia {
                 transportSubsidyComponent.setProjections(projections);
             }else {
                 transportSubsidyComponent.setAmount(BigDecimal.valueOf(0));
-                transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV2(period,range,transportSubsidyComponent.getAmount()));
+                transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV3(period,range,transportSubsidyComponent.getAmount()));
             }
             component.add(transportSubsidyComponent);
         }else {
             PaymentComponentDTO transportSubsidyComponent = new PaymentComponentDTO();
             transportSubsidyComponent.setPaymentComponent("AUXILIO_TRANSPORTE_APRENDIZ_SENA");
             transportSubsidyComponent.setAmount(BigDecimal.valueOf(0));
-            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV2(period,range,transportSubsidyComponent.getAmount()));
+            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV3(period,range,transportSubsidyComponent.getAmount()));
             component.add(transportSubsidyComponent);
         }
         log.debug("component -> {}", "AuxilioDeTransporteAprendizSena");
@@ -2212,7 +2212,7 @@ public class Colombia {
             digitalConnectivityAidComponent.setProjections(projections);
         } else {
             digitalConnectivityAidComponent.setAmount(BigDecimal.valueOf(0));
-            digitalConnectivityAidComponent.setProjections(Shared.generateMonthProjectionV2(period,range,digitalConnectivityAidComponent.getAmount()));
+            digitalConnectivityAidComponent.setProjections(Shared.generateMonthProjectionV3(period,range,digitalConnectivityAidComponent.getAmount()));
         }
         component.add(digitalConnectivityAidComponent);
     }
@@ -2241,13 +2241,13 @@ public class Colombia {
             double commission2 = pc938012Component == null ? 0.0 : pc938012Component.getAmount().doubleValue();
             double maxCommission = Math.max(commission1, commission2);
             commissionComponent.setAmount(BigDecimal.valueOf(maxCommission));
-            commissionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,commissionComponent.getAmount()));
+            commissionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,commissionComponent.getAmount()));
             component.add(commissionComponent);
         }else {
             PaymentComponentDTO paymentComponentDTO = new PaymentComponentDTO();
             paymentComponentDTO.setPaymentComponent("COMMISSION_TEMP");
             paymentComponentDTO.setAmount(BigDecimal.valueOf(0));
-            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV2(period,range,paymentComponentDTO.getAmount()));
+            paymentComponentDTO.setProjections(Shared.generateMonthProjectionV3(period,range,paymentComponentDTO.getAmount()));
             component.add(paymentComponentDTO);
         }
         log.debug("component -> {}", "commissionTemporal");
@@ -2291,14 +2291,14 @@ public class Colombia {
                 monthlyPrimeComponent.setProjections(projections);
             }else {
                 monthlyPrimeComponent.setAmount(BigDecimal.valueOf(0));
-                monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,monthlyPrimeComponent.getAmount()));
+                monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,monthlyPrimeComponent.getAmount()));
             }
             component.add(monthlyPrimeComponent);
         }else {
             PaymentComponentDTO monthlyPrimeComponent = new PaymentComponentDTO();
             monthlyPrimeComponent.setPaymentComponent("PRIMA_MENSUAL_TEMPORAL");
             monthlyPrimeComponent.setAmount(BigDecimal.valueOf(0));
-            monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,monthlyPrimeComponent.getAmount()));
+            monthlyPrimeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,monthlyPrimeComponent.getAmount()));
             component.add(monthlyPrimeComponent);
         }
         log.debug("component -> {}", "prodMonthPrimeTemporal");
@@ -2343,14 +2343,14 @@ public class Colombia {
                 vacationComponent.setProjections(projections);
             }else {
                 vacationComponent.setAmount(BigDecimal.valueOf(0));
-                vacationComponent.setProjections(Shared.generateMonthProjectionV2(period,range,vacationComponent.getAmount()));
+                vacationComponent.setProjections(Shared.generateMonthProjectionV3(period,range,vacationComponent.getAmount()));
             }
             component.add(vacationComponent);
         }else {
             PaymentComponentDTO vacationComponent = new PaymentComponentDTO();
             vacationComponent.setPaymentComponent("CONSOLIDADO_VACACIONES_TEMPORAL");
             vacationComponent.setAmount(BigDecimal.valueOf(0));
-            vacationComponent.setProjections(Shared.generateMonthProjectionV2(period,range,vacationComponent.getAmount()));
+            vacationComponent.setProjections(Shared.generateMonthProjectionV3(period,range,vacationComponent.getAmount()));
             component.add(vacationComponent);
         }
         log.debug("component -> {}", "consolidatedVacationTemporal");
@@ -2397,14 +2397,14 @@ public class Colombia {
                 severanceComponent.setProjections(projections);
             }else {
                 severanceComponent.setAmount(BigDecimal.valueOf(0));
-                severanceComponent.setProjections(Shared.generateMonthProjectionV2(period,range,severanceComponent.getAmount()));
+                severanceComponent.setProjections(Shared.generateMonthProjectionV3(period,range,severanceComponent.getAmount()));
             }
             component.add(severanceComponent);
         }else {
             PaymentComponentDTO severanceComponent = new PaymentComponentDTO();
             severanceComponent.setPaymentComponent("CONSOLIDADO_CESANTIAS_TEMPORAL");
             severanceComponent.setAmount(BigDecimal.valueOf(0));
-            severanceComponent.setProjections(Shared.generateMonthProjectionV2(period,range,severanceComponent.getAmount()));
+            severanceComponent.setProjections(Shared.generateMonthProjectionV3(period,range,severanceComponent.getAmount()));
             component.add(severanceComponent);
         }
         log.debug("component -> {}", "consolidatedSeveranceTemporal");
@@ -2431,14 +2431,14 @@ public class Colombia {
                 severanceInterestComponent.setProjections(projections);
             }else {
                 severanceInterestComponent.setAmount(BigDecimal.valueOf(0));
-                severanceInterestComponent.setProjections(Shared.generateMonthProjectionV2(period,range,severanceInterestComponent.getAmount()));
+                severanceInterestComponent.setProjections(Shared.generateMonthProjectionV3(period,range,severanceInterestComponent.getAmount()));
             }
             component.add(severanceInterestComponent);
         }else {
             PaymentComponentDTO severanceInterestComponent = new PaymentComponentDTO();
             severanceInterestComponent.setPaymentComponent("CONSOLIDADO_INTERESES_CESANTIAS_TEMPORAL");
             severanceInterestComponent.setAmount(BigDecimal.valueOf(0));
-            severanceInterestComponent.setProjections(Shared.generateMonthProjectionV2(period,range,severanceInterestComponent.getAmount()));
+            severanceInterestComponent.setProjections(Shared.generateMonthProjectionV3(period,range,severanceInterestComponent.getAmount()));
             component.add(severanceInterestComponent);
         }
         log.debug("component -> {}", "consolidatedSeveranceInterestTemporal");
@@ -2524,7 +2524,7 @@ public class Colombia {
             PaymentComponentDTO transportSubsidyComponent = new PaymentComponentDTO();
             transportSubsidyComponent.setPaymentComponent("SUBSIDIO_TRANSPORTE_TEMPORALES");
             transportSubsidyComponent.setAmount(BigDecimal.valueOf(0));
-            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV2(period,range,transportSubsidyComponent.getAmount()));
+            transportSubsidyComponent.setProjections(Shared.generateMonthProjectionV3(period,range,transportSubsidyComponent.getAmount()));
             component.add(transportSubsidyComponent);
         }
         log.debug("component -> {}", "transportSubsidyTemporaries");
@@ -2598,14 +2598,14 @@ public class Colombia {
                 healthContributionComponent.setProjections(projections);
             } else {
                 healthContributionComponent.setAmount(BigDecimal.valueOf(0));
-                healthContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, healthContributionComponent.getAmount()));
+                healthContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, healthContributionComponent.getAmount()));
             }
             component.add(healthContributionComponent);
         }else {
             PaymentComponentDTO healthContributionComponent = new PaymentComponentDTO();
             healthContributionComponent.setPaymentComponent("APORTE_SALUD_EMPRESA_TEMP");
             healthContributionComponent.setAmount(BigDecimal.valueOf(0));
-            healthContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, healthContributionComponent.getAmount()));
+            healthContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, healthContributionComponent.getAmount()));
             component.add(healthContributionComponent);
         }
         log.debug("component -> {}", "companyHealthContributionTemporals");
@@ -2682,14 +2682,14 @@ public class Colombia {
                 riskContributionComponent.setProjections(projections);
             } else {
                 riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-                riskContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, riskContributionComponent.getAmount()));
+                riskContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, riskContributionComponent.getAmount()));
             }
             component.add(riskContributionComponent);
         }else {
             PaymentComponentDTO riskContributionComponent = new PaymentComponentDTO();
             riskContributionComponent.setPaymentComponent("APORTE_RIESGO_EMPRESA_TEMP");
             riskContributionComponent.setAmount(BigDecimal.valueOf(0));
-            riskContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, riskContributionComponent.getAmount()));
+            riskContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, riskContributionComponent.getAmount()));
             component.add(riskContributionComponent);
         }
         log.debug("component -> {}", "companyRiskContributionTemporals");
@@ -2734,14 +2734,14 @@ public class Colombia {
                boxContributionComponent.setProjections(projections);
            }else {
                 boxContributionComponent.setAmount(BigDecimal.valueOf(0));
-                boxContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, boxContributionComponent.getAmount()));
+                boxContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, boxContributionComponent.getAmount()));
            }
            component.add(boxContributionComponent);
        }else {
               PaymentComponentDTO boxContributionComponent = new PaymentComponentDTO();
               boxContributionComponent.setPaymentComponent("APORTE_CAJA_TEMPORALES");
               boxContributionComponent.setAmount(BigDecimal.valueOf(0));
-              boxContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, boxContributionComponent.getAmount()));
+              boxContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, boxContributionComponent.getAmount()));
               component.add(boxContributionComponent);
        }
        log.debug("component -> {}", "contributionBoxTemporaries");
@@ -2803,7 +2803,7 @@ public class Colombia {
                 }
             }else {
                 icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
-                icbfContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, icbfContributionComponent.getAmount()));
+                icbfContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, icbfContributionComponent.getAmount()));
             }
             icbfContributionComponent.setProjections(projections);
             component.add(icbfContributionComponent);
@@ -2811,7 +2811,7 @@ public class Colombia {
             PaymentComponentDTO icbfContributionComponent = new PaymentComponentDTO();
             icbfContributionComponent.setPaymentComponent("APORTE_ICBF_TEMPORALES");
             icbfContributionComponent.setAmount(BigDecimal.valueOf(0));
-            icbfContributionComponent.setProjections(Shared.generateMonthProjectionV2(period, range, icbfContributionComponent.getAmount()));
+            icbfContributionComponent.setProjections(Shared.generateMonthProjectionV3(period, range, icbfContributionComponent.getAmount()));
             component.add(icbfContributionComponent);
         }
         log.debug("component -> {}", "icbfContributionTemporaries");
@@ -2881,14 +2881,14 @@ public class Colombia {
                 component.add(senaContributionComponent);
             }else {
                 senaContributionComponent.setAmount(BigDecimal.valueOf(0));
-                senaContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,BigDecimal.ZERO));
+                senaContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,BigDecimal.ZERO));
                 component.add(senaContributionComponent);
             }
         }else {
             PaymentComponentDTO senaContributionComponent = new PaymentComponentDTO();
             senaContributionComponent.setPaymentComponent("APORTE_SENA_TEMPORALES");
             senaContributionComponent.setAmount(BigDecimal.valueOf(0));
-            senaContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,senaContributionComponent.getAmount()));
+            senaContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,senaContributionComponent.getAmount()));
             component.add(senaContributionComponent);
         }
         log.debug("component -> {}", "senaContributionTemporaries");
@@ -2935,14 +2935,14 @@ public class Colombia {
                 pensionContributionComponent.setProjections(projections);
             }else {
                 pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
-                pensionContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,pensionContributionComponent.getAmount()));
+                pensionContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,pensionContributionComponent.getAmount()));
             }
             component.add(pensionContributionComponent);
         }else {
             PaymentComponentDTO pensionContributionComponent = new PaymentComponentDTO();
             pensionContributionComponent.setPaymentComponent("APORTE_PENSION_EMPRESA_TEMPORALES");
             pensionContributionComponent.setAmount(BigDecimal.valueOf(0));
-            pensionContributionComponent.setProjections(Shared.generateMonthProjectionV2(period,range,pensionContributionComponent.getAmount()));
+            pensionContributionComponent.setProjections(Shared.generateMonthProjectionV3(period,range,pensionContributionComponent.getAmount()));
             component.add(pensionContributionComponent);
         }
         log.debug("component -> {}", "companyPensionContributionTemporaries");
@@ -2991,14 +2991,14 @@ public class Colombia {
                 feeComponent.setProjections(projections);
             }else {
                 feeComponent.setAmount(BigDecimal.valueOf(0));
-                feeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,feeComponent.getAmount()));
+                feeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,feeComponent.getAmount()));
             }
             component.add(feeComponent);
         }else{
             PaymentComponentDTO feeComponent = new PaymentComponentDTO();
             feeComponent.setPaymentComponent("FEE_TEMP");
             feeComponent.setAmount(BigDecimal.valueOf(0));
-            feeComponent.setProjections(Shared.generateMonthProjectionV2(period,range,feeComponent.getAmount()));
+            feeComponent.setProjections(Shared.generateMonthProjectionV3(period,range,feeComponent.getAmount()));
             component.add(feeComponent);
         }
         //log.debug("component -> {}", "feeTemporaries");
@@ -3060,7 +3060,7 @@ public class Colombia {
                 socialSecurityUniqueBonusComponent.setProjections(projections);
             }else {
                 socialSecurityUniqueBonusComponent.setAmount(BigDecimal.valueOf(0));
-                socialSecurityUniqueBonusComponent.setProjections(Shared.generateMonthProjectionV2(period, range, socialSecurityUniqueBonusComponent.getAmount()));
+                socialSecurityUniqueBonusComponent.setProjections(Shared.generateMonthProjectionV3(period, range, socialSecurityUniqueBonusComponent.getAmount()));
             }
             // Añadir el componente de pago a la lista de componentes
             component.add(socialSecurityUniqueBonusComponent);

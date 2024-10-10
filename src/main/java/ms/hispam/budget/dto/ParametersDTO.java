@@ -1,5 +1,6 @@
 package ms.hispam.budget.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.entity.mysql.ConventArg;
@@ -9,6 +10,7 @@ import ms.hispam.budget.entity.mysql.ConventArg;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ParametersDTO {
     private Integer id;
     private String description;
@@ -27,4 +29,5 @@ public class ParametersDTO {
     private ConventArgDTO conventArg;
     private String vname;
     private Boolean vrange;
+    private String uniqueId;
 }

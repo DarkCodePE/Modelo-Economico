@@ -6,7 +6,9 @@ import ms.hispam.budget.dto.UploadStorageDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -42,5 +44,29 @@ public class ExternalService {
             }
         }
         return fileProcess;
+    }
+    public String uploadProjectionFile(Integer userId, byte[] data, String fileName) {
+        try {
+            MultipartFile multipartFile = new ByteArrayMultipartFile(data, fileName + ".gz", "application/octet-stream");
+            UploadStorageDTO response = uploadFilePublic(userId, multipartFile);
+            return response.getUrl();
+        } catch (Exception e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Error al subir el archivo de la proyección", e);
+        }
+    }
+    public byte[] downloadProjectionFile(String fileUrl) {
+        try {
+            // Example using RestTemplate
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<byte[]> response = restTemplate.getForEntity(fileUrl, byte[].class);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return response.getBody();
+            } else {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al descargar el archivo de proyección");
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al descargar el archivo de proyección", e);
+        }
     }
 }

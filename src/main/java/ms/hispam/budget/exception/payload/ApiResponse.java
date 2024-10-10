@@ -11,9 +11,10 @@ public class ApiResponse<T> {
     private Date date = new Date();
     private T message;
     private String url;
+    private String exceptionDetails;
 
     public ApiResponse(T mensaje, String url) {
         this.message = mensaje;
-        this.url = url.replace("uri=","");
+        this.url = url.replace("uri=", "");
     }
 }

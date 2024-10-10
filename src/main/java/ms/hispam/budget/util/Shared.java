@@ -11,6 +11,8 @@ import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
 import javax.crypto.Cipher;
@@ -33,6 +35,8 @@ import java.util.stream.IntStream;
 public class Shared {
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
     private static final Map<String, List<MonthProjection>> PROJECTION_CACHE = new ConcurrentHashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(Shared.class);
+
     private Shared(){
     }
     //@Value("${password.crypth}")
@@ -81,12 +85,39 @@ public class Shared {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
-        //fechaActual = fechaActual.plusMonths(1);
-        for (int i = 0; i < range; i++) {
+        // Add the initial month with the adjusted salary
+      /*  dates.add(MonthProjection.builder()
+                .month(fechaActual.format(formatter))
+                .amount(baseAmount)
+                .build());*/
+
+        // Generate projections for subsequent months starting with the base salary
+        fechaActual = fechaActual.plusMonths(1);
+        for (int i = 1; i <= range; i++) {
             dates.add(MonthProjection.builder()
                     .month(fechaActual.format(formatter))
                     .amount(baseAmount)
                     .build());
+            fechaActual = fechaActual.plusMonths(1);
+        }
+        return dates;
+    }
+    public static List<String> generateRangeMonth(String monthBase, int range) {
+        List<String> dates = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
+        DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
+        //log.info("monthBase: {}", monthBase);
+        //log.info(" range: {}", range);
+
+        YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
+        // Add the initial month with the adjusted salary
+        //dates.add(fechaActual.format(formatterMonthName));
+
+        // Generate projections for subsequent months starting with the base salary
+        //fechaActual = fechaActual.plusMonths(1);
+        for (int i = 1; i <= range; i++) {
+            //log.info("Proyección para el mes: {}", fechaActual);
+            dates.add( fechaActual.format(formatterMonthName) );
             fechaActual = fechaActual.plusMonths(1);
         }
         return dates;
@@ -103,18 +134,7 @@ public class Shared {
                     .collect(Collectors.toList());
         });
     }*/
-    public static List<String> generateRangeMonth(String monthBase, int range) {
-        List<String> dates = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
-        DateTimeFormatter formatterMonthName = DateTimeFormatter.ofPattern("MMM uuuu");
-        YearMonth fechaActual = YearMonth.parse(monthBase, formatter).plusMonths(1);
-        for (int i = 0; i < range; i++) {
-            dates.add( fechaActual.format(formatterMonthName) );
-            fechaActual = fechaActual.plusMonths(1);
-        }
 
-        return dates;
-    }
     public static String nameMonth(String monthBase) {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);

@@ -3,6 +3,7 @@ package ms.hispam.budget.entity.mysql;
 import lombok.*;
 
 import javax.persistence.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -14,6 +15,8 @@ public class Parameters {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+    @Column(name = "unique_id", updatable = false, nullable = false, unique = true)
+    private UUID uniqueId;
     private String name;
     private String description;
     @Column(name = "type_valor")

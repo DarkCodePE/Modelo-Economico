@@ -139,7 +139,9 @@ public class ProjectionServiceImpl implements ProjectionService {
     private ProjectionCache projectionCache;
     @Autowired
     private ProjectionUtils projectionUtils;
-    
+    @Autowired
+    private ProjectionHistoryService projectionHistoryService;
+
     private final ConcurrentMap<String, ConcurrentHashMap<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByBuCache = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
     private Map<String, Map<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByYearCache;
@@ -384,18 +386,45 @@ public class ProjectionServiceImpl implements ProjectionService {
         }
     }
 
+
+
     @Override
-    public ProjectionSecondDTO getNewProjection(ParametersByProjection projection) {
+    public ProjectionSecondDTO getNewProjection(ParametersByProjection projection, String sessionId, String reportName) {
         String cacheKey = ProjectionUtils.generateHash(projection);
 
-        if (projectionCache.containsKey(cacheKey)) {
+        if (!"T. PERU".equals(projection.getBu()) && projectionCache.containsKey(cacheKey)) {
             log.info("Proyección obtenida de la caché para clave: {}", cacheKey);
             return projectionCache.get(cacheKey);
         }
 
         try {
+            // Validación para Perú
+            if ("T. PERU".equals(projection.getBu())) {
+                // Verificar si la proyección ya existe en el historial
+                boolean exists = projectionHistoryService.existsProjection(cacheKey);
+                if (exists) {
+                    log.info("La proyección para Perú ya existe en el historial para clave: {}", cacheKey);
+                    // Retornar la proyección existente o manejar según tus necesidades
+                    return projectionHistoryService.getProjectionFromHistoryHash(cacheKey).getProjectionResult();
+                }
+            }
+
             ProjectionSecondDTO projectionResult = calculateProjection(projection);
-            projectionCache.put(cacheKey, projectionResult, cacheKey);
+
+            if (projection.getBu().equals("T. PERU")) {
+                log.info("Proyección de Peru guardada en el historial para clave: {}", cacheKey);
+                // Para Perú, guardamos en el historial en lugar de la caché
+                projectionHistoryService.saveProjectionAsync(
+                        projection,
+                        projectionResult,
+                        sessionId,
+                        reportName
+                );
+            } else {
+                // Para otros países, guardamos en la caché
+                projectionCache.put(cacheKey, projectionResult, cacheKey);
+            }
+
             return projectionResult;
         } catch (Exception ex) {
             log.error("Error al generar la proyección: ", ex);
@@ -1420,10 +1449,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private void isColombia( List<ProjectionDTO>  headcount , ParametersByProjection projection){
         //getRangeBuDetails value is equal to 1
-        RangeBuDTO rangeBuByBU = projection.getTemporalParameters().stream()
+        List<RangeBuDTO> temporalParameters = projection.getTemporalParameters();
+        RangeBuDTO rangeBuByBU = temporalParameters != null ? temporalParameters.stream()
                 .filter(r -> r.getIdBu().equals(projection.getIdBu()))
                 .findFirst()
-                .orElse(null);
+                .orElse(null) : null;
         //log.debug("rangeBuByBU {}",rangeBuByBU);
         List<RangeBuDetailDTO> rangeBuDetail = rangeBuByBU != null ? rangeBuByBU.getRangeBuDetails() : new ArrayList<>();
         //log.debug("rangeBuDetail {}",rangeBuDetail);
@@ -2136,7 +2166,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Async("reportTaskExecutor")
     @Override
-    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId) {
+    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName) {
         try {
             Shared.replaceSLash(projection);
             //sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando generación del reporte", 0);
@@ -2151,7 +2181,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .isComparing(false)
                     .build();
             xlsReportService.generateAndCompleteReportAsync(projection,
-                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu, sessionId);
+                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu, sessionId, reportName);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -2232,70 +2262,141 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     @Override
     public DataBaseMainReponse getDataBase(DataRequest data) {
-        data.setPeriod(data.getPeriod().replace("/",""));
-        data.setNominaTo(data.getNominaTo().replace("/",""));
-        data.setNominaFrom(data.getNominaFrom().replace("/",""));
+        // Limpiar las fechas de periodos y nóminas
+        data.setPeriod(data.getPeriod().replace("/", ""));
+        data.setNominaTo(data.getNominaTo().replace("/", ""));
+        data.setNominaFrom(data.getNominaFrom().replace("/", ""));
 
+        // Obtener las entidades relacionadas con el BU
         List<String> entities = legalEntityRepository.findByBu(data.getBu()).stream()
-                .map(LegalEntity::getLegalEntity).collect(Collectors.toList());
-
-        List<ComponentProjection> components =sharedRepo.getComponentByBu(data.getBu()).stream().filter(ComponentProjection::getIscomponent)
-               .collect(Collectors.toList());
-        log.debug("components {}",components);
-        List<String> typeEmployee = typEmployeeRepository.findByBu(data.getIdBu()).stream().map(TypeEmployeeProjection::getTypeEmployee).collect(Collectors.toList());
-
-
-        List<HeadcountHistoricalProjection> headcount=  repository.getHistoricalBuAndPeriodSp(Constant.KEY_BD,
-                String.join(",", entities),data.getPeriod(),
-                components.stream().map(ComponentProjection::getComponent).collect(Collectors.joining(",")), String.join(",", typeEmployee));
-
-        if(headcount.isEmpty()){
-         return   DataBaseMainReponse.builder().data(new ArrayList<>()).components(components).nominas(new ArrayList<>()).comparing(new ArrayList<>()).build();
-        }
-
-        List<CodeNomina> codeNominas = codeNominaRepository.findByIdBu(data.getIdBu());
-
-       List<ComponentNominaProjection> nominal =  repository.getcomponentNomina(Constant.KEY_BD,data.getBu(),
-               data.getNominaFrom(),data.getNominaTo(),
-               codeNominas.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")));
-        //log.debug("nominal {}",nominal);
-
-        List<DataBaseResponse> deudasAgrupadas = headcount.stream()
-                .collect(Collectors.groupingBy(
-                        HeadcountHistoricalProjection::getPosition,
-                        Collectors.mapping(deuda -> new ComponentAmount(deuda.getComponent(), BigDecimal.valueOf(deuda.getAmount())), Collectors.toList())
-                )).entrySet().stream()
-                .map(entry -> {
-                    HeadcountHistoricalProjection info = headcount.stream().filter(i->i.getPosition().equalsIgnoreCase(entry.getKey())).findFirst().get();
-                    String fechaNac = info.getFnac()!=null?info.getFnac().toString():"";
-                    String fechaContra = info.getFcontra()!=null?info.getFcontra().toString():"";
-                    return  new DataBaseResponse(entry.getKey(),info.getIdssff(),info.getPoname(),info.getClassemp(), fechaNac, fechaContra, info.getConvent(), info.getLevel(), entry.getValue(),info.getCategoria_Local(), info.getEstado_Vacante());
-                })
+                .map(LegalEntity::getLegalEntity)
                 .collect(Collectors.toList());
 
-       deudasAgrupadas.forEach(u-> u.getComponents().addAll(nominal.stream().filter(k->  k.getID_SSFF().equalsIgnoreCase(u.getIdssff()))
-               .map(o->ComponentAmount.builder()
-                       .component(o.getCodigoNomina())
-                       .amount(BigDecimal.valueOf(o.getImporte()))
-                       .build()).collect(Collectors.toList())));
+        // Obtener los componentes para el BU y filtrar por isComponent
+        List<ComponentProjection> components = sharedRepo.getComponentByBu(data.getBu()).stream()
+                .filter(ComponentProjection::getIscomponent)
+                .collect(Collectors.toList());
+
+        log.debug("components {}", components);
+
+        // Obtener los tipos de empleados relacionados con el BU
+        List<String> typeEmployee = typEmployeeRepository.findByBu(data.getIdBu()).stream()
+                .map(TypeEmployeeProjection::getTypeEmployee)
+                .collect(Collectors.toList());
+
+        // Obtener datos de headcount
+        List<HeadcountHistoricalProjection> headcount = repository.getHistoricalBuAndPeriodSp(
+                Constant.KEY_BD,
+                String.join(",", entities),
+                data.getPeriod(),
+                components.stream().map(ComponentProjection::getComponent).collect(Collectors.joining(",")),
+                String.join(",", typeEmployee));
+
+        if (headcount.isEmpty()) {
+            return DataBaseMainReponse.builder()
+                    .data(new ArrayList<>())
+                    .components(components)
+                    .nominas(new ArrayList<>())
+                    .comparing(new ArrayList<>())
+                    .build();
+        }
+
+        // Obtener códigos de nómina
+        List<CodeNomina> codeNominas = codeNominaRepository.findByIdBu(data.getIdBu());
+
+        // Obtener componentes nominales
+        List<ComponentNominaProjection> nominal = repository.getcomponentNomina(
+                Constant.KEY_BD,
+                data.getBu(),
+                data.getNominaFrom(),
+                data.getNominaTo(),
+                codeNominas.stream().map(CodeNomina::getCodeNomina).collect(Collectors.joining(",")));
+
+        // Crear un mapa de posición a HeadcountHistoricalProjection (tomando el primero en caso de duplicados)
+        Map<String, HeadcountHistoricalProjection> headcountMap = headcount.stream()
+                .collect(Collectors.toMap(
+                        HeadcountHistoricalProjection::getPosition,
+                        Function.identity(),
+                        (existing, replacement) -> existing // Mantener el primero
+                ));
+
+        // Agrupar los ComponentAmount por posición
+        Map<String, List<ComponentAmount>> headcountComponentsMap = headcount.stream()
+                .collect(Collectors.groupingBy(
+                        HeadcountHistoricalProjection::getPosition,
+                        Collectors.mapping(
+                                deuda -> new ComponentAmount(deuda.getComponent(), BigDecimal.valueOf(deuda.getAmount())),
+                                Collectors.toList())
+                ));
+
+        // Crear un mapa de ID_SSFF a lista de ComponentAmount desde nominal
+        Map<String, List<ComponentAmount>> nominalMap = nominal.stream()
+                .collect(Collectors.groupingBy(
+                        ComponentNominaProjection::getID_SSFF,
+                        Collectors.mapping(
+                                o -> ComponentAmount.builder()
+                                        .component(o.getCodigoNomina())
+                                        .amount(BigDecimal.valueOf(o.getImporte()))
+                                        .build(),
+                                Collectors.toList())
+                ));
+
+        // Construir la lista de deudas agrupadas
+        List<DataBaseResponse> deudasAgrupadas = headcountComponentsMap.entrySet().stream()
+                .map(entry -> {
+                    String position = entry.getKey();
+                    HeadcountHistoricalProjection info = headcountMap.get(position);
+                    if (info == null) {
+                        // Manejar el caso donde no se encuentra la información
+                        log.warn("No se encontró HeadcountHistoricalProjection para la posición {}", position);
+                        return null; // O puedes omitir esta entrada
+                    }
+                    String fechaNac = info.getFnac() != null ? info.getFnac().toString() : "";
+                    String fechaContra = info.getFcontra() != null ? info.getFcontra().toString() : "";
+
+                    // Obtener componentes desde headcount y nominal
+                    List<ComponentAmount> componentsList = new ArrayList<>(entry.getValue());
+                    List<ComponentAmount> nominalComponents = nominalMap.getOrDefault(info.getIdssff(), Collections.emptyList());
+                    componentsList.addAll(nominalComponents);
+
+                    return new DataBaseResponse(
+                            position,
+                            info.getIdssff(),
+                            info.getPoname(),
+                            info.getClassemp(),
+                            fechaNac,
+                            fechaContra,
+                            info.getConvent(),
+                            info.getLevel(),
+                            componentsList,
+                            info.getCategoria_Local(),
+                            info.getEstado_Vacante()
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        // Liberar memoria
+        headcount = null;
+        nominal = null;
 
         List<DataBaseResponse> comparing = new ArrayList<>();
 
-       if(Boolean.TRUE.equals(data.getIsComparing())){
-           data.setPeriod(data.getPeriodComparing());
-           data.setNominaFrom(data.getNominaFromComparing());
-           data.setNominaTo(data.getNominaToComparing());
-           data.setIsComparing(false);
-           comparing= getDataBase(data).getData();
-       }
- return  DataBaseMainReponse.builder()
-         .data(deudasAgrupadas)
-         .components(components)
-         .nominas(codeNominas)
-         .comparing(comparing)
-         .build();
-    }
+        if (Boolean.TRUE.equals(data.getIsComparing())) {
+            data.setPeriod(data.getPeriodComparing());
+            data.setNominaFrom(data.getNominaFromComparing());
+            data.setNominaTo(data.getNominaToComparing());
+            data.setIsComparing(false);
+            comparing = getDataBase(data).getData();
+        }
 
+        return DataBaseMainReponse.builder()
+                .data(deudasAgrupadas)
+                .components(components)
+                .nominas(codeNominas)
+                .comparing(comparing)
+                .build();
+    }
     @Override
     public List<Bu> findByBuAccess(String email) {
         return buRepository.findByBuAccess(email);
@@ -2635,7 +2736,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                         r.setPaymentComponent(p.getComponent());
                                                                         r.setType(p.getType());
                                                                         r.setAmount(BigDecimal.valueOf(u.getAmount()));
-                                                                        r.setProjections(Shared.generateMonthProjectionV2(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
+                                                                        r.setProjections(getProjectionMethodByBu(projection.getBu(), projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(u.getAmount())));
                                                                     } else {
                                                                         throw new BadRequestException("No se encuentra información para el mes base " + projection.getPeriod());
                                                                     }
@@ -2995,12 +3096,12 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         componentTotals.forEach((component, total) -> {
             //log.info("Procesando total para componente: {}, total: {}", component, total);
             if (total > 0) {
-                PaymentComponentDTO paymentComponent = buildPaymentComponentDTO(component, total, projection.getPeriod(), projection.getRange());
+                PaymentComponentDTO paymentComponent = buildPaymentComponentDTO(bu, component, total, projection.getPeriod(), projection.getRange());
                 projectionsComponent.add(paymentComponent);
                 //log.info("Añadido componente: {}", paymentComponent);
             } else {
                 //log.info("Componente con total cero: {}", component);
-                projectionsComponent.add(buildPaymentComponentDTO(component, 0, projection.getPeriod(), projection.getRange()));
+                projectionsComponent.add(buildPaymentComponentDTO(bu, component, 0, projection.getPeriod(), projection.getRange()));
             }
         });
     }
@@ -3025,7 +3126,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .type(type)
                 .paymentComponent(paymentComponent)
                 .amount(BigDecimal.valueOf(amount))
-                .projections(Shared.generateMonthProjectionV2(projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(amount)))
+                .projections(getProjectionMethodByBu(projection.getBu(), projection.getPeriod(), projection.getRange(), BigDecimal.valueOf(amount)))
                 .build();
     }
 
@@ -3036,7 +3137,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .type(16)
                     .paymentComponent(component)
                     .amount(BigDecimal.ZERO)
-                    .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
+                    .projections(getProjectionMethodByBu(bu, projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                     .show(true)
                     .build());
         }
@@ -3086,12 +3187,16 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .findFirst()
                 .orElse(null);
     }
-    private PaymentComponentDTO buildPaymentComponentDTO(String component, double amount, String period, Integer range) {
+    private PaymentComponentDTO buildPaymentComponentDTO(String bu,String component, double amount, String period, Integer range) {
         return PaymentComponentDTO.builder()
                 .type(16)
                 .paymentComponent(component)
                 .amount(BigDecimal.valueOf(amount))
-                .projections(Shared.generateMonthProjectionV2(period, range, BigDecimal.valueOf(amount)))
+                .projections(getProjectionMethodByBu(bu, period, range, BigDecimal.valueOf(amount)))
                 .build();
     }
+    public List<MonthProjection> getProjectionMethodByBu(String bu, String period, Integer range, BigDecimal amount) {
+        return bu.equals("T. PERU") ? Shared.generateMonthProjectionV2(period, range, amount) : Shared.generateMonthProjectionV3(period, range, amount);
+    }
+
 }

@@ -69,6 +69,11 @@ public class SseReportService {
         sendEventAsync(jobId, "detail_update", Map.of("message", message));
     }
 
+    public void sendHistoryUpdate(String jobId, String status, String message, int progress) {
+        log.info("Enviando actualización de historial para jobId: {} - status: {} - message: {} - progress: {}", jobId, status, message, progress);
+        sendEventAsync(jobId, "history", Map.of("status", status, "message", message, "progress", progress));
+    }
+
     private void sendEventAsync(String jobId, String eventName, Map<String, Object> data) {
         CompletableFuture.runAsync(() -> {
             try {

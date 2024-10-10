@@ -64,6 +64,7 @@ public class ParameterMapperUtil {
                 .conventArg(conventArgDTO)
                 .vname(projection.getVname())
                 .vrange(projection.getVrange())
+                .uniqueId(projection.getUniqueId())
                 .build();
     }
 

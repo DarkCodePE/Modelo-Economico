@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -25,13 +26,13 @@ import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
 @Slf4j(topic = "XLS_SHEET_CREATION_SERVICE")
 public class XlsSheetCreationService {
 
-    private final ExecutorService executorService;
+    //private final ExecutorService executorService;
     private final ConcurrentHashMap<String, Lock> sheetLocks;
-
+    private final AsyncTaskExecutor asyncTaskExecutor;
     @Autowired
-    public XlsSheetCreationService(ConcurrentHashMap<String, Lock> sheetLocks, ExecutorService executorService) {
+    public XlsSheetCreationService(ConcurrentHashMap<String, Lock> sheetLocks, AsyncTaskExecutor asyncTaskExecutor) {
         this.sheetLocks = sheetLocks;
-        this.executorService = executorService;
+        this.asyncTaskExecutor = asyncTaskExecutor;
     }
 
 
@@ -75,7 +76,7 @@ public class XlsSheetCreationService {
             } finally {
                 lock.unlock();
             }
-        }, executorService);
+        }, asyncTaskExecutor);
     }
 
 }
