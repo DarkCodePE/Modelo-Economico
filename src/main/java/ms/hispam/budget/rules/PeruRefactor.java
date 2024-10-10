@@ -73,16 +73,15 @@ public class PeruRefactor {
         List<MonthProjection> dates = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TYPEMONTH);
         YearMonth fechaActual = YearMonth.parse(monthBase, formatter);
-
         // Add the initial month with the adjusted salary
-        dates.add(MonthProjection.builder()
+      /*  dates.add(MonthProjection.builder()
                 .month(fechaActual.format(formatter))
                 .amount(baseAmount)
-                .build());
+                .build());*/
 
         // Generate projections for subsequent months starting with the base salary
         fechaActual = fechaActual.plusMonths(1);
-        for (int i = 0; i < range; i++) {
+        for (int i = 1; i <= range; i++) {
             dates.add(MonthProjection.builder()
                     .month(fechaActual.format(formatter))
                     .amount(baseAmount)

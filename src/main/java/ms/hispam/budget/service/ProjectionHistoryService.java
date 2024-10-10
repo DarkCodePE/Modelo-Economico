@@ -77,6 +77,8 @@ public class ProjectionHistoryService {
                 log.info("Proyección ya existe en historial para hash: {}", cacheKey);
                 return; // Salir sin guardar nuevamente
             }
+            // Añadir barras a las fechas solo para el historial
+           addSlashesToDates(parameters);
 
             byte[] serializedData = serializeJSONAndCompress(projectionResult);
             UserSession userSession = userSessionRepository.findBySessionId(sessionId)
@@ -93,6 +95,9 @@ public class ProjectionHistoryService {
                     .build();
 
             historyRepository.save(history);
+
+            // Volver a quitar las barras después de guardar
+            removeSLashes(parameters);
         } catch (Exception e) {
             log.error("Error al guardar la proyección en el historial: ", e);
             throw new HistorySaveException("Error al guardar la proyección en el historial", e);
@@ -199,6 +204,43 @@ public class ProjectionHistoryService {
         saveRequest.setSessionId(null); // Ajustar según necesidad
 
         return saveRequest;
+    }
+    private ParametersByProjection addSlashesToDates(ParametersByProjection parameters) {
+        // Añadir barras a las fechas principales
+        parameters.setPeriod(addSlashes(parameters.getPeriod()));
+        parameters.setNominaFrom(addSlashes(parameters.getNominaFrom()));
+        parameters.setNominaTo(addSlashes(parameters.getNominaTo()));
+
+        // Procesar fechas en parámetros internos si es necesario
+        if (parameters.getParameters() != null) {
+            parameters.getParameters().forEach(param -> {
+                param.setPeriod(addSlashes(param.getPeriod()));
+                param.setRange(addSlashes(param.getRange()));
+                param.setPeriodRetroactive(addSlashes(param.getPeriodRetroactive()));
+            });
+        }
+
+        return parameters;
+    }
+
+    private String addSlashes(String date) {
+        if (date == null || date.isEmpty() || date.contains("/")) {
+            return date; // Retorna la fecha original si ya tiene barras o es nula/vacía
+        }
+        // Asume formato YYYYMM
+        return date.substring(0, 4) + "/" + date.substring(4);
+    }
+    private void removeSLashes(ParametersByProjection projection) {
+        projection.setPeriod(projection.getPeriod().replace("/", ""));
+        projection.setNominaFrom(projection.getNominaFrom().replace("/", ""));
+        projection.setNominaTo(projection.getNominaTo().replace("/", ""));
+        if (projection.getParameters() != null) {
+            projection.getParameters().forEach(param -> {
+                param.setPeriod(param.getPeriod().replace("/", ""));
+                param.setRange(param.getRange().replace("/", ""));
+                param.setPeriodRetroactive(param.getPeriodRetroactive().replace("/", ""));
+            });
+        }
     }
 }
 
