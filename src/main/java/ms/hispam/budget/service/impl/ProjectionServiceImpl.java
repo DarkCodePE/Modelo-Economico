@@ -414,6 +414,7 @@ public class ProjectionServiceImpl implements ProjectionService {
             if (projection.getBu().equals("T. PERU")) {
                 log.info("Proyección de Peru guardada en el historial para clave: {}", cacheKey);
                 // Para Perú, guardamos en el historial en lugar de la caché
+                //addSLash(projection);
                 projectionHistoryService.saveProjectionAsync(
                         projection,
                         projectionResult,
@@ -554,7 +555,16 @@ public class ProjectionServiceImpl implements ProjectionService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar la proyección", ex);
         }
     }
-
+    public static void addSLash( ParametersByProjection projection) {
+        projection.setPeriod(projection.getPeriod().replace("","/"));
+        projection.setNominaFrom(projection.getNominaFrom().replace("","/"));
+        projection.setNominaTo(projection.getNominaTo().replace("","/"));
+        projection.getParameters().forEach(k-> {
+            k.setPeriod(k.getPeriod().replace("","/"));
+            k.setRange(k.getRange().replace("","/"));
+            k.setPeriodRetroactive(k.getPeriodRetroactive().replace("","/"));
+        });
+    }
     private  void acumularMontosPorComponente(RosetaDTO rosetaDTO,List<ResumenComponentDTO> componentMonthAmountMap) {
         Map<String, BigDecimal> montosPorMes = new HashMap<>();
         for (String componente : rosetaDTO.getPayment()) {
@@ -3196,7 +3206,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .build();
     }
     public List<MonthProjection> getProjectionMethodByBu(String bu, String period, Integer range, BigDecimal amount) {
-        return bu.equals("T. PERU") ? Shared.generateMonthProjectionV2(period, range, amount) : Shared.generateMonthProjectionV3(period, range, amount);
+        /*return bu.equals("T. PERU") ? Shared.generateMonthProjectionV2(period, range, amount) : Shared.generateMonthProjectionV3(period, range, amount);*/
+        return Shared.generateMonthProjectionV3(period, range, amount);
     }
 
 }
