@@ -949,10 +949,28 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<ParametersDTO> extraordinaryBonusList = filterParametersByName(projection.getParameters(), "Monto Bonificación Extraordinaria");
         List<ParametersDTO> inflationList = filterParametersByName(projection.getParameters(), "Inflación");
         //calcular cantidad de EMP
+     /*   long countEMP = headcount.parallelStream()
+                .filter(h -> {
+                    log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    log.info("get PO", h.getPo());
+                    //log.info("optionalEmployeeClassification.isPresent() {}", optionalEmployeeClassification.isPresent());"
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
+                    return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
+                })
+                .count();*/
         long countEMP = headcount.parallelStream()
                 .filter(h -> {
-                    //log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
-                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
+                    String categoryLocal = h.getCategoryLocal();
+                    String po = h.getPo(); // Asumiendo que getPo() retorna un String
+
+                    if (categoryLocal == null) {
+                        //log.warn("ProjectionDTO tiene categoryLocal null para headcountData: PO={}", po);
+                        //log.info("catgoria loocal", categoryLocal);
+                        return false; // Excluir este elemento de la cuenta
+                    }
+
+                    String categoryLocalUpper = categoryLocal.toUpperCase();
+                    Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(categoryLocalUpper));
                     return optionalEmployeeClassification.map(empClass -> "EMP".equals(empClass.getTypeEmp())).orElse(false);
                 })
                 .count();
@@ -960,7 +978,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //calcular cantidad de EJC
         long countEJC = headcount.parallelStream()
                 .filter(h -> {
+                    String categoryLocal = h.getCategoryLocal();
+                    String po = h.getPo(); // Asumiendo que getPo() retorna un String
                     //log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    if (categoryLocal == null) {
+                        //log.warn("ProjectionDTO tiene categoryLocal null para headcountData: PO={}", po);
+                        //log.info("catgoria loocal", categoryLocal);
+                        return false; // Excluir este elemento de la cuenta
+                    }
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "EJC".equals(empClass.getTypeEmp())).orElse(false);
                 })
@@ -969,6 +994,14 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         //calcular cantidad de GER
         long countGER = headcount.parallelStream()
                 .filter(h -> {
+                    String categoryLocal = h.getCategoryLocal();
+                    String po = h.getPo(); // Asumiendo que getPo() retorna un String
+                    //log.info("h.getCategoryLocal() {}", h.getCategoryLocal());
+                    if (categoryLocal == null) {
+                        //log.warn("ProjectionDTO tiene categoryLocal null para headcountData: PO={}", po);
+                        //log.info("catgoria loocal", categoryLocal);
+                        return false; // Excluir este elemento de la cuenta
+                    }
                     Optional<EmployeeClassification> optionalEmployeeClassification = Optional.ofNullable(classificationMap.get(h.getCategoryLocal().toUpperCase()));
                     return optionalEmployeeClassification.map(empClass -> "GER".equals(empClass.getTypeEmp())).orElse(false);
                 })

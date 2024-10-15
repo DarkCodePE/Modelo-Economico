@@ -105,33 +105,22 @@ public class ProjectionHistoryService {
     }
 
     private byte[] serializeJSONAndCompress(ProjectionSecondDTO projectionResult) {
-        try {
-            String jsonString = objectMapper.writeValueAsString(projectionResult);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
-                gzipOut.write(jsonString.getBytes(StandardCharsets.UTF_8));
-            }
+            objectMapper.writeValue(gzipOut, projectionResult);
+            gzipOut.finish();
             return baos.toByteArray();
         } catch (IOException e) {
             throw new SerialHistoryException("Error al serializar y comprimir la proyección", e);
         }
     }
+
     private ProjectionSecondDTO decompressJSONAndDeserialize(byte[] data) {
-        try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(data);
-            GZIPInputStream gzipIn = new GZIPInputStream(bais);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+             GZIPInputStream gzipIn = new GZIPInputStream(bais)) {
 
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = gzipIn.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
-            }
-
-
-            String jsonString = baos.toString(StandardCharsets.UTF_8);
-            return objectMapper.readValue(jsonString, ProjectionSecondDTO.class);
+            return objectMapper.readValue(gzipIn, ProjectionSecondDTO.class);
         } catch (IOException e) {
             throw new SerialHistoryException("Error al deserializar la proyección", e);
         }

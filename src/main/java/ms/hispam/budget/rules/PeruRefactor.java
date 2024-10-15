@@ -950,7 +950,7 @@ public class PeruRefactor {
         yearMonth = yearMonth.plusMonths(1);
         String nextPeriod = yearMonth.format(formatter);
 
-        double vacationSeasonality = getCachedValue(vacationSeasonalityMap, nextPeriod);
+        double vacationSeasonality = getCachedValue(vacationSeasonalityMap, nextPeriod) / 100;
 
         PaymentComponentDTO vacationIncreaseBonusComponent = new PaymentComponentDTO();
         vacationIncreaseBonusComponent.setPaymentComponent("VACATION_INCREASE_BONUS");
@@ -967,7 +967,7 @@ public class PeruRefactor {
                 ParametersDTO vacationSeasonalityParameter = vacationSeasonalityMap.get(month);
                 double vacationSeasonalityValue;
                 if (vacationSeasonalityParameter != null) {
-                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue();
+                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue() / 100;
                     lastVacationSeasonality = vacationSeasonalityValue;
                 } else {
                     vacationSeasonalityValue = lastVacationSeasonality;
@@ -1001,7 +1001,7 @@ public class PeruRefactor {
         yearMonth = yearMonth.plusMonths(1);
         String nextPeriod = yearMonth.format(formatter);
 
-        double vacationSeasonality = getCachedValue(vacationSeasonalityMap, nextPeriod);
+        double vacationSeasonality = getCachedValue(vacationSeasonalityMap, nextPeriod) / 100;
 
         PaymentComponentDTO vacationBonusComponent = new PaymentComponentDTO();
         vacationBonusComponent.setPaymentComponent("VACATION_BONUS");
@@ -1018,7 +1018,7 @@ public class PeruRefactor {
                 ParametersDTO vacationSeasonalityParameter = vacationSeasonalityMap.get(month);
                 double vacationSeasonalityValue;
                 if (vacationSeasonalityParameter != null) {
-                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue();
+                    vacationSeasonalityValue = vacationSeasonalityParameter.getValue() / 100;
                     lastVacationSeasonality = vacationSeasonalityValue;
                 } else {
                     vacationSeasonalityValue = lastVacationSeasonality;
