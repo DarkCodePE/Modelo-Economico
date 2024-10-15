@@ -1071,7 +1071,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.signingBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), signingBonusList, countEJC, countGER, classificationMap);
                         methodsPeru.extraordinaryConventionBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), extraordinaryGratificationList, countEMP, classificationMap);
                         methodsPeru.extraordinaryBonus(component, projection.getPeriod(), projection.getRange(), extraordinaryBonusList, totalPositions);
-                        methodsPeru.epsContribution(component, projection.getPeriod(), projection.getRange());
+                        //methodsPeru.epsContribution(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.schoolAssignment(component, projection.getPeriod(), projection.getRange(), schoolAllowanceSeasonalityList);
                         methodsPeru.studiesBonus(component, projection.getPeriod(), projection.getRange(), preSchoolAllowanceSeasonalityList);
                         methodsPeru.foodBenefits(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), classificationMap);
