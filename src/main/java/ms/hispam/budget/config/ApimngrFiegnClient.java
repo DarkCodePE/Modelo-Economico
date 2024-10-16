@@ -17,4 +17,12 @@ public interface ApimngrFiegnClient {
                                     @RequestHeader(value = ("Ocp-Apim-Subscription-Key")) String subscription,
                                     @RequestParam Integer idUser,
                                     @RequestPart MultipartFile file);
+
+    @PostMapping(value = "/storagemanagement/v1/api/upload-private", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    UploadStorageDTO uploadPrivateFC(@RequestHeader(value = "Content-type") String contentType,
+                                     @RequestHeader String token,
+                                     @RequestHeader(value = ("Ocp-Apim-Subscription-Key")) String subscription,
+                                     @RequestParam String container,
+                                     @RequestParam Integer idUser,
+                                     @RequestPart MultipartFile file);
 }
