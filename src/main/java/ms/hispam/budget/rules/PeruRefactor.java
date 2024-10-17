@@ -153,9 +153,10 @@ public class PeruRefactor {
         //log.info("salary -> {}", salary);
         // Calcular el ajuste de promoción
         BigDecimal promo = calculatePromoAdjustment(salary.doubleValue(), month, componentMap);
+        BigDecimal promoFactor = promo.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
         //log.info("promo -> {}", promo);
         // Calcular el salario total con promoción
-        BigDecimal totalSalary = salary.multiply(BigDecimal.ONE.add(promo));
+        BigDecimal totalSalary = salary.multiply(BigDecimal.ONE.add(promoFactor));
         //log.info("totalSalary -> {}", totalSalary);
         return new MonthProjection(month, totalSalary);
     }
@@ -261,8 +262,13 @@ public class PeruRefactor {
                                      Map<String, ParametersDTO> directorSalaryIncreaseMap) {
         return switch (typeEmp) {
             case "EMP" -> getCachedValue(salaryIncreaseMap, nextPeriod);
+            case "EJC", "GER" -> getCachedValue(executiveSalaryIncreaseMap, nextPeriod);
             case "DIR", "DPZ" -> getCachedValue(directorSalaryIncreaseMap, nextPeriod);
-            default -> getCachedValue(executiveSalaryIncreaseMap, nextPeriod);
+            default -> {
+                // Opcional: Agregar un log para categorías no reconocidas
+                log.warn("No se aplicará incremento para la categoría de empleado: {}", typeEmp);
+                yield 0.0;
+            }
         };
     }
 
@@ -579,7 +585,7 @@ public class PeruRefactor {
 
         if (theoreticalSalaryComponent != null && goceVacacionesComponent != null) {
             double theoreticalSalary = theoreticalSalaryComponent.getAmount().doubleValue();
-            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue();
+            double goceVacacionesBase = goceVacacionesComponent.getAmount().doubleValue() / 100;
             double vacationPerDay = theoreticalSalary / 30;
             double vacationSeasonalityPercentage = vacationSeasonality / 100;
             double vacationPerMonth = (vacationPerDay * vacationDays * goceVacacionesBase) * vacationSeasonalityPercentage;
@@ -606,7 +612,8 @@ public class PeruRefactor {
                 } else {
                     vacationSeasonalityValue = lastVacationSeasonality;
                 }
-                double vacationPerMonthProjection = (vacationPerDayProjection * vacationDaysValue * goceVacacionesBase) * vacationSeasonalityValue;
+                double goceVacacionesPercentaje = goceVacacionesBase / 100;
+                double vacationPerMonthProjection = (vacationPerDayProjection * vacationDaysValue * goceVacacionesPercentaje) * vacationSeasonalityValue;
                 MonthProjection monthProjection = new MonthProjection();
                 monthProjection.setMonth(month);
                 monthProjection.setAmount(BigDecimal.valueOf(vacationPerMonthProjection * -1));
