@@ -385,29 +385,30 @@ public class ProjectionServiceImpl implements ProjectionService {
             //return new Page<>();
         }
     }
-
-
-
+    @Override
+    public ProjectionSecondDTO getProjectionFromHistoryId(Long historyId){
+        return projectionHistoryService.getProjectionFromHistory(historyId).getProjectionResult();
+    }
     @Override
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection, String sessionId, String reportName) {
         String cacheKey = ProjectionUtils.generateHash(projection);
-
+        log.info("CacheKey Desde new projection, {}", cacheKey);
         if (!"T. PERU".equals(projection.getBu()) && projectionCache.containsKey(cacheKey)) {
             log.info("Proyección obtenida de la caché para clave: {}", cacheKey);
             return projectionCache.get(cacheKey);
         }
 
         try {
-            // Validación para Perú
-            if ("T. PERU".equals(projection.getBu())) {
+         /*   // Validación para Perú
+            if ("T. PERU".equals(projection.getBu()) && !forceNewVersion) {
                 // Verificar si la proyección ya existe en el historial
-                boolean exists = projectionHistoryService.existsProjection(cacheKey);
-                if (exists) {
+                ProjectionHistory projectionHistory = projectionHistoryService.findProjectionHistoryByHashAndVersion(cacheKey, version);
+                if (projectionHistory != null) {
                     log.info("La proyección para Perú ya existe en el historial para clave: {}", cacheKey);
                     // Retornar la proyección existente o manejar según tus necesidades
-                    return projectionHistoryService.getProjectionFromHistoryHash(cacheKey).getProjectionResult();
+                    return projectionHistoryService.getProjectionFromHistoryHash(cacheKey, version).getProjectionResult();
                 }
-            }
+            }*/
 
             ProjectionSecondDTO projectionResult = calculateProjection(projection);
 
@@ -419,7 +420,8 @@ public class ProjectionServiceImpl implements ProjectionService {
                         projection,
                         projectionResult,
                         sessionId,
-                        reportName
+                        reportName,
+                        cacheKey
                 );
             } else {
                 // Para otros países, guardamos en la caché
@@ -2205,7 +2207,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     @Async("reportTaskExecutor")
     @Override
-    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName) {
+    public void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName, Long historyId) {
         try {
             Shared.replaceSLash(projection);
             //sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando generación del reporte", 0);
@@ -2220,7 +2222,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .isComparing(false)
                     .build();
             xlsReportService.generateAndCompleteReportAsync(projection,
-                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu, sessionId, reportName);
+                    componentProjections, getDataBase(dataBase), userContact, job, userContact, idBu, sessionId, reportName, historyId);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);

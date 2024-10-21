@@ -781,7 +781,7 @@ public class XlsReportService {
     }
 
     // Modifica este método para que sea asíncrono
-    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName) {
+    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName, Long historyId) {
         return CompletableFuture.supplyAsync(() -> {
             String cacheKey = ProjectionUtils.generateHash(projection);
             ProjectionSecondDTO data;
@@ -790,8 +790,10 @@ public class XlsReportService {
                 log.info("Usando proyección de la caché para reporte con clave: {}", cacheKey);
                 data = projectionCache.get(cacheKey);
             } else {
+                log.info("cache key desde reporte, {}", cacheKey);
+                log.info("historyId desde reporte, {}", historyId);
                 // Si no está, genera la proyección y almacénala
-                data = service.getNewProjection(projection,sessionId,reportName);
+                data = service.getProjectionFromHistoryId(historyId);
             }
             //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
@@ -819,11 +821,11 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName) {
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName, Long historyId) {
 
         //sseReportService.sendUpdate(sessionId, "procesando", "procesando la información");
 
-        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName)
+        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName, historyId)
                 .thenAccept(reportData -> {
                     //sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
                     //sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");
