@@ -59,7 +59,7 @@ public class ProjectionHistoryService {
         sseReportService.sendHistoryUpdate(sessionId, "procesando", "Guardando la proyección en el historial", 50);
         try {
             saveProjectionToHistory(parameters, projectionResult, sessionId, reportName);
-            sseReportService.sendHistoryUpdate(sessionId, "finalizando", "Proyección guardada en el historial", 100);
+            sseReportService.sendHistoryUpdate(sessionId, "completado", "Proyección guardada en el historial", 100);
         } catch (Exception e) {
             sseReportService.sendHistoryUpdate(sessionId, "error", "Error al guardar la proyección en el historial", 100);
             log.error("Error al guardar la proyección en el historial: ", e);

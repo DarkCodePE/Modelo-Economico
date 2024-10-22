@@ -86,7 +86,7 @@ public class Ecuador {
         }
 
         // Aplicar el parámetro al monto total anual y luego dividir por 12 para obtener el valor mensual
-        newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100) / 12));
+        newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100)));
 
         List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
@@ -97,7 +97,7 @@ public class Ecuador {
                 });
             });
             // Aplicar el parámetro y dividir por 12 para obtener el valor mensual correcto
-            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100) / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
+            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100)).setScale(2, BigDecimal.ROUND_HALF_UP));
         });
 
         newReserva.setProjections(months);

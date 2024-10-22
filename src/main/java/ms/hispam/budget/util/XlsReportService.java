@@ -109,8 +109,8 @@ public class XlsReportService {
         this.service = service;
     }
     public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
-        log.info("Número de hilos activos en el ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getActiveCount());
-        log.info("Tamaño de la cola del ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getThreadPoolExecutor().getQueue().size());
+        //log.info("Número de hilos activos en el ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getActiveCount());
+        //log.info("Tamaño de la cola del ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getThreadPoolExecutor().getQueue().size());
         sseReportService.sendUpdate(sessionId, "procesando", "preparando el archivo Excel", 5);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
