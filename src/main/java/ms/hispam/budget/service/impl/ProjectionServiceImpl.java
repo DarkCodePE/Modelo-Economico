@@ -198,6 +198,7 @@ public class ProjectionServiceImpl implements ProjectionService {
         operations.add(new AFPOperation());
         List<EmployeeClassification> classifications = employeeClassificationRepository.findAll();
         for (EmployeeClassification classification : classifications) {
+            //log.info("classification -> {}", classification.getTypeEmp());
             classificationMap.put(classification.getCategory(), classification);
         }
         // Inicializar quinquenniumMap

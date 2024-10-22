@@ -2592,12 +2592,15 @@ public class PeruRefactor {
         if (optionalEmployeeClassification.isPresent()) {
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             String typeEmp = employeeClassification.getTypeEmp();
-
+            /*if ("DIRECTOR".equalsIgnoreCase(employeeClassification.getCategory())){
+                log.info("DIRECTOR -> {}", employeeClassification.getCategory());
+                log.info("typeEmp -> {}", employeeClassification.getTypeEmp());
+            }*/
             if ("EJC".equals(typeEmp)) {
                 double ejcPeopleBTP = getCachedValue(ejcPeopleBTPMap, nextPeriod);
                 double ejcBonusBTP = getCachedValue(ejcBonusBTPMap, nextPeriod);
                 topPerformerBonus = srdBonus * ejcPeopleBTP * ejcBonusBTP;
-            } else if ("DIR".equals(typeEmp)) {
+            } else if ("DIR".equalsIgnoreCase(typeEmp)) {
                 double dirPeopleBTP = getCachedValue(dirPeopleBTPMap, nextPeriod);
                 double dirBonusBTP = getCachedValue(dirBonusBTPMap, nextPeriod);
                 topPerformerBonus = srdBonus * dirPeopleBTP * dirBonusBTP;
