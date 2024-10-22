@@ -56,9 +56,10 @@ public class ExternalService {
         }
         return fileProcess;
     }
-    public String uploadProjectionFile(Integer userId, byte[] data, String fileName) {
+    public String uploadProjectionFile(Integer userId, byte[] data, String fileName, int version) {
         try {
-            MultipartFile multipartFile = new ByteArrayMultipartFile(data, fileName + ".gz", "application/octet-stream");
+            String versionedFileName = fileName + "_v" + version + ".gz";
+            MultipartFile multipartFile = new ByteArrayMultipartFile(data, versionedFileName, "application/octet-stream");
             UploadStorageDTO response = uploadFilePublic(userId, multipartFile);
             return response.getUrl();
         } catch (Exception e) {

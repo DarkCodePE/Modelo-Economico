@@ -34,4 +34,6 @@ public class ProjectionHistory {
     private String hash;
 
     private String reportName;
+
+    private Integer version;
 }

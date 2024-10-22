@@ -2592,12 +2592,15 @@ public class PeruRefactor {
         if (optionalEmployeeClassification.isPresent()) {
             EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
             String typeEmp = employeeClassification.getTypeEmp();
-
+            /*if ("DIRECTOR".equalsIgnoreCase(employeeClassification.getCategory())){
+                log.info("DIRECTOR -> {}", employeeClassification.getCategory());
+                log.info("typeEmp -> {}", employeeClassification.getTypeEmp());
+            }*/
             if ("EJC".equals(typeEmp)) {
                 double ejcPeopleBTP = getCachedValue(ejcPeopleBTPMap, nextPeriod);
                 double ejcBonusBTP = getCachedValue(ejcBonusBTPMap, nextPeriod);
                 topPerformerBonus = srdBonus * ejcPeopleBTP * ejcBonusBTP;
-            } else if ("DIR".equals(typeEmp)) {
+            } else if ("DIR".equalsIgnoreCase(typeEmp)) {
                 double dirPeopleBTP = getCachedValue(dirPeopleBTPMap, nextPeriod);
                 double dirBonusBTP = getCachedValue(dirBonusBTPMap, nextPeriod);
                 topPerformerBonus = srdBonus * dirPeopleBTP * dirBonusBTP;
@@ -4462,41 +4465,6 @@ public class PeruRefactor {
         }
         components.add(temporaryBonusComponent);
     }
-    //CTS - Jornada T
-    //=CC60*$N$27
-    //CC60 = tDay
-    //$N$27 = Map<String, ConceptoPresupuestal> conceptoPresupuestalMap
-    public void tDayCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO tDayComponent = componentMap.get("STORE_DAY");
-        PaymentComponentDTO temporaryBonusComponent = new PaymentComponentDTO();
-        temporaryBonusComponent.setPaymentComponent("CTS-STORE_DAY");
-        double tDay = tDayComponent != null ? tDayComponent.getAmount().doubleValue() : 0;
-        ConceptoPresupuestal temporaryBonusConcept = conceptoPresupuestalMap.get("Jornada Tienda");
-        double temporaryBonusConceptValue = 0;
-        if (temporaryBonusConcept != null && temporaryBonusConcept.getCts() != null) {
-            temporaryBonusConceptValue = temporaryBonusConcept.getCts().doubleValue();
-        }
-        double temporaryBonus = tDay * temporaryBonusConceptValue;
-        temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
-        List<MonthProjection> projections = new ArrayList<>();
-        if (tDayComponent != null) {
-            for (MonthProjection projection : tDayComponent.getProjections()) {
-                String month = projection.getMonth();
-                double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
-                MonthProjection monthProjection = new MonthProjection();
-                monthProjection.setMonth(month);
-                monthProjection.setAmount(BigDecimal.valueOf(temporaryBonusProjection));
-                projections.add(monthProjection);
-            }
-            temporaryBonusComponent.setProjections(projections);
-        } else {
-            temporaryBonusComponent.setAmount(BigDecimal.valueOf(0));
-            temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
-        }
-        components.add(temporaryBonusComponent);
-    }
-
 
     //CTS - Conceptos Mandato Judicial
     //=CC60*$N$27

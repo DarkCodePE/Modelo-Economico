@@ -141,12 +141,13 @@ public class ProjectionController {
             @RequestHeader String user,
             @RequestParam Integer type,
             @RequestParam Integer idBu,
-            @RequestParam(required = false) String reportName
+            @RequestParam(required = false) String reportName,
+            @RequestParam(required = false) Long historyId
     ) {
         try {
             // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
             String sessionId = userSessionService.createOrUpdateSession(user);
-
+            //log.info("history id, {} ", historyId);
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
             sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando descarga", 0);
@@ -173,7 +174,7 @@ public class ProjectionController {
             if (type == 2)
                 service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
             else if (type == 1)
-                service.downloadProjection(projection, user, jobDB, idBu, sessionId, finalReportName);
+                service.downloadProjection(projection, user, jobDB, idBu, sessionId, finalReportName, historyId);
             else if (type == 3)
                 service.downloadCdgAsync(projection, type, idBu, user, jobDB);
             // Retornar la respuesta inmediata con el estado "en progreso"
@@ -280,6 +281,7 @@ public class ProjectionController {
      * @param saveRequest Objeto con los parámetros y resultado de la proyección
      * @return La proyección resultante.
      */
+    //TODO SEND TO HASH
     @PostMapping("/save-projection-history")
     public ResponseEntity<ProjectionSecondDTO> saveProjection(
             @RequestBody ProjectionSaveRequestDTO saveRequest
@@ -290,7 +292,9 @@ public class ProjectionController {
                     saveRequest.getProjectionResult(),
                     saveRequest.getSessionId(),
                     saveRequest.getReportName()
+                    ,""
             );
+            log.debug("saveRequest,{} -> ", saveRequest.getProjection());
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
         } catch (Exception e) {
             log.error("Error al guardar la proyección: ", e);
@@ -316,6 +320,24 @@ public class ProjectionController {
      */
     @GetMapping("/history-projections-id")
     public ProjectionSaveRequestDTO getProjectionFromHistory(@RequestParam Long historyId) {
+        log.info("historyId, {}", historyId);
         return projectionHistoryService.getProjectionFromHistory(historyId);
+    }
+
+    /**
+     * Verifica si ya existe una proyección en el historial basada en los parámetros proporcionados.
+     *
+     * @param parameters Los parámetros de la proyección a verificar
+     * @return Un objeto de respuesta que indica si la proyección ya existe o no.
+     */
+    @PostMapping("/check")
+    public ResponseEntity<?> checkProjectionExists(@RequestBody ParametersByProjection parameters, @RequestParam String sessionId) {
+        List<ProjectionHistory> validateHistoryList = projectionHistoryService.checkExistProjection(parameters);
+        if (validateHistoryList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No existe una proyección con estos datos. Se procesede a generar una nueva version de esta proyección.");
+        } else {
+            return ResponseEntity.ok(validateHistoryList);
+        }
     }
 }
