@@ -385,49 +385,24 @@ public class ProjectionServiceImpl implements ProjectionService {
             //return new Page<>();
         }
     }
+
     @Override
     public ProjectionSecondDTO getProjectionFromHistoryId(Long historyId){
         return projectionHistoryService.getProjectionFromHistory(historyId).getProjectionResult();
     }
+
     @Override
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection, String sessionId, String reportName) {
         String cacheKey = ProjectionUtils.generateHash(projection);
-        log.info("CacheKey Desde new projection, {}", cacheKey);
-        if (!"T. PERU".equals(projection.getBu()) && projectionCache.containsKey(cacheKey)) {
-            log.info("Proyección obtenida de la caché para clave: {}", cacheKey);
-            return projectionCache.get(cacheKey);
-        }
-
         try {
-         /*   // Validación para Perú
-            if ("T. PERU".equals(projection.getBu()) && !forceNewVersion) {
-                // Verificar si la proyección ya existe en el historial
-                ProjectionHistory projectionHistory = projectionHistoryService.findProjectionHistoryByHashAndVersion(cacheKey, version);
-                if (projectionHistory != null) {
-                    log.info("La proyección para Perú ya existe en el historial para clave: {}", cacheKey);
-                    // Retornar la proyección existente o manejar según tus necesidades
-                    return projectionHistoryService.getProjectionFromHistoryHash(cacheKey, version).getProjectionResult();
-                }
-            }*/
-
             ProjectionSecondDTO projectionResult = calculateProjection(projection);
-
-            if (projection.getBu().equals("T. PERU")) {
-                log.info("Proyección de Peru guardada en el historial para clave: {}", cacheKey);
-                // Para Perú, guardamos en el historial en lugar de la caché
-                //addSLash(projection);
-                projectionHistoryService.saveProjectionAsync(
-                        projection,
-                        projectionResult,
-                        sessionId,
-                        reportName,
-                        cacheKey
-                );
-            } else {
-                // Para otros países, guardamos en la caché
-                projectionCache.put(cacheKey, projectionResult, cacheKey);
-            }
-
+            projectionHistoryService.saveProjectionAsync(
+                    projection,
+                    projectionResult,
+                    sessionId,
+                    reportName,
+                    cacheKey
+            );
             return projectionResult;
         } catch (Exception ex) {
             log.error("Error al generar la proyección: ", ex);
@@ -1253,7 +1228,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         //public void familyAssignmentCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
                         methodsPeru.familyAssignmentCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                         //public void tDayCTSTemporaryBonus(List<PaymentComponentDTO> components, String period, Integer range, Map<String, ConceptoPresupuestal> conceptoPresupuestalMap)
-                        methodsPeru.tDayCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
+                        //methodsPeru.tDayCTSTemporaryBonus(component, projection.getPeriod(), projection.getRange(), conceptoPresupuestalMap);
                     } catch (Exception e) {
                         log.error("Exception occurred in method for headcountData: " + headcountData, e);
                         log.error("Exception message: " + e.getMessage());

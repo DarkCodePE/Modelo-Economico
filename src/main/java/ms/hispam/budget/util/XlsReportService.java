@@ -783,17 +783,12 @@ public class XlsReportService {
     // Modifica este método para que sea asíncrono
     public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName, Long historyId) {
         return CompletableFuture.supplyAsync(() -> {
-            String cacheKey = ProjectionUtils.generateHash(projection);
+            //String cacheKey = ProjectionUtils.generateHash(projection);
             ProjectionSecondDTO data;
-            // Verifica si la proyección ya está en la caché
-            if (projectionCache.containsKey(cacheKey)) {
-                log.info("Usando proyección de la caché para reporte con clave: {}", cacheKey);
-                data = projectionCache.get(cacheKey);
-            } else {
-                log.info("cache key desde reporte, {}", cacheKey);
-                log.info("historyId desde reporte, {}", historyId);
-                // Si no está, genera la proyección y almacénala
+            if (historyId != null){
                 data = service.getProjectionFromHistoryId(historyId);
+            }else {
+                data = service.getNewProjection(projection, sessionId, reportName);
             }
             //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);

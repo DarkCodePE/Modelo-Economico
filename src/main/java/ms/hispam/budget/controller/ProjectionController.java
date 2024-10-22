@@ -147,7 +147,7 @@ public class ProjectionController {
         try {
             // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
             String sessionId = userSessionService.createOrUpdateSession(user);
-            log.info("history id, {} ", historyId);
+            //log.info("history id, {} ", historyId);
             ReportJob job = new ReportJob();
             //String taskId = UUID.randomUUID().toString();
             sseReportService.sendUpdate(sessionId, "iniciado", "Iniciando descarga", 0);
