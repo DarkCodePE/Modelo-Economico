@@ -2610,7 +2610,7 @@ public class PeruRefactor {
         PaymentComponentDTO topPerformerBonusComponent = new PaymentComponentDTO();
         topPerformerBonusComponent.setPaymentComponent("TOP_PERFORMER_BONUS");
         topPerformerBonusComponent.setAmount(BigDecimal.valueOf(topPerformerBonus));
-        topPerformerBonusComponent.setProjections(generateMonthProjection(period, range, topPerformerBonusComponent.getAmount()));
+        //topPerformerBonusComponent.setProjections(generateMonthProjection(period, range, topPerformerBonusComponent.getAmount()));
 
         // Generar proyecciones
         List<MonthProjection> projections = new ArrayList<>();
@@ -2618,41 +2618,45 @@ public class PeruRefactor {
         double lastEjcBonusBTP = 0;
         double lastDirPeopleBTP = 0;
         double lastDirBonusBTP = 0;
+        if (srdBonusComponent !=null && srdBonusComponent.getProjections() != null){
 
-        for (MonthProjection projection : topPerformerBonusComponent.getProjections()) {
-            String month = projection.getMonth();
-            double topPerformerBonusProjection = 0;
+            for (MonthProjection projection : srdBonusComponent.getProjections()) {
+                String month = projection.getMonth();
+                double topPerformerBonusProjection = 0;
 
-            double ejcPeopleBTPProjection = getCachedOrLastValue(ejcPeopleBTPMap, month, lastEjcPeopleBTP);
-            lastEjcPeopleBTP = ejcPeopleBTPProjection;
+                double ejcPeopleBTPProjection = getCachedOrLastValue(ejcPeopleBTPMap, month, lastEjcPeopleBTP);
+                lastEjcPeopleBTP = ejcPeopleBTPProjection;
 
-            double ejcBonusBTPProjection = getCachedOrLastValue(ejcBonusBTPMap, month, lastEjcBonusBTP);
-            lastEjcBonusBTP = ejcBonusBTPProjection;
+                double ejcBonusBTPProjection = getCachedOrLastValue(ejcBonusBTPMap, month, lastEjcBonusBTP);
+                lastEjcBonusBTP = ejcBonusBTPProjection;
 
-            double dirPeopleBTPProjection = getCachedOrLastValue(dirPeopleBTPMap, month, lastDirPeopleBTP);
-            lastDirPeopleBTP = dirPeopleBTPProjection;
+                double dirPeopleBTPProjection = getCachedOrLastValue(dirPeopleBTPMap, month, lastDirPeopleBTP);
+                lastDirPeopleBTP = dirPeopleBTPProjection;
 
-            double dirBonusBTPProjection = getCachedOrLastValue(dirBonusBTPMap, month, lastDirBonusBTP);
-            lastDirBonusBTP = dirBonusBTPProjection;
+                double dirBonusBTPProjection = getCachedOrLastValue(dirBonusBTPMap, month, lastDirBonusBTP);
+                lastDirBonusBTP = dirBonusBTPProjection;
 
-            if (optionalEmployeeClassification.isPresent()) {
-                EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
-                String typeEmp = employeeClassification.getTypeEmp();
+                if (optionalEmployeeClassification.isPresent()) {
+                    EmployeeClassification employeeClassification = optionalEmployeeClassification.get();
+                    String typeEmp = employeeClassification.getTypeEmp();
 
-                if ("EJC".equals(typeEmp)) {
-                    topPerformerBonusProjection = srdBonus * ejcPeopleBTPProjection * ejcBonusBTPProjection;
-                } else if ("DIR".equals(typeEmp)) {
-                    topPerformerBonusProjection = srdBonus * dirPeopleBTPProjection * dirBonusBTPProjection;
+                    if ("EJC".equals(typeEmp)) {
+                        topPerformerBonusProjection = projection.getAmount().doubleValue() * ejcPeopleBTPProjection * ejcBonusBTPProjection;
+                    } else if ("DIR".equals(typeEmp)) {
+                        topPerformerBonusProjection = projection.getAmount().doubleValue() * dirPeopleBTPProjection * dirBonusBTPProjection;
+                    }
                 }
-            }
 
-            MonthProjection monthProjection = new MonthProjection();
-            monthProjection.setMonth(month);
-            monthProjection.setAmount(BigDecimal.valueOf(topPerformerBonusProjection));
-            projections.add(monthProjection);
+                MonthProjection monthProjection = new MonthProjection();
+                monthProjection.setMonth(month);
+                monthProjection.setAmount(BigDecimal.valueOf(topPerformerBonusProjection));
+                projections.add(monthProjection);
+            }
+            topPerformerBonusComponent.setProjections(projections);
+        }else {
+            topPerformerBonusComponent.setProjections(generateMonthProjection(period, range, BigDecimal.ZERO));
         }
 
-        topPerformerBonusComponent.setProjections(projections);
         components.add(topPerformerBonusComponent);
     }
 
@@ -5664,10 +5668,12 @@ public class PeruRefactor {
                 double baseAmount = baseProjections.get(i).getAmount().doubleValue();
                 double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
                 double previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
-
+                /*log.info("currentSalary -> {}", currentSalary);
+                log.info("previousSalary -> {}", previousSalary);
+                log.info("baseAmount -> {}", baseAmount);*/
                 // Corregido: Usamos la fórmula correcta
-                double result = baseAmount != 0 ? baseAmount * (1 + (previousSalary - currentSalary) / currentSalary) : 0;
-
+                double result = baseAmount != 0 ? baseAmount * (1 + (currentSalary - previousSalary) / previousSalary) : 0;
+                /*log.info("baseAmount -> {}", result);*/
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
                 resultProjection.setAmount(BigDecimal.valueOf(result));
