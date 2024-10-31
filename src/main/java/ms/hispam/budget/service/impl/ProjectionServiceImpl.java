@@ -1790,7 +1790,9 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         });
     }
     public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
-        List<String> relevantHeaders = baseExtern.getHeaders().stream()
+        List<String> relevantHeaders = baseExtern
+                .getHeaders()
+                .stream()
                 .filter(t -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(t)))
                 .collect(Collectors.toList());
 

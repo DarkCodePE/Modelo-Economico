@@ -167,6 +167,7 @@ public class PeruRefactor {
                                                Map<String, ParametersDTO> salaryIncreaseMap,
                                                Map<String, ParametersDTO> executiveSalaryIncreaseMap,
                                                Map<String, ParametersDTO> directorSalaryIncreaseMap) {
+        //log.info("typeEmp -> {}", typeEmp);
         Map<String, ParametersDTO> relevantMap = switch (typeEmp) {
             case "DIR", "DPZ" -> directorSalaryIncreaseMap;
             case "EJC", "GER" -> executiveSalaryIncreaseMap;
@@ -230,9 +231,9 @@ public class PeruRefactor {
         double salaryBase = calculateSalaryBase(componentMap, annualizedPositions, poName);
         double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), period,
                 salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
-        if (poName.equals("PO99015164")){
-            log.debug("salaryBase: {}, adjustmentBase: {}", salaryBase, adjustmentBase);
-        }
+        /*if (poName.equals("PO99009838") || poName.equals("PO10001848") ||  poName.equals("PO99013344")){
+            log.info("salaryBase: {}, adjustmentBase: {}", salaryBase, adjustmentBase);
+        }*/
         //log.debug("salaryBase: {}, adjustmentBase: {}", salaryBase, adjustmentBase);
         PaymentComponentDTO salaryComponent = createSalaryComponent(salaryBase, adjustmentBase, period, range);
         List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseMap,
@@ -2311,58 +2312,6 @@ public class PeruRefactor {
         }
     }
 
-    public void seniority2(List<PaymentComponentDTO> components, String period, Integer range, LocalDate hiringDate, Map<Integer, BigDecimal> quinquenniumMap, Map<String, EmployeeClassification> classificationMap, String poName) {
-        Map<String, PaymentComponentDTO> componentMap = createComponentMap(components);
-        PaymentComponentDTO theoricSalaryComponent = componentMap.get("THEORETICAL-SALARY");
-        //log.info("classificationMap: {}", classificationMap);
-        //log.info("employeeClassification: {}", classificationMap.get(poName.toUpperCase()));
-        if (theoricSalaryComponent != null) {
-            if ("EMP".equals(poName)) {
-                PaymentComponentDTO seniorityComponent = new PaymentComponentDTO();
-                seniorityComponent.setPaymentComponent("SENIORITY");
-                seniorityComponent.setAmount(BigDecimal.ZERO);
-                List<MonthProjection> projections = new ArrayList<>();
-
-                for (MonthProjection projection : theoricSalaryComponent.getProjections()) {
-                    String month = projection.getMonth();
-                    LocalDate currentDate = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyyMM")).atEndOfMonth();
-                    //log.info("currentDate: {}", currentDate);
-                    //log.info("hiringDate: {}", hiringDate);
-                    // Verificar si es el mes de aniversario
-                    boolean isAnniversaryMonth = currentDate.getMonth() == hiringDate.getMonth() && currentDate.getDayOfMonth() >= hiringDate.getDayOfMonth();
-
-                    if (isAnniversaryMonth) {
-                        long seniorityYears = ChronoUnit.YEARS.between(hiringDate, currentDate);
-                        BigDecimal quinquenniumValue = getQuinquenniumValue(seniorityYears, quinquenniumMap);
-                        double theoricSalary = projection.getAmount().doubleValue();
-                        double seniority = quinquenniumValue.doubleValue() * theoricSalary;
-
-                        MonthProjection monthProjection = new MonthProjection();
-                        monthProjection.setMonth(month);
-                        monthProjection.setAmount(BigDecimal.valueOf(seniority));
-                        projections.add(monthProjection);
-
-                        // Actualizar el monto total si es el mes actual
-                        if (month.equals(period)) {
-                            seniorityComponent.setAmount(BigDecimal.valueOf(seniority));
-                        }
-                    } else {
-                        MonthProjection monthProjection = new MonthProjection();
-                        monthProjection.setMonth(month);
-                        monthProjection.setAmount(BigDecimal.ZERO);
-                        projections.add(monthProjection);
-                    }
-                }
-
-                seniorityComponent.setProjections(projections);
-                components.add(seniorityComponent);
-            }
-        } else {
-            // Manejar el caso cuando no se encuentra la clasificación del empleado
-            addEmptySeniorityComponent(components, period, range);
-        }
-    }
-
     private void addEmptySeniorityComponent(List<PaymentComponentDTO> components, String period, Integer range) {
         PaymentComponentDTO seniorityComponentEmpty = new PaymentComponentDTO();
         seniorityComponentEmpty.setPaymentComponent("SENIORITY");
@@ -2461,11 +2410,11 @@ public class PeruRefactor {
         List<MonthProjection> projections = new ArrayList<>();
 
         // Agregar el mes inicial (que sería el mes base)
-        projections.add(new MonthProjection(startMonth.format(MONTH_FORMATTER),
-                BigDecimal.valueOf(yearlyBonuses.getOrDefault(startMonth.getYear(), 0.0))));
+       /* projections.add(new MonthProjection(startMonth.format(MONTH_FORMATTER),
+                BigDecimal.valueOf(yearlyBonuses.getOrDefault(startMonth.getYear(), 0.0))));*/
 
         // Generar proyecciones para los meses siguientes
-        for (int i = 1; i <= range; i++) {
+        for (int i = 0; i <= range; i++) {
             YearMonth currentMonth = startMonth.plusMonths(i);
             double bonusAmount = yearlyBonuses.getOrDefault(currentMonth.getYear(), 0.0);
             projections.add(new MonthProjection(currentMonth.format(MONTH_FORMATTER), BigDecimal.valueOf(bonusAmount)));
@@ -5664,16 +5613,20 @@ public class PeruRefactor {
             List<MonthProjection> salaryProjections = salaryComponent.getProjections();
             List<MonthProjection> resultProjections = new ArrayList<>();
 
-            for (int i = 0; i < baseProjections.size() - 1; i++) {
+            for (int i = 0; i < baseProjections.size(); i++) {
                 double baseAmount = baseProjections.get(i).getAmount().doubleValue();
                 double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
-                double previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
-                /*log.info("currentSalary -> {}", currentSalary);
-                log.info("previousSalary -> {}", previousSalary);
-                log.info("baseAmount -> {}", baseAmount);*/
-                // Corregido: Usamos la fórmula correcta
+                double previousSalary;
+
+                if (i + 1 < salaryProjections.size()) {
+                    previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
+                } else {
+                    // Para el último elemento, asumimos que previousSalary es igual a currentSalary
+                    previousSalary = currentSalary;
+                }
+
                 double result = baseAmount != 0 ? baseAmount * (1 + (currentSalary - previousSalary) / previousSalary) : 0;
-                /*log.info("baseAmount -> {}", result);*/
+
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
                 resultProjection.setAmount(BigDecimal.valueOf(result));
