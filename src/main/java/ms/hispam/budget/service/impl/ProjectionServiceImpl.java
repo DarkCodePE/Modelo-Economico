@@ -48,6 +48,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static ms.hispam.budget.util.Shared.generateMonthProjectionV3;
+
 
 @Service
 @Slf4j(topic = "PROJECTION_SERVICE")
@@ -1773,11 +1775,11 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             return PaymentComponentDTO.builder()
                     .paymentComponent(header)
                     .amount(amount)
-                    .projections(generateMonthProjection(period, range, amount))
+                    .projections(generateMonthProjectionV3(period, range, amount))
                     .build();
         }
     }
-    public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
+   /* public static List<MonthProjection> generateMonthProjection(String monthBase, int range, BigDecimal amount) {
         String cacheKey = monthBase + "_" + range + "_" + amount;
         return PROJECTION_CACHE.computeIfAbsent(cacheKey, k -> {
             YearMonth startDate = YearMonth.parse(monthBase, MONTH_FORMATTER);
@@ -1788,7 +1790,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             .build())
                     .collect(Collectors.toList());
         });
-    }
+    }*/
     public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
         List<String> relevantHeaders = baseExtern
                 .getHeaders()
@@ -3220,7 +3222,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     public List<MonthProjection> getProjectionMethodByBu(String bu, String period, Integer range, BigDecimal amount) {
         /*return bu.equals("T. PERU") ? Shared.generateMonthProjectionV2(period, range, amount) : Shared.generateMonthProjectionV3(period, range, amount);*/
-        return Shared.generateMonthProjectionV3(period, range, amount);
+        return generateMonthProjectionV3(period, range, amount);
     }
 
 }

@@ -2414,7 +2414,7 @@ public class PeruRefactor {
                 BigDecimal.valueOf(yearlyBonuses.getOrDefault(startMonth.getYear(), 0.0))));*/
 
         // Generar proyecciones para los meses siguientes
-        for (int i = 0; i <= range; i++) {
+        for (int i = 1; i <= range; i++) {
             YearMonth currentMonth = startMonth.plusMonths(i);
             double bonusAmount = yearlyBonuses.getOrDefault(currentMonth.getYear(), 0.0);
             projections.add(new MonthProjection(currentMonth.format(MONTH_FORMATTER), BigDecimal.valueOf(bonusAmount)));
