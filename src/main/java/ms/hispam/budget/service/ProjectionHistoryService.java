@@ -152,8 +152,7 @@ public class ProjectionHistoryService {
         UserSession userSession = userSessionRepository
                 .findByUserId(userContact)
                 .orElseThrow(() -> new RuntimeException("No se encontraron proyecciones"));
-        //return historyRepository.findByUserId(userSession.getId());
-        return historyRepository.findAllByOrderByCreatedAtDesc();
+        return historyRepository.findByUserId(userSession.getId());
     }
 
     public List<ProjectionHistory> getAllProjections() {
