@@ -19,4 +19,5 @@ public interface ProjectionHistoryRepository extends JpaRepository<ProjectionHis
     Optional<ProjectionHistory> findByHashAndVersion(String hash, int version);
     // Método para obtener todas las proyecciones por hash
     List<ProjectionHistory> findByHashOrderByVersionDesc(String hash);
+    List<ProjectionHistory> findAllByOrderByCreatedAtDesc();
 }

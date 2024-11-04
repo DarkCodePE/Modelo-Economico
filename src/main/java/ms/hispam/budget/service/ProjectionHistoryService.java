@@ -147,12 +147,18 @@ public class ProjectionHistoryService {
             throw new SerialParameterException("Error al deserializar los parámetros de la proyección", e);
         }
     }
+
     public List<ProjectionHistory> getUserProjections(String userContact) {
         UserSession userSession = userSessionRepository
                 .findByUserId(userContact)
                 .orElseThrow(() -> new RuntimeException("No se encontraron proyecciones"));
         return historyRepository.findByUserId(userSession.getId());
     }
+
+    public List<ProjectionHistory> getAllProjections() {
+        return historyRepository.findAllByOrderByCreatedAtDesc();
+    }
+
 
     public ProjectionSaveRequestDTO getProjectionFromHistory(Long historyId) {
         ProjectionHistory history = historyRepository.findById(historyId)
