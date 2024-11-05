@@ -3105,7 +3105,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         links.forEach(link -> {
             String component = link.getPaymentComponent().getPaymentComponent();
             double importe = nomina.getImporte() != null ? nomina.getImporte() : 0.0;
-            if (bu.equals("T. URUGUAY") && ("0010".equalsIgnoreCase(component) || "0020".equalsIgnoreCase(component))) {
+            if (bu.equals("T. URUGUAY") && ("0010".equalsIgnoreCase(component) || "0020".equalsIgnoreCase(component))){
+                log.info("Procesando link: componente={}, importe={}, getQDiasHoras={}", component, importe, nomina.getQDiasHoras());
+            }
+            if (bu.equals("T. URUGUAY") && ("0010".equalsIgnoreCase(component) || "0020".equalsIgnoreCase(component)) && nomina.getQDiasHoras() != null) {
                 importe = nomina.getQDiasHoras() == 0 ? 0 : ( importe / nomina.getQDiasHoras() ) * 30;
                 log.info("Procesando link: componente={}, importe={}, getQDiasHoras={}", component, importe, nomina.getQDiasHoras());
             }
