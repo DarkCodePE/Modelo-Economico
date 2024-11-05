@@ -5613,19 +5613,35 @@ public class PeruRefactor {
             List<MonthProjection> salaryProjections = salaryComponent.getProjections();
             List<MonthProjection> resultProjections = new ArrayList<>();
 
+            double maxCalculatedAmount = 0.0; // Mantener el valor máximo calculado
             for (int i = 0; i < baseProjections.size(); i++) {
+
                 double baseAmount = baseProjections.get(i).getAmount().doubleValue();
                 double currentSalary = salaryProjections.get(i).getAmount().doubleValue();
                 double previousSalary;
 
-                if (i + 1 < salaryProjections.size()) {
-                    previousSalary = salaryProjections.get(i + 1).getAmount().doubleValue();
+                // Obtiene el salario del mes anterior
+                if (i > 0) {
+                    previousSalary = salaryProjections.get(i - 1).getAmount().doubleValue();
                 } else {
-                    // Para el último elemento, asumimos que previousSalary es igual a currentSalary
                     previousSalary = currentSalary;
                 }
 
-                double result = baseAmount != 0 ? baseAmount * (1 + (currentSalary - previousSalary) / previousSalary) : 0;
+                double result;
+                if (baseAmount != 0 && previousSalary != 0) {
+                    // Si los salarios son iguales, mantener el valor máximo anterior
+                    if (currentSalary == previousSalary && maxCalculatedAmount > 0) {
+                        result = maxCalculatedAmount;
+                    } else {
+                        double salaryVariation = (currentSalary - previousSalary) / previousSalary;
+                        result = baseAmount * (1 + salaryVariation);
+                        // Actualizar el máximo si el nuevo valor es mayor
+                        maxCalculatedAmount = Math.max(maxCalculatedAmount, result);
+                    }
+                } else {
+                    result = 0;
+                }
+
 
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
