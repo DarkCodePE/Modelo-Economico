@@ -5642,7 +5642,6 @@ public class PeruRefactor {
                     result = 0;
                 }
 
-
                 MonthProjection resultProjection = new MonthProjection();
                 resultProjection.setMonth(baseProjections.get(i).getMonth());
                 resultProjection.setAmount(BigDecimal.valueOf(result));

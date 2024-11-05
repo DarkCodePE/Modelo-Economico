@@ -181,6 +181,7 @@ public class ProjectionHistoryService {
 
         return saveRequest;
     }
+
     public boolean existsProjection(String cacheKey) {
         return historyRepository.existsByHash(cacheKey);
     }
