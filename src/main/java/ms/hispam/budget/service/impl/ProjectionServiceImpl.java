@@ -1791,7 +1791,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                     .collect(Collectors.toList());
         });
     }*/
-   public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
+   /*public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
        List<String> relevantHeaders = baseExtern
                .getHeaders()
                .stream()
@@ -1818,7 +1818,51 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                });
 
        return new ArrayList<>(positionsMap.values());
-    }
+    }*/
+   public List<ProjectionDTO> addBaseExtern(ProjectionDTO originalHeadcount, BaseExternResponse baseExtern, String period, Integer range) {
+       List<String> relevantHeaders = baseExtern.getHeaders().stream()
+               .filter(t -> Arrays.stream(headers).noneMatch(c -> c.equalsIgnoreCase(t)))
+               .collect(Collectors.toList());
+
+       ConcurrentMap<String, ProjectionDTO> positionsMap = new ConcurrentHashMap<>();
+       positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
+
+       // Utilizar un ForkJoinPool personalizado para un mejor control sobre la concurrencia
+       //int parallelism = Runtime.getRuntime().availableProcessors();
+       //ForkJoinPool customThreadPool = new ForkJoinPool(parallelism);
+
+       try {
+           BASE_EXTERN_THREAD_POOL.submit(() ->
+                   baseExtern
+                           .getData()
+                           //.parallelStream()
+                           .forEach(po -> {
+                               String currentPo = (String) po.get("po");
+                               positionsMap.compute(currentPo, (key, existingProjection) -> {
+                                   ProjectionDTO projection = (existingProjection != null) ? existingProjection :
+                                           ProjectionDTO.builder()
+                                                   .po(currentPo)
+                                                   .components(new ArrayList<>())
+                                                   .build();
+                                   updateProjection2(projection, po, relevantHeaders, period, range);
+                                   return projection;
+                               });
+                           })
+           ).get(60, TimeUnit.SECONDS);
+       } catch (InterruptedException e) {
+           log.error("Thread was interrupted", e);
+           Thread.currentThread().interrupt();
+           throw new RuntimeException("Thread was interrupted", e);
+       } catch (ExecutionException e) {
+           log.error("Execution exception", e);
+           throw new RuntimeException("Execution exception", e);
+       } catch (TimeoutException e) {
+           log.error("Task timed out", e);
+           throw new RuntimeException("Task timed out", e);
+       }
+
+       return new ArrayList<>(positionsMap.values());
+   }
 
     private void updateProjection2(ProjectionDTO projection, Map<String, Object> po, List<String> relevantHeaders, String period, Integer range) {
         relevantHeaders.forEach(header -> {
