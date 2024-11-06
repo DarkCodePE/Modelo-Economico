@@ -1017,10 +1017,10 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                         methodsPeru.increaseAFP1023(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.housingExpatriates(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.vacationEnjoyment(component, projection.getPeriod(), projection.getRange(), vacationDaysList, vacationSeasonalityList);
-                        methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), this.totalOvertime, annualOvertimeValueList, overtimeSeasonalityList);
+                        //methodsPeru.overtime(component, projection.getPeriod(), projection.getRange(), this.totalOvertime, annualOvertimeValueList, overtimeSeasonalityList);
                         //log.debug("totalComisiones {}", totalComisiones);
-                        methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), this.totalCommissions.doubleValue(), annualCommissionValueList);
-                        methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), this.totalIncentives, annualIncentiveValueList);
+                        //methodsPeru.commissions(component, projection.getPeriod(), projection.getRange(), this.totalCommissions.doubleValue(), annualCommissionValueList);
+                        //methodsPeru.incentives(component, projection.getPeriod(), projection.getRange(), this.totalIncentives, annualIncentiveValueList);
                         methodsPeru.nightBonus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.availabilityPlus(component, projection.getPeriod(), projection.getRange());
                         methodsPeru.unionClosingBonus(component, projection.getPeriod(), projection.getRange(), headcountData.getCategoryLocal(), laborClosureBonusList, countEMP, classificationMap);
@@ -2536,7 +2536,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> filterPositions = Arrays.asList(
-                "PO99015164"
+                "PO99012453"
         );
         //initializePeruCache(projection);
         //TODO: ADD MONTH BASE
@@ -2547,7 +2547,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent)
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
-                //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
+                .filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
                 //.filter(e->e.getPosition().equals("PO10009248"))
                 .map(e->HeadcountProjection.builder()

@@ -219,7 +219,7 @@ public class PeruRefactor {
         EmployeeClassification employeeClassification = classificationMap.get(localCategory.toUpperCase());
         if (employeeClassification == null) {
             addDefaultSalaryComponent(components, period, range);
-            return;
+            //return;
         }
 
         Map<String, ParametersDTO> salaryIncreaseMap = createCacheMap(salaryIncreaseList);
@@ -4438,7 +4438,7 @@ public class PeruRefactor {
         temporaryBonusComponent.setAmount(BigDecimal.valueOf(temporaryBonus));
         temporaryBonusComponent.setProjections(generateMonthProjection(period, range, temporaryBonusComponent.getAmount()));
         List<MonthProjection> projections = new ArrayList<>();
-        if (judicialMandateConceptsCTSComponent != null) {
+        if (judicialMandateConceptsCTSComponent != null && judicialMandateConceptsCTSComponent.getProjections() != null) {
             for (MonthProjection projection : judicialMandateConceptsCTSComponent.getProjections()) {
                 String month = projection.getMonth();
                 double temporaryBonusProjection = projection.getAmount().doubleValue() * temporaryBonusConceptValue;
