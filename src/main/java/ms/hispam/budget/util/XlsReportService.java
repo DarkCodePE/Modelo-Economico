@@ -109,8 +109,8 @@ public class XlsReportService {
         this.service = service;
     }
     public byte[] generateExcelProjection(ParametersByProjection projection, ProjectionSecondDTO data, DataBaseMainReponse dataBase, List<ComponentProjection> components, Integer idBu, String user, ReportJob reportJob, String sessionId) {
-        log.info("Número de hilos activos en el ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getActiveCount());
-        log.info("Tamaño de la cola del ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getThreadPoolExecutor().getQueue().size());
+        //log.info("Número de hilos activos en el ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getActiveCount());
+        //log.info("Tamaño de la cola del ejecutor: {}", ((ThreadPoolTaskExecutor) asyncTaskExecutor).getThreadPoolExecutor().getQueue().size());
         sseReportService.sendUpdate(sessionId, "procesando", "preparando el archivo Excel", 5);
         SXSSFWorkbook workbook = new SXSSFWorkbook();
         // vista Parametros
@@ -781,17 +781,14 @@ public class XlsReportService {
     }
 
     // Modifica este método para que sea asíncrono
-    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName) {
+    public CompletableFuture<byte[]> generateExcelProjectionAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, Integer idBu, String userContact, ReportJob job, String sessionId, String reportName, Long historyId) {
         return CompletableFuture.supplyAsync(() -> {
-            String cacheKey = ProjectionUtils.generateHash(projection);
+            //String cacheKey = ProjectionUtils.generateHash(projection);
             ProjectionSecondDTO data;
-            // Verifica si la proyección ya está en la caché
-            if (projectionCache.containsKey(cacheKey)) {
-                log.info("Usando proyección de la caché para reporte con clave: {}", cacheKey);
-                data = projectionCache.get(cacheKey);
-            } else {
-                // Si no está, genera la proyección y almacénala
-                data = service.getNewProjection(projection,sessionId,reportName);
+            if (historyId != null){
+                data = service.getProjectionFromHistoryId(historyId);
+            }else {
+                data = service.getNewProjection(projection, sessionId, reportName);
             }
             //projection.setViewPo(true);
             return generateExcelProjection(projection, data, dataBase, components, idBu, userContact, job, sessionId);
@@ -819,11 +816,11 @@ public class XlsReportService {
     }
 
     @Async
-    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName) {
+    public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName, Long historyId) {
 
         //sseReportService.sendUpdate(sessionId, "procesando", "procesando la información");
 
-        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName)
+        generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName, historyId)
                 .thenAccept(reportData -> {
                     //sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
                     //sseReportService.sendUpdate(sessionId, "subiendo", "Subiendo el archivo al almacenamiento");

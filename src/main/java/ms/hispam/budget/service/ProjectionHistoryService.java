@@ -16,6 +16,7 @@ import ms.hispam.budget.repository.mysql.ProjectionHistoryRepository;
 import ms.hispam.budget.repository.mysql.UserSessionRepository;
 import ms.hispam.budget.util.ExternalService;
 import ms.hispam.budget.util.ProjectionUtils;
+import ms.hispam.budget.util.Shared;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
@@ -26,6 +27,7 @@ import javax.sql.rowset.serial.SerialException;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
@@ -55,10 +57,11 @@ public class ProjectionHistoryService {
     }
 
     @Async("asyncTaskExecutor")
-    public CompletableFuture<Void> saveProjectionAsync(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
+    public CompletableFuture<Void> saveProjectionAsync(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName, String cacheKey) {
+        log.info("CacheKey Desde Historial, {}", cacheKey);
         sseReportService.sendHistoryUpdate(sessionId, "procesando", "Guardando la proyección en el historial", 50);
         try {
-            saveProjectionToHistory(parameters, projectionResult, sessionId, reportName);
+            saveProjectionToHistory(parameters, projectionResult, sessionId, reportName, cacheKey);
             sseReportService.sendHistoryUpdate(sessionId, "completado", "Proyección guardada en el historial", 100);
         } catch (Exception e) {
             sseReportService.sendHistoryUpdate(sessionId, "error", "Error al guardar la proyección en el historial", 100);
@@ -68,22 +71,23 @@ public class ProjectionHistoryService {
         return CompletableFuture.completedFuture(null);
     }
 
-    private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName) {
+    private void saveProjectionToHistory(ParametersByProjection parameters, ProjectionSecondDTO projectionResult, String sessionId, String reportName, String cacheKey) {
         try {
-            String cacheKey = ProjectionUtils.generateHash(parameters);
+            //String cacheKey = ProjectionUtils.generateHash(parameters);
 
-            // Verificar si ya existe una proyección con el mismo hash
-            if (historyRepository.findByHash(cacheKey).isPresent()) {
-                log.info("Proyección ya existe en historial para hash: {}", cacheKey);
-                return; // Salir sin guardar nuevamente
-            }
+            UserSession userSession = userSessionRepository.findBySessionId(sessionId)
+                    .orElseThrow(() -> new NoSuchElementException("La sesión no es válida"));
+
+            // Obtener la versión máxima y asignar la nueva versión
+            Integer maxVersion = historyRepository.findMaxVersionByHash(cacheKey);
+            int version = (maxVersion != null) ? maxVersion + 1 : 1;
+
             // Añadir barras a las fechas solo para el historial
            addSlashesToDates(parameters);
 
             byte[] serializedData = serializeJSONAndCompress(projectionResult);
-            UserSession userSession = userSessionRepository.findBySessionId(sessionId)
-                    .orElseThrow(() -> new NoSuchElementException("La sesión no es válida"));
-            String fileUrl = externalService.uploadProjectionFile(userSession.getId().intValue(), serializedData, cacheKey);
+
+            String fileUrl = externalService.uploadProjectionFile(userSession.getId().intValue(), serializedData, cacheKey, version);
 
             ProjectionHistory history = ProjectionHistory.builder()
                     .userId(userSession.getId())
@@ -92,6 +96,7 @@ public class ProjectionHistoryService {
                     .createdAt(LocalDateTime.now())
                     .hash(cacheKey)
                     .reportName(reportName)
+                    .version(version)
                     .build();
 
             historyRepository.save(history);
@@ -105,33 +110,22 @@ public class ProjectionHistoryService {
     }
 
     private byte[] serializeJSONAndCompress(ProjectionSecondDTO projectionResult) {
-        try {
-            String jsonString = objectMapper.writeValueAsString(projectionResult);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
-                gzipOut.write(jsonString.getBytes(StandardCharsets.UTF_8));
-            }
+            objectMapper.writeValue(gzipOut, projectionResult);
+            gzipOut.finish();
             return baos.toByteArray();
         } catch (IOException e) {
             throw new SerialHistoryException("Error al serializar y comprimir la proyección", e);
         }
     }
+
     private ProjectionSecondDTO decompressJSONAndDeserialize(byte[] data) {
-        try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(data);
-            GZIPInputStream gzipIn = new GZIPInputStream(bais);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+             GZIPInputStream gzipIn = new GZIPInputStream(bais)) {
 
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = gzipIn.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
-            }
-
-
-            String jsonString = baos.toString(StandardCharsets.UTF_8);
-            return objectMapper.readValue(jsonString, ProjectionSecondDTO.class);
+            return objectMapper.readValue(gzipIn, ProjectionSecondDTO.class);
         } catch (IOException e) {
             throw new SerialHistoryException("Error al deserializar la proyección", e);
         }
@@ -153,12 +147,18 @@ public class ProjectionHistoryService {
             throw new SerialParameterException("Error al deserializar los parámetros de la proyección", e);
         }
     }
+
     public List<ProjectionHistory> getUserProjections(String userContact) {
         UserSession userSession = userSessionRepository
                 .findByUserId(userContact)
                 .orElseThrow(() -> new RuntimeException("No se encontraron proyecciones"));
         return historyRepository.findByUserId(userSession.getId());
     }
+
+    public List<ProjectionHistory> getAllProjections() {
+        return historyRepository.findAllByOrderByCreatedAtDesc();
+    }
+
 
     public ProjectionSaveRequestDTO getProjectionFromHistory(Long historyId) {
         ProjectionHistory history = historyRepository.findById(historyId)
@@ -181,11 +181,35 @@ public class ProjectionHistoryService {
 
         return saveRequest;
     }
+
     public boolean existsProjection(String cacheKey) {
         return historyRepository.existsByHash(cacheKey);
     }
-    public ProjectionSaveRequestDTO getProjectionFromHistoryHash(String hash) {
-        ProjectionHistory history = historyRepository.findByHash(hash)
+
+    /**
+     * Busca una proyección por su hash y versión.
+     * @param hash El hash de la proyección a buscar
+     * @param version La versión de la proyección a buscar
+     * @return La proyección encontrada o null si no se encuentra
+     */
+    public ProjectionHistory findProjectionHistoryByHashAndVersion(String hash, int version) {
+        return historyRepository.findByHashAndVersion(hash, version).orElse(null);
+    }
+    /**
+     * Verifica si ya existe una proyección con los mismos parámetros.
+     *
+     * @param parameters Los parámetros de la proyección a verificar
+     * @return Una lista de proyecciones existentes con el mismo hash
+     */
+    public List<ProjectionHistory> checkExistProjection(ParametersByProjection parameters) {
+        Shared.replaceSLash(parameters);
+        String cacheKey = ProjectionUtils.generateHash(parameters);
+        log.info("Verificando existencia de proyección con hash: {}", cacheKey);
+        return historyRepository.findByHashOrderByVersionDesc(cacheKey);
+    }
+
+    public ProjectionSaveRequestDTO getProjectionFromHistoryHash(String hash, int version) {
+        ProjectionHistory history = historyRepository.findByHashAndVersion(hash, version)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proyección no encontrada"));
 
         // Deserializar los parámetros

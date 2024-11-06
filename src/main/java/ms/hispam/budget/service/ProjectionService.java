@@ -34,7 +34,7 @@ public interface ProjectionService {
 
     Boolean deleteHistorical( Integer id);
 
-    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName);
+    void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName, Long historyId);
     void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
     byte[] downloadProjectionHistorical(Integer id);
@@ -54,4 +54,6 @@ public interface ProjectionService {
     List<PositionBaseline> getPositionBaseline(String period,String filter,String bu,Integer idBu);
 
     Config getComponentByBuV2(String bu);
+
+    ProjectionSecondDTO getProjectionFromHistoryId(Long historyId);
 }

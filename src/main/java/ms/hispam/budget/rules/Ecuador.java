@@ -86,7 +86,7 @@ public class Ecuador {
         }
 
         // Aplicar el parámetro al monto total anual y luego dividir por 12 para obtener el valor mensual
-        newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100) / 12));
+        newReserva.setAmount(BigDecimal.valueOf(amount * (parameter.get() / 100)));
 
         List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
@@ -97,7 +97,7 @@ public class Ecuador {
                 });
             });
             // Aplicar el parámetro y dividir por 12 para obtener el valor mensual correcto
-            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100) / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
+            f.setAmount(BigDecimal.valueOf(suma[0] * (parameter.get() / 100)).setScale(2, BigDecimal.ROUND_HALF_UP));
         });
 
         newReserva.setProjections(months);
@@ -263,7 +263,10 @@ public class Ecuador {
         AtomicReference<Double> salary = new AtomicReference<>((double) 0);
         AtomicReference<Double> coa = new AtomicReference<>((double) 0);
 
-        parameters.stream().filter(c -> c.getParameter().getId() == 17).findFirst().ifPresent(d -> parameter.set(d.getValue()));
+        parameters.stream()
+                .filter(c -> c.getParameter().getId() == 17)
+                .findFirst()
+                .ifPresent(d -> parameter.set(d.getValue()));
 
         componentDTO.stream()
                 .filter(c -> c.getType() != null && c.getType() == 1)
@@ -277,7 +280,11 @@ public class Ecuador {
 
         PaymentComponentDTO vaca = new PaymentComponentDTO();
         vaca.setPaymentComponent("VACA");
-        vaca.setAmount(BigDecimal.valueOf(((salary.get() + coa.get()) * 12) / (24 * 15 * parameter.get())));
+        // Calcular el denominador condicionalmente
+        double denominator = (parameter.get() != 0) ? (24 * 15 * parameter.get()) : 1;
+        // Calcular el monto de vacaciones
+        double vacacionesMonto = ((salary.get() + coa.get()) * 12) / denominator;
+        vaca.setAmount(BigDecimal.valueOf(vacacionesMonto / denominator));
         List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
 
         months.forEach(f -> {
@@ -299,8 +306,9 @@ public class Ecuador {
                             .filter(y -> y.getMonth().equalsIgnoreCase(f.getMonth()))
                             .findFirst())
                     .ifPresent(u -> coaMonth.set(u.getAmount().doubleValue()));
-
-            f.setAmount(BigDecimal.valueOf(((salaryMonth.get() + coaMonth.get()) * 12) / (24 * 15 * parameter.get())));
+            // Calcular el denominador condicionalmente
+            double denominatorMonth = (parameter.get() != 0) ? (24 * 15 * parameter.get()) : 1;
+            f.setAmount(BigDecimal.valueOf(((salaryMonth.get() + coaMonth.get()) * 12) / denominatorMonth));
         });
 
         vaca.setProjections(months);

@@ -11,12 +11,12 @@ public class ProjectionCache {
 
     private final Cache<String, ProjectionSecondDTO> cache = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.MINUTES)
-            .maximumSize(3)
+            .maximumSize(1)
             .build();
 
     private final Cache<String, String> hashCache = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.MINUTES)
-            .maximumSize(3)
+            .maximumSize(1)
             .build();
 
     public void put(String key, ProjectionSecondDTO projection, String hash) {
