@@ -1822,7 +1822,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                             return projection;
                         });
                     })
-            ).get(60, TimeUnit.SECONDS);
+            ).get(120, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             log.error("Thread was interrupted", e);
             Thread.currentThread().interrupt();
