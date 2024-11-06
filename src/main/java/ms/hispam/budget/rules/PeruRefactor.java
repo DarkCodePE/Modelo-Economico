@@ -669,7 +669,7 @@ public class PeruRefactor {
 
         PaymentComponentDTO overtimeComponent = new PaymentComponentDTO();
         overtimeComponent.setPaymentComponent("OVER_TIME");
-        if (overtimeBaseComponent != null) {
+        if (overtimeBaseComponent != null && totalHorasExtras.doubleValue() != 0) {
             double overtimeBase = overtimeBaseComponent.getAmount().doubleValue();
             double overtimePerMonth = (overtimeBase / totalHorasExtras.doubleValue()) * (overtimeValue * overtimeSeasonality);
             overtimeComponent.setAmount(BigDecimal.valueOf(overtimePerMonth));
@@ -736,7 +736,7 @@ public class PeruRefactor {
 
         PaymentComponentDTO commissionsComponent = new PaymentComponentDTO();
         commissionsComponent.setPaymentComponent("COMMISSIONS");
-        if (commissionsBaseComponent != null) {
+        if (commissionsBaseComponent != null && totalCommissions != 0) {
             double commissionsBase = commissionsBaseComponent.getAmount().doubleValue();
             double commissionsValue = getCachedValue(commissionsValueMap, nextPeriod);
             double commissionsPerMonth = (commissionsBase / totalCommissions) * (commissionsValue / 12);
@@ -795,7 +795,7 @@ public class PeruRefactor {
 
         PaymentComponentDTO incentivesComponent = new PaymentComponentDTO();
         incentivesComponent.setPaymentComponent("INCENTIVES");
-        if (incentivesBaseComponent != null) {
+        if (incentivesBaseComponent != null && totalIncentives.doubleValue() != 0) {
             double incentivesBase = incentivesBaseComponent.getAmount().doubleValue();
             double incentivesValue = getCachedValue(incentivesValueMap, nextPeriod);
             double incentivesPerMonth = (incentivesBase / totalIncentives.doubleValue()) * incentivesValue / 12;
