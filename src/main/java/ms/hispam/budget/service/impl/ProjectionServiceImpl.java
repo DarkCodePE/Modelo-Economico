@@ -2837,7 +2837,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                 projection.getPaymentComponent().stream().map(PaymentComponentType::getComponent)
                                         .collect(Collectors.joining(","))),String.join(",", typeEmployee))
                 .parallelStream() // Use parallel stream here
-                .filter(e -> filterPositions.contains(e.getPosition())) // user for debug
+                //.filter(e -> filterPositions.contains(e.getPosition())) // user for debug
                 //.filter(e->e.getIdssff().equalsIgnoreCase("1004103") || e.getIdssff().equalsIgnoreCase("1004392") || e.getIdssff().equalsIgnoreCase("1004929"))
                 //.filter(e->e.getPosition().equals("PO10009248"))
                 .map(e->HeadcountProjection.builder()
