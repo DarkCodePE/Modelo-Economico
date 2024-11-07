@@ -1640,7 +1640,7 @@ public class PeruRefactor {
                 }
                 double minimumSalaryProjection;
                 if (minimumSalaryParameter != null) {
-                    minimumSalaryProjection = getCachedValue(minimumSalaryMap, period);
+                    minimumSalaryProjection = getCachedValue(minimumSalaryMap, projection.getMonth());
                 } else {
                     minimumSalaryProjection = minimumSalary;
                 }
