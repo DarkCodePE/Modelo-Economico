@@ -2826,7 +2826,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     }
     private List<ProjectionDTO> getHeadcountByAccount(ParametersByProjection projection){
         List<String> filterPositions = Arrays.asList(
-                "PO99015164"
+                "PO10051081",
+                "PO10029240"
         );
         //initializePeruCache(projection);
         //TODO: ADD MONTH BASE
