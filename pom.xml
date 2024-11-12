@@ -178,7 +178,7 @@
 					<subscriptionId>87a1d13f-c4f7-4bd2-8fd7-a6f3ca8e57c7</subscriptionId>
 					<resourceGroup>PRODUCTION-SD</resourceGroup>
 					<appName>ms-hispam-budget</appName>
-					<pricingTier>P1v3</pricingTier>
+					<pricingTier>P2v3</pricingTier>
 					<region>eastus</region>
 					<appServicePlanName>ms-hispam-budget-plan</appServicePlanName>
 					<appServicePlanResourceGroup>PRODUCCION</appServicePlanResourceGroup>
