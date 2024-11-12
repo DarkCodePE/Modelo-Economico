@@ -172,7 +172,7 @@ public class UruguayRefactor {
         yearMonth = yearMonth.plusMonths(1);
         String nextPeriod = yearMonth.format(formatter);
         double proportionBase =  proporcionMensualMap.get(nextPeriod) == null ? 0 : proporcionMensualMap.get(nextPeriod).getValue() / 100;
-        log.info("POSITION -> {}, proportionBase-> {}", classEmployee, proportionBase);
+        //log.info("POSITION -> {}, proportionBase-> {}", classEmployee, proportionBase);
         PaymentComponentDTO salaryComponent = new PaymentComponentDTO();
         salaryComponent.setPaymentComponent("SALARY");
         salaryComponent.setAmount(BigDecimal.valueOf(salaryBase * (1 + proportionBase)));
@@ -427,9 +427,7 @@ public class UruguayRefactor {
         Map<String, PaymentComponentDTO> componentMap = createComponentMap(component);
         PaymentComponentDTO bonusBaseUrComponent = componentMap.get("PREMIO_CUATRIMESTRAL_8_BASE_UR");
         double bonusBaseUr = bonusBaseUrComponent == null ? 0 : bonusBaseUrComponent.getAmount().doubleValue();
-        if (bonusBaseUr > 0 ){
-            log.info("bonusBaseUrComponent PREMIO_CUATRIMESTRAL_8_BASE_UR: {}", bonusBaseUr);
-        }
+
         PaymentComponentDTO quarterlyBonus8Component = new PaymentComponentDTO();
         quarterlyBonus8Component.setPaymentComponent("QUARTERLY_BONUS_8");
 
@@ -495,9 +493,7 @@ public class UruguayRefactor {
         /* componente de nomina */
         PaymentComponentDTO bonusBaseUrComponent = componentMap.get("PREMIO_MENSUAL_15_BASE_UR");
         double bonusBaseUr = bonusBaseUrComponent == null ? 0 : bonusBaseUrComponent.getAmount().doubleValue();
-        if (bonusBaseUr > 0 ){
-            log.info("bonusBaseUrComponent PREMIO_MENSUAL_15_BASE_UR: {}", bonusBaseUr);
-        }
+
         PaymentComponentDTO monthlyBonus15Component = new PaymentComponentDTO();
         monthlyBonus15Component.setPaymentComponent("MONTHLY_BONUS_15");
 

@@ -1,5 +1,6 @@
 package ms.hispam.budget.rules;
 
+import lombok.extern.slf4j.Slf4j;
 import ms.hispam.budget.context.UserContext;
 import ms.hispam.budget.dto.MonthProjection;
 import ms.hispam.budget.dto.ParametersDTO;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
+@Slf4j(topic = "ecuador")
 public class Ecuador {
 
     private final SseReportService sseReportService;
@@ -121,15 +122,17 @@ public class Ecuador {
 
         // Calcular el promedio anual y dividirlo por 12 para obtener el valor mensual
         newDecimo.setAmount(BigDecimal.valueOf(amount / 12));
-
+        //log.info("amount decimoTercero -> {}", amount / 12);
         List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
             double[] suma = {0.0};
             componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
                 d.getProjections().stream().filter(g -> g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j -> {
                     suma[0] += j.getAmount().doubleValue();
+                    //log.info("suma componentDTO-> {}", j.getAmount().doubleValue());
                 });
             });
+            //log.info("suma final-> {}", suma[0] / 12);
             // Dividir por 12 para obtener el promedio mensual correcto
             f.setAmount(BigDecimal.valueOf(suma[0] / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
         });
@@ -139,6 +142,54 @@ public class Ecuador {
         return componentDTO;
     }
 
+    public List<PaymentComponentDTO> decimoTerceroV2(List<PaymentComponentDTO> componentDTO, String period,
+                                                   List<ParametersDTO> parameters, Integer range) {
+        Integer[] comIess = {1, 2, 3, 4, 7};
+
+        PaymentComponentDTO newDecimo = new PaymentComponentDTO();
+        newDecimo.setPaymentComponent("DECIMO3");
+
+        List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
+
+        months.forEach(currentMonth -> {
+            // Calcular la suma mensual solo de los componentes aplicables
+            double monthlySum = componentDTO.stream()
+                    .filter(c -> c.getType() != null && Arrays.asList(comIess).contains(c.getType()))
+                    .flatMap(comp -> comp.getProjections().stream())
+                    .filter(proj -> proj.getMonth().equalsIgnoreCase(currentMonth.getMonth()))
+                    .mapToDouble(proj -> proj.getAmount() != null ? proj.getAmount().doubleValue() : 0.0)
+                    .sum();
+
+            // El décimo tercero es la doceava parte
+            double monthlyDecimo = monthlySum / 12.0;
+
+            // Validar que el valor sea mayor a cero
+            if (monthlyDecimo >= 0) {
+                currentMonth.setAmount(BigDecimal.valueOf(monthlyDecimo)
+                        .setScale(2, BigDecimal.ROUND_HALF_UP));
+                /*log.info("Décimo tercero calculado para el mes {}: {}",
+                        currentMonth.getMonth(), monthlyDecimo);*/
+            } else {
+                currentMonth.setAmount(BigDecimal.ZERO);
+               /* log.warn("Valor inválido de décimo tercero para el mes {}: {}",
+                        currentMonth.getMonth(), monthlyDecimo);*/
+            }
+        });
+
+        // Calcular el monto inicial
+        double initialAmount = componentDTO.stream()
+                .filter(c -> c.getType() != null && Arrays.asList(comIess).contains(c.getType()))
+                .filter(c -> c.getAmount() != null)
+                .mapToDouble(c -> c.getAmount().doubleValue())
+                .sum() / 12.0;
+
+        newDecimo.setAmount(BigDecimal.valueOf(initialAmount)
+                .setScale(2, BigDecimal.ROUND_HALF_UP));
+        newDecimo.setProjections(months);
+        componentDTO.add(newDecimo);
+
+        return componentDTO;
+    }
 
     public List<PaymentComponentDTO> addDecimoCuarto(List<PaymentComponentDTO> componentDTO,String period,
                                                       List<ParametersDTO> parameters ,Integer range){
@@ -161,15 +212,21 @@ public class Ecuador {
                     if (o.getProjections() == null || o.getProjections().isEmpty()) {
                         o.setProjections(Shared.generateMonthProjectionV3(dto.getPeriod(), 12, BigDecimal.ZERO));
                     }
+
                     int idx = Shared.getIndex(o.getProjections().stream()
                             .map(MonthProjection::getMonth).collect(Collectors.toList()), dto.getPeriod());
+
                     for (int i = idx; i < o.getProjections().size(); i++) {
-                        double amount = i == 0 ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
-                                : o.getProjections().get(i-1).getAmount().doubleValue();
+                        double amount = (i == 0) ? (o.getAmount() != null ? o.getAmount().doubleValue() : 0.0)
+                                : o.getProjections().get(i - 1).getAmount().doubleValue();
+
                         o.getProjections().get(i).setAmount(BigDecimal.valueOf(amount));
+
                         if (o.getProjections().get(i).getMonth().equalsIgnoreCase(dto.getPeriod())) {
                             AtomicReference<Double> coa = new AtomicReference<>(0.0);
                             int finalI = i;
+
+                            // Obtener valor de `coa` dependiendo del índice
                             if (finalI == 0) {
                                 componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 2).findFirst()
                                         .ifPresent(c -> coa.set(c.getAmount().doubleValue()));
@@ -178,30 +235,33 @@ public class Ecuador {
                                         .ifPresent(c -> coa.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
                             }
 
-                            double v;
+                            double v = amount;  // Inicializar `v` con `amount` por defecto
+
+                            // Ajuste basado en el tipo del componente
                             if (o.getType() == 2) {
                                 AtomicReference<Double> salary = new AtomicReference<>(0.0);
                                 componentDTO.stream().filter(c -> c.getType() != null && c.getType() == 1).findFirst().ifPresent(k -> {
                                     salary.set(finalI == 0 ? k.getAmount().doubleValue() : k.getProjections().get(finalI-1).getAmount().doubleValue());
                                 });
-                                v = coa.get() * (1 + ((salary.get() + coa.get()) < dto.getValue() ?
-                                        (dto.getValue() / (salary.get() + coa.get()) - 1) : 0));
+
+                                double base = salary.get() + coa.get();
+                                v = (base > 0) ? coa.get() * (1 + ((base < dto.getValue()) ? (dto.getValue() / base - 1) : 0)) : coa.get();
+
                             } else if (o.getType() == 7) {
                                 AtomicReference<Double> sba = new AtomicReference<>(0.0);
-                                if (finalI == 0) {
-                                    componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 1).findFirst()
-                                            .ifPresent(c -> sba.set(c.getAmount().doubleValue()));
-                                } else {
-                                    componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 1).findFirst()
-                                            .ifPresent(c -> sba.set(c.getProjections().get(finalI - 1).getAmount().doubleValue()));
-                                }
+                                componentDTO.stream().filter(w -> w.getType() != null && w.getType() == 1).findFirst().ifPresent(c -> {
+                                    sba.set(finalI == 0 ? c.getAmount().doubleValue() : c.getProjections().get(finalI - 1).getAmount().doubleValue());
+                                });
 
-                                v = o.getAmount().doubleValue() * (1 + ((sba.get() + coa.get()) < dto.getValue() ?
-                                        (dto.getValue() / (sba.get() + coa.get()) - 1) : 0));
+                                double base = sba.get() + coa.get();
+                                v = (base > 0) ? o.getAmount().doubleValue() * (1 + ((base < dto.getValue()) ? (dto.getValue() / base - 1) : 0)) : o.getAmount().doubleValue();
+
                             } else {
-                                v = amount * (1 + ((amount + coa.get()) < dto.getValue() ?
-                                        (dto.getValue() / (amount + coa.get()) - 1) : 0));
+                                double base = amount + coa.get();
+                                v = (base > 0) ? amount * (1 + ((base < dto.getValue()) ? (dto.getValue() / base - 1) : 0)) : amount;
                             }
+
+                            // Asignar el valor calculado `v` al mes correspondiente
                             o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
                         }
                     }
@@ -340,7 +400,13 @@ public class Ecuador {
                     comisionFirst.set(l.getProjections().get(idxStart).getAmount().doubleValue());
                     comisionEnd.set(l.getProjections().get(idxEnd).getAmount().doubleValue());
                 });
-                differPercent = (salaryEnd.get() + comisionEnd.get()) / (salaryFirst.get() + comisionFirst.get()) - 1;
+                double baseAmount = salaryFirst.get() + comisionFirst.get();
+                if (baseAmount > 0) {
+                    differPercent = ((salaryEnd.get() + comisionEnd.get()) / baseAmount) - 1;
+                } else {
+                    differPercent = 0.0;
+                }
+                //differPercent = (salaryEnd.get() + comisionEnd.get()) / (salaryFirst.get() + comisionFirst.get()) - 1;
             }
             double percent = dto.getValue() / 100;
             for (PaymentComponentDTO o : componentDTO.stream()
@@ -364,7 +430,12 @@ public class Ecuador {
                             if (o.getType() == 7) {
                                 amount = o.getAmount() != null ? o.getAmount().doubleValue() : 0.0;
                             }
-                            v = amount * (1 + (differPercent >= percent ? 0 : percent - differPercent));
+                            // Protección contra NaN y valores negativos
+                            double adjustmentFactor = Math.max(0, differPercent >= percent ? 0 : percent - differPercent);
+                            //log.info("adjustmentFactor -> {}", adjustmentFactor);
+                            //log.info("amount -> {}", amount);
+                            v = amount * (1 + adjustmentFactor);
+                            //log.info("v -> {}", v);
                         }
                         o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
                     }
