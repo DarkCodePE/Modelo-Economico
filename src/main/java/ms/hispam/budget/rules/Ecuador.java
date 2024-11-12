@@ -122,17 +122,17 @@ public class Ecuador {
 
         // Calcular el promedio anual y dividirlo por 12 para obtener el valor mensual
         newDecimo.setAmount(BigDecimal.valueOf(amount / 12));
-        log.info("amount decimoTercero -> {}", amount / 12);
+        //log.info("amount decimoTercero -> {}", amount / 12);
         List<MonthProjection> months = Shared.generateMonthProjectionV3(period, range, BigDecimal.ZERO);
         months.forEach(f -> {
             double[] suma = {0.0};
             componentDTO.stream().filter(c -> Arrays.asList(comIess).contains(c.getType())).forEach(d -> {
                 d.getProjections().stream().filter(g -> g.getMonth().equalsIgnoreCase(f.getMonth())).forEach(j -> {
                     suma[0] += j.getAmount().doubleValue();
-                    log.info("suma componentDTO-> {}", j.getAmount().doubleValue());
+                    //log.info("suma componentDTO-> {}", j.getAmount().doubleValue());
                 });
             });
-            log.info("suma final-> {}", suma[0] / 12);
+            //log.info("suma final-> {}", suma[0] / 12);
             // Dividir por 12 para obtener el promedio mensual correcto
             f.setAmount(BigDecimal.valueOf(suma[0] / 12).setScale(2, BigDecimal.ROUND_HALF_UP));
         });
@@ -167,12 +167,12 @@ public class Ecuador {
             if (monthlyDecimo >= 0) {
                 currentMonth.setAmount(BigDecimal.valueOf(monthlyDecimo)
                         .setScale(2, BigDecimal.ROUND_HALF_UP));
-                log.info("Décimo tercero calculado para el mes {}: {}",
-                        currentMonth.getMonth(), monthlyDecimo);
+                /*log.info("Décimo tercero calculado para el mes {}: {}",
+                        currentMonth.getMonth(), monthlyDecimo);*/
             } else {
                 currentMonth.setAmount(BigDecimal.ZERO);
-                log.warn("Valor inválido de décimo tercero para el mes {}: {}",
-                        currentMonth.getMonth(), monthlyDecimo);
+               /* log.warn("Valor inválido de décimo tercero para el mes {}: {}",
+                        currentMonth.getMonth(), monthlyDecimo);*/
             }
         });
 
@@ -432,10 +432,10 @@ public class Ecuador {
                             }
                             // Protección contra NaN y valores negativos
                             double adjustmentFactor = Math.max(0, differPercent >= percent ? 0 : percent - differPercent);
-                            log.info("adjustmentFactor -> {}", adjustmentFactor);
-                            log.info("amount -> {}", amount);
+                            //log.info("adjustmentFactor -> {}", adjustmentFactor);
+                            //log.info("amount -> {}", amount);
                             v = amount * (1 + adjustmentFactor);
-                            log.info("v -> {}", v);
+                            //log.info("v -> {}", v);
                         }
                         o.getProjections().get(i).setAmount(BigDecimal.valueOf(Math.round(v * 100d) / 100d));
                     }
