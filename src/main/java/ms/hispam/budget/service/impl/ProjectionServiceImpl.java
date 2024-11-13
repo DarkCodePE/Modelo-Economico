@@ -3038,7 +3038,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                 .paymentComponent(p.getComponent())
                                                                 .type(p.getType())
                                                                 .amount(BigDecimal.ZERO)
-                                                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
+                                                                .projections(getProjectionMethodByBu(projection.getBu(), projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                                                                 .build();
                                                         list.stream()
                                                                 .filter(t-> t.getComponent() !=null && t.getComponent().equalsIgnoreCase(p.getComponent()))
