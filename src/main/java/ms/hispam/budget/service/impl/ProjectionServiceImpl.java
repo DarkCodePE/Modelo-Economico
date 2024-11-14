@@ -2952,6 +2952,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         if(!projection.getBc().getData().isEmpty()){
             for (int i = 0; i < projection.getBc().getData().size(); i++) {
                 Map<String, Object> resp = projection.getBc().getData().get(i);
+                //log.info("resp ->{}", resp);
                 String pos = resp.get(HEADERPO).toString();
 
                 // Remover cualquier HeadcountProjection existente con la misma posición

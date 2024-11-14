@@ -271,17 +271,33 @@ public class XlsReportService {
                     for (MonthProjection projection : component.getProjections()) {
                         //log.info("Position desde report -> : {}", data.getPo());
                         // Obtener los datos de AF
-                        Optional<Map<String, Object>> baseExternEntry = parametersByProjection.getBaseExtern().getData().stream()
+                        Optional<Map<String, Object>> baseExternEntry = parametersByProjection
+                                .getBaseExtern()
+                                .getData()
+                                .stream()
+                                .filter(r -> r.get("po").equals(data.getPo()))
+                                .findFirst();
+                        Optional<Map<String, Object>> businessCaseEntry = parametersByProjection
+                                .getBc()
+                                .getData()
+                                .stream()
                                 .filter(r -> r.get("po").equals(data.getPo()))
                                 .findFirst();
                         //log.debug("Base Externa Entry: {}", baseExternEntry);
-                        String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
-                        //log.debug("Area Funcional: {}", areaFuncional);
+                        String areaFuncional = baseExternEntry
+                                .map(r -> r.get("AF"))
+                                .map(af -> af != null ? af.toString() : "")
+                                .orElse("");
+                        String ceco = businessCaseEntry
+                                .map(r -> r.get("CECO"))
+                                .map(cecoVal -> cecoVal != null ? cecoVal.toString() : "")
+                                .orElse("");
+                        //log.info("ceco: {}", ceco);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
                                 areaFuncional,
-                                data.getCCostos(),
+                                ceco,
                                 component.getPaymentComponent(),
                                 projection.getMonth(),
                                 data.getPo(),  // Añadir la posición aquí
