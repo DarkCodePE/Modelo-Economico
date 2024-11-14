@@ -379,7 +379,9 @@ public class Ecuador {
     public List<PaymentComponentDTO> revisionSalary(List<PaymentComponentDTO> componentDTO, ParametersDTO dto) {
         try {
             double differPercent = 0.0;
-            if (Boolean.TRUE.equals(dto.getIsRetroactive())) {
+            if (Boolean.TRUE.equals(dto.getIsRetroactive()) &&
+                    dto.getPeriodRetroactive() != null &&
+                    !dto.getPeriodRetroactive().trim().isEmpty()) {
                 int idxStart;
                 int idxEnd;
                 String[] period;

@@ -35,8 +35,8 @@ public interface ProjectionService {
     Boolean deleteHistorical( Integer id);
 
     void downloadProjection(ParametersByProjection projection, String userContact, ReportJob job, Integer idBu, String sessionId, String reportName, Long historyId);
-    void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
-    void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job);
+    void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job, String sessionId);
+    void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job, String sessionId);
     byte[] downloadProjectionHistorical(Integer id);
 
     DataBaseMainReponse getDataBase(DataRequest dataRequest);
