@@ -155,6 +155,7 @@ public class PeruRefactor {
         BigDecimal promo = calculatePromoAdjustment(salary.doubleValue(), month, componentMap);
         BigDecimal promoFactor = promo.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
         //log.info("promo -> {}", promo);
+        //if ("FLJ")
         // Calcular el salario total con promoción
         BigDecimal totalSalary = salary.multiply(BigDecimal.ONE.add(promoFactor));
         //log.info("totalSalary -> {}", totalSalary);
@@ -231,9 +232,9 @@ public class PeruRefactor {
         double salaryBase = calculateSalaryBase(componentMap, annualizedPositions, poName);
         double adjustmentBase = getAdjustmentBase(employeeClassification.getTypeEmp(), period,
                 salaryIncreaseMap, executiveSalaryIncreaseMap, directorSalaryIncreaseMap);
-        /*if (poName.equals("PO99009838") || poName.equals("PO10001848") ||  poName.equals("PO99013344")){
+        if (poName.equals("P010033665") || poName.equals("PRA4") ||  poName.equals("PO10047354")){
             log.info("salaryBase: {}, adjustmentBase: {}", salaryBase, adjustmentBase);
-        }*/
+        }
         //log.debug("salaryBase: {}, adjustmentBase: {}", salaryBase, adjustmentBase);
         PaymentComponentDTO salaryComponent = createSalaryComponent(salaryBase, adjustmentBase, period, range);
         List<MonthProjection> projections = calculateProjections(salaryComponent, salaryIncreaseMap,

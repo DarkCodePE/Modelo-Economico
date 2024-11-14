@@ -248,15 +248,22 @@ public class XlsReportService {
                         .anyMatch(u -> u.getPaymentComponent().equalsIgnoreCase(component)));
     }
 
-    private static byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob reportJob, String user) {
+    private byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob reportJob, String user, String sessionId) {
         try {
+
             SXSSFWorkbook workbook = new SXSSFWorkbook();
+            // Preparar datos iniciales
+            sseReportService.sendUpdate(sessionId, "procesando", "Preparando datos del planner", 10);
 
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
             accountProjections = null; // Liberar memoria
+            // Agrupar datos
+            sseReportService.sendUpdate(sessionId, "procesando", "Agrupando datos por componentes", 25);
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
             double sum = 0.0;
+            AtomicInteger processedItems = new AtomicInteger(0);
+            int totalItems = vdata.size();
             for (ProjectionDTO data : vdata) {
                 //TODO AGREGAR EL POS DE BASE EXTERNA
                 for (PaymentComponentDTO component : data.getComponents()) {
@@ -290,9 +297,14 @@ public class XlsReportService {
                     component.setProjections(null); // Liberar memoria
                 }
                 data.setComponents(null); // Liberar memoria
+                // Actualizar progreso
+                int progress = (int) (25 + (processedItems.incrementAndGet() / (double) totalItems) * 25);
+                sseReportService.sendUpdate(sessionId, "procesando",
+                        "Procesando datos: " + processedItems.get() + " de " + totalItems, progress);
             }
             vdata = null; // Liberar memoria
-
+            // Crear estilos y encabezados
+            sseReportService.sendUpdate(sessionId, "procesando", "Creando estructura del archivo Excel", 55);
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -313,6 +325,11 @@ public class XlsReportService {
                 headerRow.createCell(i).setCellValue(headers[i]);
                 headerRow.getCell(i).setCellStyle(headerStyle);
             }
+
+            // Escribir datos
+            sseReportService.sendUpdate(sessionId, "procesando", "Escribiendo datos en el archivo", 65);
+            AtomicInteger processedGroups = new AtomicInteger(0);
+            int totalGroups = groupedData.size();
 
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
@@ -362,26 +379,43 @@ public class XlsReportService {
                     //País -> user
                     row.createCell(16).setCellValue(bu.getBu());
                 }
+                // Actualizar progreso
+                int progress = (int) (65 + (processedGroups.incrementAndGet() / (double) totalGroups) * 30);
+                if (processedGroups.get() % 1000 == 0) { // Actualizar cada 1000 grupos para no saturar
+                    sseReportService.sendUpdate(sessionId, "procesando",
+                            "Procesando registros: " + processedGroups.get() + " de " + totalGroups, progress);
+                }
             }
+            // Finalizar y generar archivo
+            sseReportService.sendUpdate(sessionId, "finalizando", "Guardando archivo Excel", 95);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             workbook.close();
+
+            sseReportService.sendUpdate(sessionId, "completado", "Planner generado exitosamente", 100);
             return outputStream.toByteArray();
 
         } catch (Exception e) {
+            sseReportService.sendUpdate(sessionId, "fallido", "Error al generar el planner: " + e.getMessage(), 100);
             log.error("Error al generar el planner", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al generar el planner", e);
         }
     }
 
-    private static byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob reportJob, String user) {
+    private byte[] generateCdg(ParametersByProjection parameters ,List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob reportJob, String user, String sessionId) {
         try {
             SXSSFWorkbook workbook = new SXSSFWorkbook();
-
+            // Preparación de datos iniciales
+            sseReportService.sendUpdate(sessionId, "procesando", "Preparando componentes y mapeo de datos", 10);
             Map<String, AccountProjection> mapaComponentesValidos = accountProjections.stream()
                     .collect(Collectors.toMap(AccountProjection::getVcomponent, Function.identity(), (existingValue, newValue) -> newValue));
             accountProjections = null; // Liberar memoria
+            // Procesamiento de datos
+            sseReportService.sendUpdate(sessionId, "procesando", "Procesando datos y agrupando información", 20);
             Map<GroupKey, GroupData> groupedData = new HashMap<>();
+            AtomicInteger processedItems = new AtomicInteger(0);
+            int totalItems = vdata.size();
+
             for (ProjectionDTO data : vdata) {
                 for (PaymentComponentDTO component : data.getComponents()) {
                     // filter by component name AF
@@ -414,9 +448,16 @@ public class XlsReportService {
                     component.setProjections(null); // Liberar memoria
                 }
                 data.setComponents(null); // Liberar memoria
+                // Actualizar progreso del procesamiento de datos
+                int progress = (int) (20 + (processedItems.incrementAndGet() / (double) totalItems) * 30);
+                if (processedItems.get() % 100 == 0) {
+                    sseReportService.sendUpdate(sessionId, "procesando",
+                            String.format("Procesando registro %d de %d", processedItems.get(), totalItems), progress);
+                }
             }
             vdata = null; // Liberar memoria
-
+            // Crear estructura del Excel
+            sseReportService.sendUpdate(sessionId, "procesando", "Creando estructura del archivo Excel", 55);
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREEN.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -436,7 +477,11 @@ public class XlsReportService {
             for (int i = 0; i <= 6; i++) {
                 headerRow.getCell(i).setCellStyle(headerStyle);
             }
+            AtomicInteger processedGroups = new AtomicInteger(0);
+            int totalGroups = groupedData.size();
 
+            // Escribir datos
+            sseReportService.sendUpdate(sessionId, "procesando", "Escribiendo datos en el archivo", 65);
             for (Map.Entry<GroupKey, GroupData> entry : groupedData.entrySet()) {
                 GroupKey key = entry.getKey();
                 GroupData groupData = entry.getValue();
@@ -468,13 +513,23 @@ public class XlsReportService {
                     row.createCell(5).setCellValue(mes); // Mes
                     row.createCell(6).setCellValue(groupData.sum); // Monto
                 }
+                // Actualizar progreso de escritura
+                int progress = (int) (65 + (processedGroups.incrementAndGet() / (double) totalGroups) * 30);
+                if (processedGroups.get() % 1000 == 0) {
+                    sseReportService.sendUpdate(sessionId, "procesando",
+                            String.format("Escribiendo registro %d de %d", processedGroups.get(), totalGroups), progress);
+                }
             }
+            // Finalizar y generar archivo
+            sseReportService.sendUpdate(sessionId, "finalizando", "Guardando archivo Excel", 95);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             workbook.close();
+            sseReportService.sendUpdate(sessionId, "completado", "Reporte CDG generado exitosamente", 100);
             return outputStream.toByteArray();
 
         } catch (Exception e) {
+            sseReportService.sendUpdate(sessionId, "fallido", "Error al generar el reporte CDG: " + e.getMessage(), 100);
             log.error("Error al generar el reporte: " + e.getMessage());
             throw new RuntimeException(e);
         }
@@ -795,16 +850,16 @@ public class XlsReportService {
         }, asyncTaskExecutor);
     }
 
-    public CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact) {
+    public CompletableFuture<byte[]> generatePlannerAsync(ParametersByProjection projection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob job, String userContact, String sessionId) {
         return CompletableFuture.supplyAsync(() -> {
             //log.info("vdata: {}", vdata);
-           return generatePlanner(projection, vdata,accountProjections, bu, job,userContact);
+           return generatePlanner(projection, vdata,accountProjections, bu, job,userContact, sessionId);
         });
     }
     //generateCdgAsync
-    public CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
+    public CompletableFuture<byte[]> generateCdgAsync(ParametersByProjection projection,List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact, String sessionId) {
         return CompletableFuture.supplyAsync(() -> {
-            return generateCdg(projection, vdata,bu,accountProjections,job,userContact);
+            return generateCdg(projection, vdata,bu,accountProjections,job,userContact, sessionId);
         });
     }
 
@@ -817,9 +872,7 @@ public class XlsReportService {
 
     @Async
     public void generateAndCompleteReportAsync(ParametersByProjection projection, List<ComponentProjection> components, DataBaseMainReponse dataBase, String userContact, ReportJob job, String user, Integer idBu, String sessionId, String reportName, Long historyId) {
-
         //sseReportService.sendUpdate(sessionId, "procesando", "procesando la información");
-
         generateExcelProjectionAsync(projection, components, dataBase, idBu, userContact, job, sessionId, reportName, historyId)
                 .thenAccept(reportData -> {
                     //sseReportService.sendUpdate(sessionId, "generando", "Generando el archivo Excel");
@@ -851,8 +904,8 @@ public class XlsReportService {
     }
     //generatePlannerAsync
     @Async
-    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generatePlannerAsync(projection, vdata, accountProjections, bu, job, userContact)
+    public void generateAndCompleteReportAsyncPlanner(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu,List<AccountProjection> accountProjections, ReportJob job, String userContact, String sessionId) {
+        generatePlannerAsync(projection, vdata, accountProjections, bu, job, userContact, sessionId)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
@@ -860,6 +913,7 @@ public class XlsReportService {
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);
+                    sseReportService.completeEmitter(sessionId);
                     // Notifica al usuario
                     notifyUser("El reporte para planner está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
                 })
@@ -876,8 +930,8 @@ public class XlsReportService {
     }
     //generateCdgAsync
     @Async
-    public void generateAndCompleteReportAsyncCdg(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact) {
-        generateCdgAsync(projection, vdata, bu, accountProjections, job, userContact)
+    public void generateAndCompleteReportAsyncCdg(ParametersByProjection projection, List<ProjectionDTO> vdata, Bu bu, List<AccountProjection> accountProjections, ReportJob job, String userContact, String sessionId) {
+        generateCdgAsync(projection, vdata, bu, accountProjections, job, userContact, sessionId)
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
@@ -885,6 +939,7 @@ public class XlsReportService {
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);
+                    sseReportService.completeEmitter(sessionId);
                     // Notifica al usuario
                     notifyUser("El reporte para CDG está listo para su descarga, vuelva a la aplicación para descargarlo", userContact);
                 })

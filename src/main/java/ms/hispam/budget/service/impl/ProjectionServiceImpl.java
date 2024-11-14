@@ -2502,7 +2502,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     @Async("reportTaskExecutor")
     @Override
-    public void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {
+    public void downloadPlannerAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job, String sessionId) {
         try {
             Bu bu = buRepository.findById(idBu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
             Shared.replaceSLash(projection);
@@ -2514,7 +2514,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             //AÑADIR AL HEADCOUNT PO DE BASE EXTERN
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
             //log.info("headcount {}",headcount);
-            xlsReportService.generateAndCompleteReportAsyncPlanner(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
+            xlsReportService.generateAndCompleteReportAsyncPlanner(projection, headcount, bu, sharedRepo.getAccount(idBu), job, userContact, sessionId);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -2524,7 +2524,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
     @Async("reportTaskExecutor")
     @Override
     //downloadCdgAsync
-    public void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job) {
+    public void downloadCdgAsync(ParametersByProjection projection, Integer type, Integer idBu, String userContact, ReportJob job, String sessionId) {
         try {
             //buscar bu by id
             Bu bu = buRepository.findById(idBu).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro el BU"));
@@ -2535,7 +2535,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 componentesMap.put(concept.getVcomponent(), concept);
             }
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
-            xlsReportService.generateAndCompleteReportAsyncCdg(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact);
+            xlsReportService.generateAndCompleteReportAsyncCdg(projection, headcount, bu, sharedRepo.getAccount(idBu),job,userContact, sessionId);
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);
@@ -3038,7 +3038,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                                                                 .paymentComponent(p.getComponent())
                                                                 .type(p.getType())
                                                                 .amount(BigDecimal.ZERO)
-                                                                .projections(Shared.generateMonthProjection(projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
+                                                                .projections(getProjectionMethodByBu(projection.getBu(), projection.getPeriod(), projection.getRange(), BigDecimal.ZERO))
                                                                 .build();
                                                         list.stream()
                                                                 .filter(t-> t.getComponent() !=null && t.getComponent().equalsIgnoreCase(p.getComponent()))

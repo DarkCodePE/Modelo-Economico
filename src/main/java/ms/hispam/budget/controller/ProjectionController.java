@@ -172,11 +172,11 @@ public class ProjectionController {
                     .sessionId(sessionId)
                     .build();
             if (type == 2)
-                service.downloadPlannerAsync(projection, type, idBu, user, jobDB);
+                service.downloadPlannerAsync(projection, type, idBu, user, jobDB, sessionId);
             else if (type == 1)
                 service.downloadProjection(projection, user, jobDB, idBu, sessionId, finalReportName, historyId);
             else if (type == 3)
-                service.downloadCdgAsync(projection, type, idBu, user, jobDB);
+                service.downloadCdgAsync(projection, type, idBu, user, jobDB, sessionId);
             // Retornar la respuesta inmediata con el estado "en progreso"
             return reportInProgress;
         } catch (Exception e) {
