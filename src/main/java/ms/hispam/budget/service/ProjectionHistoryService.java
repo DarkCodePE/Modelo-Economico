@@ -100,6 +100,8 @@ public class ProjectionHistoryService {
                     .hash(cacheKey)
                     .reportName(reportName)
                     .version(version)
+                    .bu(parameters.getBu())
+                    .isOfficial(false)
                     .build();
 
             historyRepository.save(history);
