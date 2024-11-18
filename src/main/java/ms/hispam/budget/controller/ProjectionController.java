@@ -324,8 +324,8 @@ public class ProjectionController {
      * @return Lista de proyecciones históricas del usuario
      */
     @GetMapping("/history-projections-all")
-    public List<ProjectionHistory> getAllProjections() {
-        return projectionHistoryService.getAllProjections();
+    public List<ProjectionHistory> getAllProjections(@RequestHeader String user) {
+        return projectionHistoryService.getUserProjections(user);
     }
     /**
      * Obtiene una proyección desde el historial basada en su ID y el ID del usuario.
