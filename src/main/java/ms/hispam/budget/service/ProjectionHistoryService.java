@@ -23,7 +23,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.persistence.EntityNotFoundException;
 import javax.sql.rowset.serial.SerialException;
+import org.springframework.transaction.annotation.Transactional;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -42,7 +44,8 @@ public class ProjectionHistoryService {
     private final SseReportService sseReportService;
     private final ProjectionUtils projectionUtils;
     private final UserSessionRepository userSessionRepository;
-    private final ObjectMapper objectMapper; // Inyectado
+    private final ObjectMapper objectMapper;
+
     @Autowired
     public ProjectionHistoryService(ProjectionHistoryRepository historyRepository,
                                     ExternalService externalService,
@@ -152,7 +155,7 @@ public class ProjectionHistoryService {
         UserSession userSession = userSessionRepository
                 .findByUserId(userContact)
                 .orElseThrow(() -> new RuntimeException("No se encontraron proyecciones"));
-        return historyRepository.findByUserId(userSession.getId());
+        return historyRepository.findUserProjectionsAndOfficialProjections(userSession.getId());
     }
 
     public List<ProjectionHistory> getAllProjections() {
@@ -229,6 +232,53 @@ public class ProjectionHistoryService {
 
         return saveRequest;
     }
+    /**
+     * Obtiene la versión oficial para una BU específica.
+     * @param bu La BU para la cual obtener la versión oficial.
+     * @return La versión oficial.
+     */
+    public ProjectionHistory getOfficialProjectionHistoryByBu(String bu) {
+        return historyRepository.findByBuAndIsOfficialTrue(bu)
+                .orElseThrow(() -> new RuntimeException("No hay una versión oficial disponible para la BU: " + bu));
+    }
+    /**
+     * Crea una nueva versión oficial para una BU específica y desmarca cualquier otra versión oficial existente.
+     * @param history La nueva versión a marcar como oficial.
+     * @return La versión oficial recién creada.
+     */
+    @Transactional("mysqlTransactionManager")
+    public ProjectionHistory createOfficialProjectionHistory(ProjectionHistory history) {
+        // Desmarcar la versión oficial actual para la BU
+        historyRepository.resetOfficialVersionByBu(history.getBu());
+
+        // Marcar la nueva versión como oficial
+        history.setIsOfficial(true);
+
+        // Guardar la nueva versión
+        return historyRepository.save(history);
+    }
+
+    /**
+     * Marca una versión existente como oficial para una BU específica.
+     * @param historyId El ID de la versión a marcar como oficial.
+     * @param bu La BU a la que pertenece la versión.
+     * @return La versión oficial actualizada.
+     */
+    @Transactional("mysqlTransactionManager")
+    public ProjectionHistory setOfficialProjectionHistory(Long historyId, String bu) {
+        // Desmarcar la versión oficial actual para la BU
+        historyRepository.resetOfficialVersionByBu(bu);
+
+        // Obtener y marcar la nueva versión como oficial
+        ProjectionHistory newOfficial = historyRepository.findById(historyId)
+                .orElseThrow(() -> new EntityNotFoundException("ProjectionHistory not found"));
+
+        newOfficial.setIsOfficial(true);
+        newOfficial.setBu(bu);
+
+        return historyRepository.save(newOfficial);
+    }
+
     private ParametersByProjection addSlashesToDates(ParametersByProjection parameters) {
         // Añadir barras a las fechas principales
         parameters.setPeriod(addSlashes(parameters.getPeriod()));

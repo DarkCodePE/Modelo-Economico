@@ -6,7 +6,6 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "projection_history")
 @NoArgsConstructor
 @Getter
 @Setter
@@ -16,6 +15,9 @@ import java.time.LocalDateTime;
  * @Lob: Indica que el campo debe ser tratado como un objeto grande (Large Object). En este caso, LONGTEXT es apropiado para almacenar grandes cantidades de texto.
  * @LONGTEXT permite almacenar hasta 4,294,967,295 caracteres
  */
+@Table(name = "projection_history", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"bu", "isOfficial"})
+})
 public class ProjectionHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,4 +38,13 @@ public class ProjectionHistory {
     private String reportName;
 
     private Integer version;
+
+    @Column(nullable = false)
+    private String bu;
+
+    private Boolean isOfficial;
+
+    // Opcional: Mapeo de la columna generada
+    @Column(name = "official_bu", insertable = false, updatable = false)
+    private String officialBu;
 }

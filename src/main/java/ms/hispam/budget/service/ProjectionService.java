@@ -5,6 +5,7 @@ import ms.hispam.budget.dto.countries.ConventArgDTO;
 import ms.hispam.budget.dto.projections.AccountProjection;
 import ms.hispam.budget.entity.mysql.Bu;
 import ms.hispam.budget.entity.mysql.ConventArg;
+import ms.hispam.budget.entity.mysql.ProjectionHistory;
 import ms.hispam.budget.entity.mysql.ReportJob;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -56,4 +57,5 @@ public interface ProjectionService {
     Config getComponentByBuV2(String bu);
 
     ProjectionSecondDTO getProjectionFromHistoryId(Long historyId);
+    ProjectionHistory saveOfficialProjectionHistory(Long historyId, String bu, String userContact, String sessionId);
 }

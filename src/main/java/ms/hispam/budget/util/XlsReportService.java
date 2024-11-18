@@ -48,6 +48,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
+
 @Component
 @Slf4j(topic = "XlsReportService")
 public class XlsReportService {
@@ -249,9 +251,10 @@ public class XlsReportService {
     }
 
     private byte[] generatePlanner(ParametersByProjection parametersByProjection, List<ProjectionDTO> vdata, List<AccountProjection> accountProjections, Bu bu, ReportJob reportJob, String user, String sessionId) {
-        try {
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook();
+             ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
 
-            SXSSFWorkbook workbook = new SXSSFWorkbook();
             // Preparar datos iniciales
             sseReportService.sendUpdate(sessionId, "procesando", "Preparando datos del planner", 10);
 
@@ -289,9 +292,13 @@ public class XlsReportService {
                                 .map(af -> af != null ? af.toString() : "")
                                 .orElse("");
                         String ceco = businessCaseEntry
-                                .map(r -> r.get("CECO"))
-                                .map(cecoVal -> cecoVal != null ? cecoVal.toString() : "")
-                                .orElse("");
+                                .map(r -> {
+                                    Object cecoVal = r.get("CECO");
+                                    return (cecoVal != null && !cecoVal.toString().trim().isEmpty())
+                                            ? cecoVal.toString()
+                                            : data.getCCostos();
+                                })
+                                .orElse(data.getCCostos());
                         //log.info("ceco: {}", ceco);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
@@ -404,12 +411,21 @@ public class XlsReportService {
             }
             // Finalizar y generar archivo
             sseReportService.sendUpdate(sessionId, "finalizando", "Guardando archivo Excel", 95);
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            // Escribir el workbook al flujo GZIP
+            workbook.write(gzipOut);
+            gzipOut.finish();
+            byte[] compressedData = baos.toByteArray();
+            /*ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
-            workbook.close();
-
+            workbook.close();*/
+            // Verificar el tamaño del archivo comprimido
+            int maxSize = 200 * 1024 * 1024; // 200 MB
+            if (compressedData.length > maxSize) {
+                throw new RuntimeException("El archivo comprimido sigue excediendo el tamaño máximo permitido de 200 MB.");
+            }
             sseReportService.sendUpdate(sessionId, "completado", "Planner generado exitosamente", 100);
-            return outputStream.toByteArray();
+            //return outputStream.toByteArray();
+            return compressedData;
 
         } catch (Exception e) {
             sseReportService.sendUpdate(sessionId, "fallido", "Error al generar el planner: " + e.getMessage(), 100);
@@ -446,7 +462,7 @@ public class XlsReportService {
                         }
                         //log.debug("Base Externa Entry: {}", baseExternEntry);
                         String areaFuncional = baseExternEntry.map(r -> r.get("AF").toString()).orElse("");
-                        log.debug("Area Funcional: {}", areaFuncional);
+                        //log.debug("Area Funcional: {}", areaFuncional);
                         // Include the month and position in the GroupKey
                         GroupKey key = new GroupKey(
                                 mapaComponentesValidos.get(component.getPaymentComponent()).getAccount(),
@@ -925,7 +941,7 @@ public class XlsReportService {
                 .thenAccept(reportData -> {
                     job.setStatus("completado");
                     // Guarda el reporte en el almacenamiento externo
-                    MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    MultipartFile multipartFile = new ByteArrayMultipartFile(reportData, "planner_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                     FileDTO responseUpload =  externalService.uploadExcelReport(1,multipartFile);
                     job.setReportUrl(responseUpload.getPath());
                     reportJobRepository.save(job);

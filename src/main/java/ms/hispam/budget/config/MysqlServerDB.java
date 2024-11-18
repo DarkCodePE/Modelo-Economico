@@ -47,6 +47,7 @@ public class MysqlServerDB {
         Map<String,Object> properties= new HashMap<>();
         properties.put("hibernate.dialect",dialect);
         factoryBean.setJpaPropertyMap(properties);
+        factoryBean.setPersistenceUnitName("mysqlPU"); // Establece el nombre del persistence unit
         return factoryBean;
     }
 

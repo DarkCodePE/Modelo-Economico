@@ -4,9 +4,12 @@ import ms.hispam.budget.dto.PositionBaseline;
 import ms.hispam.budget.dto.projections.*;
 import ms.hispam.budget.entity.sqlserver.ParametrosGlobal;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import javax.transaction.Transactional;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,9 +50,35 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
                                           @Param("entity") String entity,
                                           @Param("employclass") String employclass,
                                           @Param("vfilter") String vfilter);
-
-
-
-
-
+    @Modifying
+    @Transactional
+    @Query(value = "INSERT INTO dbo.MODECONOMICO_Proceso (" +
+            "FechaEjecucionProyeccion, UsuarioEjecuta, FechaTraspaso, UsuarioTraspaso, " +
+            "QRegistros, ImporteTotal, Pais, Proyeccion, ProyeccionNombre, " +
+            "PeriodoEjecucion, PositionID, ID_SSFF, ActividadFuncional, " +
+            "Ceco, Concepto, CuentaSAP, Mes, Monto) " +
+            "VALUES (:fechaEjecucion, :usuarioEjecuta, :fechaTraspaso, :usuarioTraspaso, " +
+            ":qRegistros, :importeTotal, :pais, :proyeccion, :proyeccionNombre, " +
+            ":periodoEjecucion, :positionId, :idSsff, :actividadFuncional, " +
+            ":ceco, :concepto, :cuentaSap, :mes, :monto)", nativeQuery = true)
+    void insertModEconomicoProceso(
+            @Param("fechaEjecucion") Date fechaEjecucion,
+            @Param("usuarioEjecuta") String usuarioEjecuta,
+            @Param("fechaTraspaso") Date fechaTraspaso,
+            @Param("usuarioTraspaso") String usuarioTraspaso,
+            @Param("qRegistros") Long qRegistros,
+            @Param("importeTotal") Double importeTotal,
+            @Param("pais") String pais,
+            @Param("proyeccion") String proyeccion,
+            @Param("proyeccionNombre") String proyeccionNombre,
+            @Param("periodoEjecucion") Integer periodoEjecucion,
+            @Param("positionId") String positionId,
+            @Param("idSsff") String idSsff,
+            @Param("actividadFuncional") String actividadFuncional,
+            @Param("ceco") String ceco,
+            @Param("concepto") String concepto,
+            @Param("cuentaSap") String cuentaSap,
+            @Param("mes") Integer mes,
+            @Param("monto") Double monto
+    );
 }

@@ -7,6 +7,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
@@ -46,6 +47,7 @@ public class SqlServerDB {
         Map<String,Object> properties= new HashMap<>();
         properties.put("hibernate.dialect",dialect);
         factoryBean.setJpaPropertyMap(properties);
+        factoryBean.setPersistenceUnitName("sqlServerPU"); // Asegúrate de establecer el nombre del persistence unit
         return factoryBean;
     }
 
@@ -54,5 +56,9 @@ public class SqlServerDB {
             @Qualifier("sqlServerEntityManagerFactory") EntityManagerFactory entityManagerFactory){
         return new JpaTransactionManager(entityManagerFactory);
 
+    }
+    @Bean(name = "sqlServerJdbcTemplate")
+    public JdbcTemplate sqlServerJdbcTemplate(@Qualifier("sqlServerDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

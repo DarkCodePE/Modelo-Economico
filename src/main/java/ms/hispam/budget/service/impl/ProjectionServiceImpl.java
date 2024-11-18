@@ -31,9 +31,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
+import javax.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -54,7 +57,7 @@ import static ms.hispam.budget.util.Shared.generateMonthProjectionV3;
 @Service
 @Slf4j(topic = "PROJECTION_SERVICE")
 public class ProjectionServiceImpl implements ProjectionService {
-
+    private final ConcurrentMap<String, Boolean> processingBuMap = new ConcurrentHashMap<>();
     private static final int HHEE_ADJUSTMENT_FACTOR_ID = 71;
     @Autowired
     private ParametersRepository repository;
@@ -143,6 +146,8 @@ public class ProjectionServiceImpl implements ProjectionService {
     private ProjectionUtils projectionUtils;
     @Autowired
     private ProjectionHistoryService projectionHistoryService;
+    @Autowired
+    private SendDataToAzure sendDataToAzure;
 
     private final ConcurrentMap<String, ConcurrentHashMap<String, List<NominaPaymentComponentLink>>> nominaPaymentComponentLinksByBuCache = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, List<NominaPaymentComponentLink>> nominaPaymentComponentLinksCache;
@@ -394,6 +399,95 @@ public class ProjectionServiceImpl implements ProjectionService {
         return projectionHistoryService.getProjectionFromHistory(historyId).getProjectionResult();
     }
 
+    @Override
+    @Transactional("mysqlTransactionManager")
+    public ProjectionHistory saveOfficialProjectionHistory(Long historyId, String bu, String userContact, String sessionId){
+        // Verificar si la BU ya está siendo procesada
+        // Verificar y bloquear la BU
+        lockBu(bu);
+        try {
+            // Marcar la proyección como oficial
+            ProjectionSaveRequestDTO requestDTO = projectionHistoryService.getProjectionFromHistory(historyId);
+            ProjectionHistory updatedHistory = projectionHistoryService.setOfficialProjectionHistory(historyId, bu);
+            ParametersByProjection projection = requestDTO.getProjection();
+            Shared.replaceSLash(projection);
+            Map<String, AccountProjection> componentesMap = new HashMap<>();
+            Bu buEntity = buRepository.findByBu(bu)
+                    .orElseThrow(() -> new EntityNotFoundException("No se encontró la BU: " + bu));
+            List<AccountProjection> components = getAccountsByBu(buEntity.getId()) ;
+            for (AccountProjection concept : components) {
+                componentesMap.put(concept.getVcomponent(), concept);
+            }
+            // Obtener los parámetros necesarios para el procesamiento
+            List<ProjectionDTO> data = getHeadcount(projection,componentesMap);
+            if (data.isEmpty()) {
+                log.warn("No hay datos para procesar para BU: {}", bu);
+                throw new IllegalStateException("No hay datos para procesar para BU: " + bu);
+            }
+            double totalAmount = calcularImporteTotal(data);
+            List<AccountProjection> accountProjections = sharedRepo.getAccount(buEntity.getId());
+            if (accountProjections.isEmpty()) {
+                log.warn("No hay AccountProjections para procesar para BU: {}", bu);
+                throw new IllegalStateException("No hay AccountProjections para procesar para BU: " + bu);
+            }
+            if (sessionId == null || sessionId.isEmpty()) {
+                log.warn("SessionId es nulo o vacío para BU: {}", bu);
+                throw new IllegalStateException("SessionId es inválido.");
+            }
+            // Registrar una sincronización para iniciar el proceso asíncrono después del commit
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+                @Override
+                public void afterCommit() {
+                    // Disparar el procesamiento asíncrono
+                    CompletableFuture<Void> dataProcessingFuture = sendDataToAzure.processPlannerDataAsync(
+                            projection,
+                            data,
+                            buEntity,
+                            userContact,
+                            totalAmount,
+                            sessionId,
+                            accountProjections
+                    );
+
+                    // Manejar posibles excepciones en el procesamiento asíncrono
+                    dataProcessingFuture.exceptionally(ex -> {
+                        log.error("Error procesando datos asíncronamente: ", ex);
+                        sseReportService.sendUpdate(sessionId, "fallido",
+                                "Error en el procesamiento de MODECONOMICO: " + ex.getMessage(), 100);
+                        return null;
+                    }).thenRun(() -> {
+                        // Liberar el bloqueo de la BU después del procesamiento
+                        unlockBu(bu);
+                    });
+                }
+            });
+
+            // Retornar la proyección actualizada
+            return updatedHistory;
+
+        } catch (Exception e) {
+            // En caso de error, liberar el bloqueo
+            processingBuMap.remove(bu);
+            throw e;
+        }
+    }
+    private void lockBu(String bu) {
+        if (processingBuMap.putIfAbsent(bu, true) != null) {
+            throw new IllegalStateException("La BU " + bu + " ya está siendo procesada. Por favor, inténtalo más tarde.");
+        }
+    }
+
+    private void unlockBu(String bu) {
+        processingBuMap.remove(bu);
+    }
+
+    private double calcularImporteTotal(List<ProjectionDTO> data) {
+        return data.stream()
+                .flatMap(proj -> proj.getComponents().stream())
+                .flatMap(comp -> comp.getProjections().stream())
+                .mapToDouble(monthProjection -> monthProjection.getAmount().doubleValue())
+                .sum();
+    }
     @Override
     public ProjectionSecondDTO getNewProjection(ParametersByProjection projection, String sessionId, String reportName) {
         String cacheKey = ProjectionUtils.generateHash(projection);
@@ -2090,39 +2184,26 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
        ConcurrentMap<String, ProjectionDTO> positionsMap = new ConcurrentHashMap<>();
        positionsMap.put(originalHeadcount.getPo(), originalHeadcount);
 
-       // Utilizar un ForkJoinPool personalizado para un mejor control sobre la concurrencia
-       //int parallelism = Runtime.getRuntime().availableProcessors();
-       //ForkJoinPool customThreadPool = new ForkJoinPool(parallelism);
-
-       try {
-           BASE_EXTERN_THREAD_POOL.submit(() ->
-                   baseExtern
-                           .getData()
-                           //.parallelStream()
-                           .forEach(po -> {
-                               String currentPo = (String) po.get("po");
-                               positionsMap.compute(currentPo, (key, existingProjection) -> {
-                                   ProjectionDTO projection = (existingProjection != null) ? existingProjection :
-                                           ProjectionDTO.builder()
-                                                   .po(currentPo)
-                                                   .components(new ArrayList<>())
-                                                   .build();
-                                   updateProjection2(projection, po, relevantHeaders, period, range);
-                                   return projection;
-                               });
-                           })
-           ).get(60, TimeUnit.SECONDS);
-       } catch (InterruptedException e) {
-           log.error("Thread was interrupted", e);
-           Thread.currentThread().interrupt();
-           throw new RuntimeException("Thread was interrupted", e);
-       } catch (ExecutionException e) {
-           log.error("Execution exception", e);
-           throw new RuntimeException("Execution exception", e);
-       } catch (TimeoutException e) {
-           log.error("Task timed out", e);
-           throw new RuntimeException("Task timed out", e);
-       }
+       baseExtern
+               .getData()
+               .parallelStream()
+               .forEach(po -> {
+                   try {
+                       String currentPo = (String) po.get("po");
+                       positionsMap.compute(currentPo, (key, existingProjection) -> {
+                           ProjectionDTO projection = (existingProjection != null) ? existingProjection :
+                                   ProjectionDTO.builder()
+                                           .po(currentPo)
+                                           .components(new ArrayList<>())
+                                           .build();
+                           updateProjection2(projection, po, relevantHeaders, period, range);
+                           return projection;
+                       });
+                   } catch (Exception e) {
+                       log.error("Error procesando po: {}", po, e);
+                       throw new RuntimeException("Error procesando po: " + po, e);
+                   }
+               });
 
        return new ArrayList<>(positionsMap.values());
    }
@@ -2514,7 +2595,17 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             //AÑADIR AL HEADCOUNT PO DE BASE EXTERN
             List<ProjectionDTO> headcount =  getHeadcount(projection,componentesMap);
             //log.info("headcount {}",headcount);
+            // Procesar los datos masivos
             xlsReportService.generateAndCompleteReportAsyncPlanner(projection, headcount, bu, sharedRepo.getAccount(idBu), job, userContact, sessionId);
+           /* CompletableFuture<Void> dataProcessingFuture = sendDataToAzure.processPlannerDataAsync(
+                    projection,
+                    headcount,
+                    bu,
+                    userContact,
+                    1000,
+                    sessionId,
+                    sharedRepo.getAccount(idBu)
+            );*/
         } catch (Exception e) {
             log.error("Error al procesar la proyección", e);
             throw new CompletionException(e);

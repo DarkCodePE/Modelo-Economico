@@ -184,6 +184,13 @@ public class ProjectionController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al iniciar la descarga de la proyección", e);
         }
     }
+    @PostMapping("/official-projection-history")
+    public ProjectionHistory saveOfficialProjectionHistory( @RequestHeader String user,
+                                                                  @RequestBody OfficialProHistoryDTO dto){
+        // Si no se proporciona sessionId o no es válido, crear o actualizar la sesión
+        String sessionId = userSessionService.createOrUpdateSession(user);
+        return service.saveOfficialProjectionHistory(dto.getHistoryId(), dto.getBu(), user, sessionId);
+    }
     private String generateReportName(String user, Integer type, String period) {
         String reportType = getReportTypeName(type);
         LocalDateTime now = LocalDateTime.now();
