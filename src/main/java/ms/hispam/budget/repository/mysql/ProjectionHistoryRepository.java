@@ -40,6 +40,6 @@ public interface ProjectionHistoryRepository extends JpaRepository<ProjectionHis
      * @param userId El ID del usuario.
      * @return Una lista de ProjectionHistory que pertenecen al usuario o son oficiales.
      */
-    @Query("SELECT p FROM ProjectionHistory p WHERE p.userId = :userId OR p.isOfficial = true")
+    @Query("SELECT p FROM ProjectionHistory p WHERE p.userId = :userId OR p.isOfficial = true ORDER BY p.createdAt DESC")
     List<ProjectionHistory> findUserProjectionsAndOfficialProjections(Long userId);
 }
