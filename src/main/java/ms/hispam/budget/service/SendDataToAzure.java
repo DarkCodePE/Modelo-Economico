@@ -14,6 +14,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -62,6 +63,12 @@ public class SendDataToAzure {
 
         return CompletableFuture.runAsync(() -> {
             try {
+                log.info("Iniciando eliminación de datos anteriores para BU: {}", bu.getBu());
+                sseReportService.sendUpdate(sessionId, "procesando", "Iniciando eliminación de datos anteriores para BU", 0);
+                // Eliminar registros existentes para la BU antes de insertar nuevos datos
+                deleteExistingRecords(bu.getBu());
+                log.info("Iniciando inserción de nuevos datos para BU: {}", bu.getBu());
+                // Procesar e insertar nuevos datos
                 processDataInChunks(parameters, data, bu, user, totalAmount, sessionId, accountProjections);
                 sseReportService.sendUpdate(sessionId, "completado",
                         "Procesamiento de MODECONOMICO completado", 100);
@@ -75,6 +82,28 @@ public class SendDataToAzure {
         }, asyncTaskExecutor);
     }
 
+    /**
+     * Elimina los registros existentes en MODECONOMICO_Proceso para una BU específica.
+     */
+    private void deleteExistingRecords(String pais) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        transactionTemplate.execute(status -> {
+            try {
+                int deletedRows = sqlServerJdbcTemplate.update(
+                        "DELETE FROM MODECONOMICO_Proceso WHERE Pais = ?", pais);
+                log.info("Eliminados {} registros de MODECONOMICO_Proceso para Pais: {}", deletedRows, pais);
+            } catch (DataAccessException e) {
+                log.error("Error al eliminar registros de MODECONOMICO_Proceso para Pais: {}", pais, e);
+                status.setRollbackOnly();
+                throw new RuntimeException("Error al eliminar registros de MODECONOMICO_Proceso", e);
+            }
+            return null;
+        });
+    }
+    /**
+     * Procesa los datos en fragmentos (chunks) para insertar en la base de datos.
+     */
     private void processDataInChunks(
             ParametersByProjection parameters,
             List<ProjectionDTO> data,
@@ -86,7 +115,7 @@ public class SendDataToAzure {
 
         int totalItems = calculateTotalItems(data);
         AtomicInteger processedItems = new AtomicInteger(0);
-        sseReportService.sendUpdate(sessionId, "procesando", "Preparando datos para MODECONOMICO", 0);
+        sseReportService.sendUpdate(sessionId, "procesando", "Preparando datos para MODECONOMICO", 5);
 
         int totalDataSize = data.size();
         int numChunks = (totalDataSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
