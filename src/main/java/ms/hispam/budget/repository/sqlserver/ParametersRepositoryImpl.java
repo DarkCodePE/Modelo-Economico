@@ -80,13 +80,13 @@ public class ParametersRepositoryImpl implements CustomParametersRepository {
 
         // Mapear los resultados a ComponentNominaProjectionImpl
         List<ComponentNominaProjection> componentNominaProjections = new ArrayList<>();
-        //TODO:  NumberFormatException For input string: "UYU" IN ROW[2]
+        //TODO:  NumberFormatException For input string: "UYU" IN ROW[2] - Java.lang.Integer cannot be cast to class java.lang.Double row[3] puede ser tanto un Integer como un Double
         for (Object[] row : results) {
             ComponentNominaProjection projection = new ComponentNominaProjectionImpl(
                     (String) row[0], // ID_SSFF
                     (String) row[1], // CodigoNomina
-                    (Double) row[3], // Importe
-                    (Double) row[4]  // Q_Dias_Horas
+                    ((Number) row[3]).doubleValue(), // Importe
+                    ((Number) row[4]).doubleValue()  // Q_Dias_Horas
             );
             componentNominaProjections.add(projection);
         }

@@ -2486,7 +2486,7 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
 
     @Override
     public ProjectionInformation getHistorialProjection(Integer  id) {
-        List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
+        /*List<ParameterProjectionBD> parameters = sharedRepo.getParameter_historical(id);
 
         List<DisabledPoDTO> disabledPoDTOS = disabledPoHistorialRepository.findByIdProjectionHistorial(id).stream().map(c->
                 new DisabledPoDTO(c.getPo(),c.getIdssff(),c.getPeriodFrom(),c.getPeriodTo())).collect(Collectors.toList());
@@ -2541,7 +2541,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
                 .poDisableds(disabledPoDTOS)
                 .baseExtern(response)
                 .bc(bc)
-                .build();
+                .build();*/
+        return null;
     }
 
     private void replaceSlash(ParametersByProjection projection) {
