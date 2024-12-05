@@ -20,6 +20,8 @@ import javax.persistence.Table;
 public class ParametrosGlobal {
     @Id
     private Integer id;
+    // Asegúrate de tener la propiedad 'bu' si es necesaria
+    private String bu;
     private String llave;
     private String periodo;
     private String descripcion;

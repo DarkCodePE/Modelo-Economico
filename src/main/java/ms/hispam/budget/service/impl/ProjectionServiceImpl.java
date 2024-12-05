@@ -24,6 +24,7 @@ import ms.hispam.budget.util.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.ConversionFailedException;
@@ -60,6 +61,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     private final ConcurrentMap<String, Boolean> processingBuMap = new ConcurrentHashMap<>();
     private static final int HHEE_ADJUSTMENT_FACTOR_ID = 71;
     @Autowired
+    @Qualifier("sqlServerParametersRepository") // Especifica el bean correcto
     private ParametersRepository repository;
     @Autowired
     private DemoRepository sharedRepo;
@@ -72,6 +74,7 @@ public class ProjectionServiceImpl implements ProjectionService {
     @Autowired
     private DisabledPoHistorialRepository disabledPoHistorialRepository;
     @Autowired
+    @Qualifier("mysqlBuRepository") // O el nombre que hayas asignado
     private BuRepository buRepository;
     @Autowired
     private LegalEntityRepository legalEntityRepository;
@@ -2709,7 +2712,8 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
         List<CodeNomina> codeNominas = codeNominaRepository.findByIdBu(data.getIdBu());
 
         // Obtener componentes nominales
-        List<ComponentNominaProjection> nominal = repository.getcomponentNomina(
+        List<ComponentNominaProjection> nominal = repository.getComponentNominaByBu(
+                data.getBu(),
                 Constant.KEY_BD,
                 data.getBu(),
                 data.getNominaFrom(),
@@ -3020,12 +3024,13 @@ public Map<String, List<Double>> storeAndSortVacationSeasonality(List<Parameters
             String endDate = to.format(DateTimeFormatter.ofPattern("yyyyMM"));
 
             if (!relevantCodeNominas.isEmpty()) {
-                List<NominaProjection> rangeNominal = repository.getcomponentNomina(
-                                Constant.KEY_BD,
-                                projection.getBu(),
-                                initDate,
-                                endDate,
-                                String.join(",", relevantCodeNominas)
+                List<NominaProjection> rangeNominal = repository.getComponentNominaByBu(
+                            projection.getBu(), // Assuming you have a method to get the country code
+                            Constant.KEY_BD,
+                            projection.getBu(),
+                            initDate,
+                            endDate,
+                            String.join(",", relevantCodeNominas)
                         )
                         .parallelStream()
                         .map(e -> NominaProjection.builder()

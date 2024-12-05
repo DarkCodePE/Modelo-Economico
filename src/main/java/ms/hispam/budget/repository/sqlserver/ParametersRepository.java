@@ -7,13 +7,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import javax.transaction.Transactional;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Integer> {
+@Repository("sqlServerParametersRepository")
+public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Integer>, CustomParametersRepository {
 
     @Query(nativeQuery = true,value = "SELECT Position_ID position,Nombre_del_puesto poname, ID_de_SSFF idssff, Cod_Entidad_Legal entitylegal,Genero gender,ci.Unidad_de_negocio bu,Primary_workstream wk,Division_codigo division,Departamento_codigo department FROM T_SSFF_Headcount_Cierre_Historia ci  WHERE ci.Cod_Entidad_Legal in (?2) and Clase_de_empleado='EMP' AND ci.Periodo =?1 ORDER BY Position_ID ASC")
     List<HeadcountHistoricalProjection> getHistoricalBuAndPeriod(String period,List<String > entities);
@@ -23,8 +25,10 @@ public interface ParametersRepository extends JpaRepository<ParametrosGlobal,Int
                                                    @Param("periodo") String periodo);
 
     @Query(nativeQuery = true,value = "EXEC get_nom_ppto @password = :password, @bu = :bu, @p_ini = :p_ini, @p_fin = :p_fin,@co_nomina= :co_nomina")
-    List<ComponentNominaProjection> getcomponentNomina(@Param("password") String password, @Param("bu")String bu,
-                                                       @Param("p_ini") String p_ini, @Param("p_fin") String p_fin,
+    List<ComponentNominaProjection> getcomponentNomina(@Param("password") String password,
+                                                       @Param("bu")String bu,
+                                                       @Param("p_ini") String p_ini,
+                                                       @Param("p_fin") String p_fin,
                                                        @Param("co_nomina") String co_nomina);
 
         @Query(nativeQuery = true,value = "EXEC get_data_bu @password = :password, @entities = :entities, @periodo = :periodo,@component= :component,@classEmployee=:classEmployee")
